@@ -185,11 +185,11 @@ class TemplateEngine
             }
             $options = array_merge(['mode' => 'fit', 'refresh' => false], $options);
 
-            if (!class_exists('attach')) {
-                include 'tools/attach/libs/attach.lib.php';
+            if (!class_exists('Attach')) {
+                include 'tools/attach/libs/Attach.php';
             }
             $basePath = $this->wiki->getBaseUrl().'/';
-            $attach = new \attach($this->wiki);
+            $attach = new \Attach($this->wiki);
             $image_dest = $attach->getResizedFilename($options['fileName'], $options['width'], $options['height'], $options['mode']);
             $safeRefresh = !$this->wiki->services->get(SecurityController::class)->isWikiHibernated()
                 && file_exists($image_dest)
@@ -328,9 +328,6 @@ class TemplateEngine
     }
 
     /**
-     * @param mixed $templatePath
-     * @param mixed $data
-     *
      * @throws TemplateNotFound
      */
     protected function renderPhp($templatePath, $data = [])

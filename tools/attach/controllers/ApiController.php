@@ -17,11 +17,6 @@ class ApiController extends YesWikiController
 
     /**
      * @Route("/api/images/{filename}/cache/{width}/{height}/{mode}", methods={"POST"}, options={"acl": {"public"}})
-     *
-     * @param mixed $filename
-     * @param mixed $width
-     * @param mixed $height
-     * @param mixed $mode
      */
     public function getCacheUrlImageViaPost($filename, $width, $height, $mode)
     {
@@ -141,8 +136,8 @@ class ApiController extends YesWikiController
 
     private function getCacheFileName(string $filename, int $width, int $height, string $mode): string
     {
-        if (!class_exists('attach')) {
-            include 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include 'tools/attach/libs/Attach.php';
         }
         $attach = new \Attach($this->wiki);
         $newFileName = $attach->getResizedFilename("files/{$filename}", $width, $height, $mode);

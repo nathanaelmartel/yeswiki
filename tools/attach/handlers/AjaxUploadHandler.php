@@ -24,8 +24,8 @@ class AjaxUploadHandler extends YesWikiHandler
         // load classes
         require_once 'tools/attach/libs/qq.lib.php';
 
-        if (!class_exists('attach')) {
-            include_once 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include_once 'tools/attach/libs/Attach.php';
         }
         $errorsMessage = '';
         ob_start();

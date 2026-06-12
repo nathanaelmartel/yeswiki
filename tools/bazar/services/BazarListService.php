@@ -468,8 +468,8 @@ class BazarListService
 
     private function replaceDefaultImage($options, $forms, $entries): array
     {
-        if (!class_exists('attach')) {
-            include 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include 'tools/attach/libs/Attach.php';
         }
         $attach = new \Attach($this->wiki);
         $basePath = $attach->GetUploadPath();

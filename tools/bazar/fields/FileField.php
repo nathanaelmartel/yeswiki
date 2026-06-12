@@ -349,8 +349,8 @@ class FileField extends BazarField
     protected function getAttach(): \attach
     {
         if (is_null($this->attach)) {
-            if (!class_exists('attach')) {
-                include 'tools/attach/libs/attach.lib.php';
+            if (!class_exists('Attach')) {
+                include 'tools/attach/libs/Attach.php';
             }
 
             $wiki = $this->getWiki();

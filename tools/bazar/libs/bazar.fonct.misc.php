@@ -26,10 +26,10 @@ function redimensionner_image($image_src, $image_dest, $largeur, $hauteur, $meth
 {
     $wiki = $GLOBALS['wiki'];
     if (file_exists($image_src)) {
-        if (!class_exists('attach')) {
-            include 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include 'tools/attach/libs/Attach.php';
         }
-        $attach = new attach($wiki);
+        $attach = new Attach($wiki);
 
         // force new name
         $image_dest = $attach->getResizedFilename($image_src, $largeur, $hauteur, $method);
@@ -105,16 +105,6 @@ function copyUrlToLocalFile($url, $localPath)
  * @param    int        hauteur en pixel de la vignette
  * @param    int        largeur en pixel de l'image redimensionnee
  * @param    int        hauteur en pixel de l'image redimensionnee
- * @param mixed $champ
- * @param mixed $nom_image
- * @param mixed $label
- * @param mixed $class
- * @param mixed $largeur_vignette
- * @param mixed $hauteur_vignette
- * @param mixed $largeur_image
- * @param mixed $hauteur_image
- * @param mixed $method
- * @param mixed $show_vignette
  *
  * @deprecated use $wiki->render('@attach/display-image.twig') instead
  */
@@ -139,10 +129,10 @@ function afficher_image(
     $nom_image = str_replace($url_base.BAZ_CHEMIN_UPLOAD, '', $nom_image);
     $ext = pathinfo($nom_image)['extension'];
 
-    if (!class_exists('attach')) {
-        include 'tools/attach/libs/attach.lib.php';
+    if (!class_exists('Attach')) {
+        include 'tools/attach/libs/Attach.php';
     }
-    $attach = new attach($wiki);
+    $attach = new Attach($wiki);
     $imagePath = $attach->GetUploadPath().'/'.$nom_image;
     $attach->file = $imagePath;
 

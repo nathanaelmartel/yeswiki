@@ -36,7 +36,7 @@ class Utils
         if (isset($page['body'])) {
             // on cherche les actions attach avec image, puis les images bazar
             $images = [];
-            preg_match('/\\{\\{attach.*file="(.*\\.(?i)(jpe?g|png))".*\\}\\}/U', $page['body'], $images);
+            preg_match('/\{\{attach.*file="(.*\.(?i)(jpe?g|png))".*\}\}/U', $page['body'], $images);
             if (!empty($images[1])) {
                 $image = $this->getResizedFilename($images[1], $page, $page['tag'], $width, $height, true);
             } else {
@@ -51,7 +51,7 @@ class Utils
                     }
                 } else {
                     $images = [];
-                    if (preg_match('/<img.*src="(.*\\.(jpe?g|png))"/U', $page['body'], $images)
+                    if (preg_match('/<img.*src="(.*\.(jpe?g|png))"/U', $page['body'], $images)
                         && !empty($images[1])) {
                         if (file_exists('files/'.basename($images[1][0]))) {
                             $image = $this->getResizedFilename('files/'.basename($images[1]), $page, $page['tag'], $width, $height, false);
@@ -73,8 +73,6 @@ class Utils
      * @param $element : name of element
      *
      * return bool vrai si chaque élément est bien fermé
-     * @param mixed $pagetag
-     * @param mixed $pagecontent
      */
     public function checkGraphicalElements($element, $pagetag, $pagecontent)
     {
@@ -153,10 +151,10 @@ class Utils
     public function removeExtension($filename, bool $onlyTemplate = false)
     {
         if ($onlyTemplate) {
-            return preg_replace('/(\\.twig|\\.tpl.html)$/', '', $filename);
+            return preg_replace('/(\.twig|\.tpl.html)$/', '', $filename);
         }
 
-        return preg_replace('/\\..*/i', '', $filename);
+        return preg_replace('/\..*/i', '', $filename);
     }
 
     public function strIreplacement($search, $replace, $subject)
@@ -373,7 +371,7 @@ class Utils
             if (preg_match('/<h[12].*>\s*(.*)\s*<\/h[12]>/iUs', $page['body'], $titles)) {
                 $title = $titles[1];
             } else {
-                preg_match_all('/\\={6}(.*)\\={6}/U', $page['body'], $titles);
+                preg_match_all('/\={6}(.*)\={6}/U', $page['body'], $titles);
                 if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
                     $title = $this->wiki->Format(trim($titles[1][0]));
                 } else {
@@ -502,8 +500,8 @@ class Utils
 
     protected function getAttach()
     {
-        if (!class_exists('attach')) {
-            include_once 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include_once 'tools/attach/libs/Attach.php';
         }
 
         return new \Attach($this->wiki);

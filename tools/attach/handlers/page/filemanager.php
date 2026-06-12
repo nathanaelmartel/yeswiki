@@ -9,10 +9,10 @@ ob_start();
 <div class="page">
     <?php
     if ($this->UserIsOwner() || $this->UserIsAdmin()) {
-        if (!class_exists('attach')) {
-            include 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include 'tools/attach/libs/Attach.php';
         }
-        $att = new attach($this);
+        $att = new Attach($this);
         $att->doFilemanager();
         unset($att);
     } else {

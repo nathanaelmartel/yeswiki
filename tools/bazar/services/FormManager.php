@@ -35,8 +35,8 @@ class FormManager
         ActivityPubService $activityPubService,
         HttpSignatureService $httpSignatureService,
     ) {
-        if (!class_exists('attach')) {
-            include 'tools/attach/libs/attach.lib.php';
+        if (!class_exists('Attach')) {
+            include 'tools/attach/libs/Attach.php';
         }
         $this->wiki = $wiki;
         $this->dbService = $dbService;

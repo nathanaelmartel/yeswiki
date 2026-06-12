@@ -27,8 +27,8 @@ function afficher_image_attach($idfiche, $nom_image, $label, $class, $largeur_vi
     $GLOBALS['wiki']->setParameter('class', $class);
     $GLOBALS['wiki']->setParameter('width', $largeur_vignette);
     $GLOBALS['wiki']->setParameter('height', $hauteur_vignette);
-    if (!class_exists('attach')) {
-        include 'tools/attach/libs/attach.lib.php';
+    if (!class_exists('Attach')) {
+        include 'tools/attach/libs/Attach.php';
     }
     $attach = new Attach($GLOBALS['wiki']);
     ob_start();
