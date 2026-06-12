@@ -2,12 +2,9 @@
 
 namespace YesWiki\Bazar\Controller;
 
-use DateInterval;
 use DateTime;
-use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Tamtamchik\SimpleFlash\Flash;
-use Throwable;
 use YesWiki\Bazar\Exception\UserFieldException;
 use YesWiki\Bazar\Field\BazarField;
 use YesWiki\Bazar\Field\UserField;
@@ -90,10 +87,11 @@ class EntryController extends YesWikiController
 
     /**
      * @param string      $entryId
-     * @param string|null $time                 choose only the entry's revision corresponding to time, null = latest revision
+     * @param null|string $time                 choose only the entry's revision corresponding to time, null = latest revision
      * @param bool        $showFooter
-     * @param string|null $userNameForRendering userName used to render the entry, if empty uses the connected user
-     * @param array       $pForm                form to be used to render the entry
+     * @param null|string $userNameForRendering userName used to render the entry, if empty uses the connected user
+     * @param mixed       $pLocalForm
+     * @param mixed       $pExternalForm
      */
     public function view($entryId, $time = '', $showFooter = true, ?string $userNameForRendering = null, $pLocalForm = '', $pExternalForm = '')
     {
@@ -104,10 +102,10 @@ class EntryController extends YesWikiController
         } elseif ($entryId) {
             $entry = $this->entryManager->getOne($entryId, false, $time, empty($userNameForRendering), false, $userNameForRendering);
             if (!$entry) {
-                return '<div class="alert alert-danger">' . _t('BAZ_PAS_DE_FICHE_AVEC_CET_ID') . ' : ' . $entryId . '</div>';
+                return '<div class="alert alert-danger">'._t('BAZ_PAS_DE_FICHE_AVEC_CET_ID').' : '.$entryId.'</div>';
             }
         } else {
-            return '<div class="alert alert-danger">' . _t('BAZ_PAS_D_ID_DE_FICHE_INDIQUEE') . '</div>';
+            return '<div class="alert alert-danger">'._t('BAZ_PAS_D_ID_DE_FICHE_INDIQUEE').'</div>';
         }
 
         if (empty($pLocalForm)) {
@@ -128,7 +126,7 @@ class EntryController extends YesWikiController
         // unset $_GET['message'] to prevent infinite loop when rendering entry with textarea and {{bazarliste}}
         unset($_GET['message']);
         // to synchronize with const in BazarAction (but do not include it here otherwise include shunts Performer job)
-        $isUpdatingEntry = ($this->getRequest()->query->get('vue') === 'consulter');
+        $isUpdatingEntry = ('consulter' === $this->getRequest()->query->get('vue'));
         if ($isUpdatingEntry) {
             unset($_GET['vue']);
         }
@@ -150,7 +148,7 @@ class EntryController extends YesWikiController
             if (is_null($renderedEntry) && !empty($customTemplateValues['html']['semantic'])) {
                 $customTemplatePath = $this->getCustomSemanticTemplatePath($customTemplateValues['html']['semantic']);
                 if ($customTemplatePath) {
-                    $renderedEntry = $this->render("@bazar/$customTemplatePath", $customTemplateValues);
+                    $renderedEntry = $this->render("@bazar/{$customTemplatePath}", $customTemplateValues);
                 }
             }
             // if not found, use default template
@@ -183,12 +181,12 @@ class EntryController extends YesWikiController
 
         // Format owner
         $owner = $this->wiki->GetPageOwner($entryId) ?? $this->wiki->GetUserName();
-        $isOwnerIpAddress = preg_replace('/([0-9]|\.)/', '', $owner) == '';
+        $isOwnerIpAddress = '' == preg_replace('/([0-9]|\.)/', '', $owner);
         if ($isOwnerIpAddress || !$owner) {
             $owner = _t('BAZ_UNKNOWN_USER');
         }
         if (!empty($this->config['sso_config']) && isset($this->config['sso_config']['bazar_user_entry_id']) && $this->pageManager->getOne($owner)) {
-            $owner = $this->wiki->Format('[[' . $this->wiki->GetPageOwner($entryId) . ' ' . $this->wiki->GetPageOwner($entryId) . ']]');
+            $owner = $this->wiki->Format('[['.$this->wiki->GetPageOwner($entryId).' '.$this->wiki->GetPageOwner($entryId).']]');
         }
 
         // remake $_GET['message'] for BazarAction__ like in webhooks extension
@@ -200,12 +198,12 @@ class EntryController extends YesWikiController
         }
 
         $user = $this->authController->getLoggedUser();
-        if (!empty($user) && $this->favoritesManager->areFavoritesActivated() && (testUrlInIframe() == 'iframe')) {
+        if (!empty($user) && $this->favoritesManager->areFavoritesActivated() && ('iframe' == testUrlInIframe())) {
             $currentuser = $user['name'];
             $isUserFavorite = $this->favoritesManager->isUserFavorite($currentuser, $entryId);
         }
 
-        $sourceUrl = $this->tripleStore->getOne($entryId, TripleStore::SOURCE_URL_URI, "", "");
+        $sourceUrl = $this->tripleStore->getOne($entryId, TripleStore::SOURCE_URL_URI, '', '');
 
         return $this->render('@bazar/entries/view.twig', [
             'form' => $pLocalForm,
@@ -228,20 +226,14 @@ class EntryController extends YesWikiController
         ]);
     }
 
-    private function fieldsToExclude()
-    {
-        $excludeFields = $this->getRequest()->query->get('excludeFields');
-        return $excludeFields ? explode(',', $excludeFields) : [];
-    }
-
     public function publish($entryId, $accepted)
     {
         $this->entryManager->publish($entryId, $accepted);
 
         if ($accepted) {
-            echo '<div class="alert alert-success"><a data-dismiss="alert" class="close" type="button">&times;</a>' . _t('BAZ_FICHE_VALIDEE') . '</div>';
+            echo '<div class="alert alert-success"><a data-dismiss="alert" class="close" type="button">&times;</a>'._t('BAZ_FICHE_VALIDEE').'</div>';
         } else {
-            echo '<div class="alert alert-success"><a data-dismiss="alert" class="close" type="button">&times;</a>' . _t('BAZ_FICHE_PAS_VALIDEE') . '</div>';
+            echo '<div class="alert alert-success"><a data-dismiss="alert" class="close" type="button">&times;</a>'._t('BAZ_FICHE_PAS_VALIDEE').'</div>';
         }
 
         return $this->view($entryId);
@@ -250,23 +242,25 @@ class EntryController extends YesWikiController
     public function create($formId, $redirectUrl = null)
     {
         if (empty($formId)) {
-            return '<div class="alert alert-danger">' . _t('BAZ_PAS_D_ID_DE_FORM_INDIQUE') . '</div>';
+            return '<div class="alert alert-danger">'._t('BAZ_PAS_D_ID_DE_FORM_INDIQUE').'</div>';
         }
         // we need to store this globally so we can have the form id in the fields
         // TODO: there must be a better way
         $_SESSION['current_form_id'] = $formId;
         $form = $this->formManager->getOne($formId);
         if (!$form) {
-            return '<div class="alert alert-danger">' . _t('BAZ_PAS_DE_FORM_AVEC_CET_ID') . ' : \'' . $formId . '\'</div>';
+            return '<div class="alert alert-danger">'._t('BAZ_PAS_DE_FORM_AVEC_CET_ID').' : \''.$formId.'\'</div>';
         }
 
         $results = $this->checkIfOnlyOneEntry($form);
         $incomingUrl = $this->getIncomingUrl();
         if (!empty($results['output'])) {
             return $results['output'];
-        } elseif (empty($results['error'])) {
-            list($state, $error) = $this->securityController->checkCaptchaBeforeSave('entry');
+        }
+        if (empty($results['error'])) {
+            [$state, $error] = $this->securityController->checkCaptchaBeforeSave('entry');
             $post = $this->getRequest()->request;
+
             try {
                 if ($state && $post->has('bf_titre')) {
                     $entry = $this->entryManager->create($formId, $post->all());
@@ -292,7 +286,7 @@ class EntryController extends YesWikiController
                                 false,
                             )
                         );
-                    header('Location: ' . $redirectUrl);
+                    header('Location: '.$redirectUrl);
                     $this->wiki->exit();
                 }
             } catch (UserFieldException $e) {
@@ -310,7 +304,7 @@ class EntryController extends YesWikiController
         return $this->render('@bazar/entries/form.twig', [
             'form' => $form,
             'renderedInputs' => $renderedInputs,
-            'showConditions' => $form['bn_condition'] !== '' && !$post->has('accept_condition'),
+            'showConditions' => '' !== $form['bn_condition'] && !$post->has('accept_condition'),
             'passwordForEditing' => isset($this->config['password_for_editing']) && !empty($this->config['password_for_editing']) && $post->has('password_for_editing') ? $post->get('password_for_editing') : '',
             'incomingUrl' => $incomingUrl,
             'error' => $error,
@@ -329,9 +323,10 @@ class EntryController extends YesWikiController
         $entry = $this->entryManager->getOne($entryId);
         $form = $this->formManager->getOne($entry['id_typeannonce']);
 
-        list($state, $error) = $this->securityController->checkCaptchaBeforeSave('entry');
+        [$state, $error] = $this->securityController->checkCaptchaBeforeSave('entry');
         $incomingUrl = $this->getIncomingUrl();
         $post = $this->getRequest()->request;
+
         try {
             if ($state && $post->has('bf_titre')) {
                 $entry = $this->entryManager->update($entryId, $post->all());
@@ -351,7 +346,7 @@ class EntryController extends YesWikiController
                             'message' => 'modif_ok',
                         ], false)
                     );
-                header('Location: ' . $redirectUrl);
+                header('Location: '.$redirectUrl);
                 $this->wiki->exit();
             }
         } catch (UserFieldException $e) {
@@ -390,24 +385,172 @@ class EntryController extends YesWikiController
                 if (!$this->entryManager->isEntry($entryId)) {
                     $this->triggerDeletedEvent($entryId, $entry);
                     if ($redirectAfter) {
-                        Flash::success(_t('BAZ_FICHE_SUPPRIMEE') . " ($entryId)");
+                        Flash::success(_t('BAZ_FICHE_SUPPRIMEE')." ({$entryId})");
                         $this->wiki->Redirect($this->wiki->Href('', 'BazaR', ['vue' => 'consulter'], false));
                     }
 
                     return true;
                 }
-            } catch (Throwable $th) {
+            } catch (\Throwable $th) {
                 if ($redirectAfter) {
-                    Flash::error(_t('DELETEPAGE_NOT_DELETED') . " ($entryId) : {$th->getMessage()}");
+                    Flash::error(_t('DELETEPAGE_NOT_DELETED')." ({$entryId}) : {$th->getMessage()}");
                     $this->wiki->Redirect($this->wiki->Href('', 'BazaR', ['vue' => 'consulter'], false));
                 }
-                throw new Exception($th->getMessage(), $th->getCode(), $th);
+
+                throw new \Exception($th->getMessage(), $th->getCode(), $th);
             }
 
             return false;
-        } else {
-            throw new Exception('Not deleted because not entry' . (is_scalar($entryId) ? ' (' . strval($entryId) . ')' : ''));
         }
+
+        throw new \Exception('Not deleted because not entry'.(is_scalar($entryId) ? ' ('.strval($entryId).')' : ''));
+    }
+
+    /**
+     * format queries from GET and from $arg in order to give the right 'queries' to SearchManager->search.
+     *
+     * @param null|array|string $arg
+     * @param array             $get (copy of $_GET) but pass in parameters to be more visible in primary level controllers
+     *
+     * NOTE : this function is kept for retrocompatibility. You should use SearchManager::aggregateQueries
+     */
+    public function formatQuery($arg, array $get): array
+    {
+        $vSearchManager = $this->getService(SearchManager::class);
+
+        return $vSearchManager->parseQuery($vSearchManager->aggregateQueries($arg, $get));
+    }
+
+    // PART TO FILTER ON DATE
+
+    /**
+     * filter entries on date.
+     *
+     * @param array  $entries
+     * @param string $datefilter
+     *
+     * @return array $entries
+     */
+    public function filterEntriesOnDate($entries, $datefilter): array
+    {
+        $TODAY_TEMPLATE = '/^(today|aujourdhui|aujourd\'hui|=0(D)?)$/i';
+        $FUTURE_TEMPLATE = '/^(futur|future|>0(D)?)$/i';
+        $PAST_TEMPLATE = '/^(past|passe|passé|<0(D)?)$/i';
+        $DATE_TEMPLATE = '(\\+|-)(([0-9]+)Y)?(([0-9]+)M)?(([0-9]+)D)?';
+        $EQUAL_TEMPLATE = '/^='.$DATE_TEMPLATE.'$/i';
+        $AFTER_TEMPLATE = '/^>'.$DATE_TEMPLATE.'$/i';
+        $BEFORE_TEMPLATE = '/^<'.$DATE_TEMPLATE.'$/i';
+        $BETWEEN_TEMPLATE = '/^>'.$DATE_TEMPLATE.'&<'.$DATE_TEMPLATE.'$/i';
+
+        if (preg_match_all($TODAY_TEMPLATE, $datefilter, $matches)) {
+            $todayMidnight = new \DateTime();
+            $todayMidnight->setTime(0, 0);
+            $entries = array_filter($entries, function ($entry) use ($todayMidnight) {
+                return $this->filterEntriesOnDateTraversing($entry, '=', $todayMidnight);
+            });
+        } elseif (preg_match_all($FUTURE_TEMPLATE, $datefilter, $matches)) {
+            $now = new \DateTime();
+            $entries = array_filter($entries, function ($entry) use ($now) {
+                return $this->filterEntriesOnDateTraversing($entry, '>', $now);
+            });
+        } elseif (preg_match_all($PAST_TEMPLATE, $datefilter, $matches)) {
+            $now = new \DateTime();
+            $entries = array_filter($entries, function ($entry) use ($now) {
+                return $this->filterEntriesOnDateTraversing($entry, '<', $now);
+            });
+        } elseif (preg_match_all($EQUAL_TEMPLATE, $datefilter, $matches)) {
+            $sign = $matches[1][0];
+            $nbYears = $matches[3][0];
+            $nbMonth = $matches[5][0];
+            $nbDays = $matches[7][0];
+
+            $dateMidnigth = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
+            $dateMidnigth->setTime(0, 0);
+            $entries = array_filter($entries, function ($entry) use ($dateMidnigth) {
+                return $this->filterEntriesOnDateTraversing($entry, '=', $dateMidnigth);
+            });
+        } elseif (preg_match_all($AFTER_TEMPLATE, $datefilter, $matches)) {
+            $sign = $matches[1][0];
+            $nbYears = $matches[3][0];
+            $nbMonth = $matches[5][0];
+            $nbDays = $matches[7][0];
+
+            $date = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
+            $entries = array_filter($entries, function ($entry) use ($date) {
+                return $this->filterEntriesOnDateTraversing($entry, '>', $date);
+            });
+        } elseif (preg_match_all($BEFORE_TEMPLATE, $datefilter, $matches)) {
+            $sign = $matches[1][0];
+            $nbYears = $matches[3][0];
+            $nbMonth = $matches[5][0];
+            $nbDays = $matches[7][0];
+
+            $date = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
+            $entries = array_filter($entries, function ($entry) use ($date) {
+                return $this->filterEntriesOnDateTraversing($entry, '<', $date);
+            });
+        } elseif (preg_match_all($BETWEEN_TEMPLATE, $datefilter, $matches)) {
+            $signMore = $matches[1][0];
+            $nbYearsMore = $matches[3][0];
+            $nbMonthMore = $matches[5][0];
+            $nbDaysMore = $matches[7][0];
+            $dateMin = $this->extractDate($signMore, $nbYearsMore, $nbMonthMore, $nbDaysMore);
+            $signLower = $matches[8][0];
+            $nbYearsLower = $matches[10][0];
+            $nbMonthLower = $matches[12][0];
+            $nbDaysLower = $matches[14][0];
+            $dateMax = $this->extractDate($signLower, $nbYearsLower, $nbMonthLower, $nbDaysLower);
+            if (0 == $dateMin->diff($dateMax)->invert) {
+                // $dateMax higher than $dateMin
+                $entries = array_filter($entries, function ($entry) use ($dateMin) {
+                    return $this->filterEntriesOnDateTraversing($entry, '>', $dateMin);
+                });
+                $entries = array_filter($entries, function ($entry) use ($dateMax) {
+                    return $this->filterEntriesOnDateTraversing($entry, '<', $dateMax);
+                });
+            }
+        }
+
+        return $entries;
+    }
+
+    // END OF PART TO FILTER ON DATE
+
+    public function renderBazarList($entries, $param = [], $showNumEntries = true)
+    {
+        $ids = [];
+        foreach ($entries as $entry) {
+            if (!empty($entry['id_fiche'])) {
+                $ids[] = $entry['id_fiche'];
+            }
+        }
+        $params['query'] = 'id_fiche='.implode(',', $ids);
+        $params['shownumentries'] = $showNumEntries;
+
+        if (empty($ids)) {
+            return $this->render(
+                '@templates/alert-message.twig',
+                [
+                    'type' => 'info',
+                    'message' => _t('BAZ_IL_Y_A').' 0 '._t('BAZ_FICHE'),
+                ],
+            );
+        }
+
+        return $this->wiki->Action('bazarliste', 0, $params);
+    }
+
+    public function getIncomingUrl(): string
+    {
+        $request = $this->getRequest();
+        $incomingUrl = $request->query->get('incomingurl') ?? $request->request->get('incomingurl') ?? '';
+        if (!empty($incomingUrl)) {
+            $incomingUrl = urldecode($incomingUrl);
+            $incomingUrl = filter_var($incomingUrl, FILTER_VALIDATE_URL);
+        }
+
+        // TODO check if redirect to outside website ?
+        return empty($incomingUrl) ? '' : $incomingUrl;
     }
 
     protected function triggerDeletedEvent($entryId, $entry)
@@ -416,6 +559,13 @@ class EntryController extends YesWikiController
             'id' => $entryId,
             'data' => $entry,
         ]);
+    }
+
+    private function fieldsToExclude()
+    {
+        $excludeFields = $this->getRequest()->query->get('excludeFields');
+
+        return $excludeFields ? explode(',', $excludeFields) : [];
     }
 
     private function getRenderedInputs($form, $entry = null)
@@ -476,7 +626,7 @@ class EntryController extends YesWikiController
             }
 
             if (isset($type)) {
-                $templatePath = $dir_name . '/' . strtolower($type) . '.tpl.html';
+                $templatePath = $dir_name.'/'.strtolower($type).'.tpl.html';
 
                 return $this->getService(TemplateEngine::class)->hasTemplate($templatePath) ? $templatePath : null;
             }
@@ -487,8 +637,8 @@ class EntryController extends YesWikiController
 
     /**
      * @param array       $entry
-     * @param array|null  $form
-     * @param string|null $userNameForRendering userName used to render the entry, if empty uses the connected user
+     * @param null|array  $form
+     * @param null|string $userNameForRendering userName used to render the entry, if empty uses the connected user
      */
     private function getValuesForCustomTemplate($entry, $form, ?string $userNameForRendering = null)
     {
@@ -500,12 +650,12 @@ class EntryController extends YesWikiController
                     $html[$id] = $field->renderStaticIfPermitted($entry, $userNameForRendering);
                     // reset $matches before preg_match
                     $matches = [];
-                    if ($id == 'bf_titre') {
+                    if ('bf_titre' == $id) {
                         preg_match('/<h1 class="BAZ_fiche_titre">\s*(.*)\s*<\/h1>.*$/is', $html[$id], $matches);
                     } elseif (!empty($html[$id])) {
                         preg_match('/<span class="BAZ_texte">\s*(.*)\s*<\/span>.*$/is', $html[$id], $matches);
                     }
-                    if (isset($matches[1]) && $matches[1] != '') {
+                    if (isset($matches[1]) && '' != $matches[1]) {
                         $html[$id] = $matches[1];
                     }
                 }
@@ -535,115 +685,7 @@ class EntryController extends YesWikiController
         return $values;
     }
 
-    /**
-     * format queries from GET and from $arg in order to give the right 'queries' to SearchManager->search.
-     *
-     * @param array|string|null $arg
-     * @param array             $get (copy of $_GET) but pass in parameters to be more visible in primary level controllers
-     *
-     * NOTE : this function is kept for retrocompatibility. You should use SearchManager::aggregateQueries
-     */
-    public function formatQuery($arg, array $get): array
-    {
-        $vSearchManager = $this->getService(SearchManager::class);
-
-        return $vSearchManager->parseQuery($vSearchManager->aggregateQueries($arg, $get));
-    }
-
-    /* PART TO FILTER ON DATE */
-
-    /**
-     * filter entries on date.
-     *
-     * @param array  $entries
-     * @param string $datefilter
-     *
-     * @return array $entries
-     */
-    public function filterEntriesOnDate($entries, $datefilter): array
-    {
-        $TODAY_TEMPLATE = '/^(today|aujourdhui|aujourd\'hui|=0(D)?)$/i';
-        $FUTURE_TEMPLATE = '/^(futur|future|>0(D)?)$/i';
-        $PAST_TEMPLATE = '/^(past|passe|passé|<0(D)?)$/i';
-        $DATE_TEMPLATE = "(\+|-)(([0-9]+)Y)?(([0-9]+)M)?(([0-9]+)D)?";
-        $EQUAL_TEMPLATE = '/^=' . $DATE_TEMPLATE . '$/i';
-        $AFTER_TEMPLATE = '/^>' . $DATE_TEMPLATE . '$/i';
-        $BEFORE_TEMPLATE = '/^<' . $DATE_TEMPLATE . '$/i';
-        $BETWEEN_TEMPLATE = '/^>' . $DATE_TEMPLATE . '&<' . $DATE_TEMPLATE . '$/i';
-
-        if (preg_match_all($TODAY_TEMPLATE, $datefilter, $matches)) {
-            $todayMidnight = new DateTime();
-            $todayMidnight->setTime(0, 0);
-            $entries = array_filter($entries, function ($entry) use ($todayMidnight) {
-                return $this->filterEntriesOnDateTraversing($entry, '=', $todayMidnight);
-            });
-        } elseif (preg_match_all($FUTURE_TEMPLATE, $datefilter, $matches)) {
-            $now = new DateTime();
-            $entries = array_filter($entries, function ($entry) use ($now) {
-                return $this->filterEntriesOnDateTraversing($entry, '>', $now);
-            });
-        } elseif (preg_match_all($PAST_TEMPLATE, $datefilter, $matches)) {
-            $now = new DateTime();
-            $entries = array_filter($entries, function ($entry) use ($now) {
-                return $this->filterEntriesOnDateTraversing($entry, '<', $now);
-            });
-        } elseif (preg_match_all($EQUAL_TEMPLATE, $datefilter, $matches)) {
-            $sign = $matches[1][0];
-            $nbYears = $matches[3][0];
-            $nbMonth = $matches[5][0];
-            $nbDays = $matches[7][0];
-
-            $dateMidnigth = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
-            $dateMidnigth->setTime(0, 0);
-            $entries = array_filter($entries, function ($entry) use ($dateMidnigth) {
-                return $this->filterEntriesOnDateTraversing($entry, '=', $dateMidnigth);
-            });
-        } elseif (preg_match_all($AFTER_TEMPLATE, $datefilter, $matches)) {
-            $sign = $matches[1][0];
-            $nbYears = $matches[3][0];
-            $nbMonth = $matches[5][0];
-            $nbDays = $matches[7][0];
-
-            $date = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
-            $entries = array_filter($entries, function ($entry) use ($date) {
-                return $this->filterEntriesOnDateTraversing($entry, '>', $date);
-            });
-        } elseif (preg_match_all($BEFORE_TEMPLATE, $datefilter, $matches)) {
-            $sign = $matches[1][0];
-            $nbYears = $matches[3][0];
-            $nbMonth = $matches[5][0];
-            $nbDays = $matches[7][0];
-
-            $date = $this->extractDate($sign, $nbYears, $nbMonth, $nbDays);
-            $entries = array_filter($entries, function ($entry) use ($date) {
-                return $this->filterEntriesOnDateTraversing($entry, '<', $date);
-            });
-        } elseif (preg_match_all($BETWEEN_TEMPLATE, $datefilter, $matches)) {
-            $signMore = $matches[1][0];
-            $nbYearsMore = $matches[3][0];
-            $nbMonthMore = $matches[5][0];
-            $nbDaysMore = $matches[7][0];
-            $dateMin = $this->extractDate($signMore, $nbYearsMore, $nbMonthMore, $nbDaysMore);
-            $signLower = $matches[8][0];
-            $nbYearsLower = $matches[10][0];
-            $nbMonthLower = $matches[12][0];
-            $nbDaysLower = $matches[14][0];
-            $dateMax = $this->extractDate($signLower, $nbYearsLower, $nbMonthLower, $nbDaysLower);
-            if ($dateMin->diff($dateMax)->invert == 0) {
-                // $dateMax higher than $dateMin
-                $entries = array_filter($entries, function ($entry) use ($dateMin) {
-                    return $this->filterEntriesOnDateTraversing($entry, '>', $dateMin);
-                });
-                $entries = array_filter($entries, function ($entry) use ($dateMax) {
-                    return $this->filterEntriesOnDateTraversing($entry, '<', $dateMax);
-                });
-            }
-        }
-
-        return $entries;
-    }
-
-    private function extractDate(string $pSign, string $nbYears, string $nbMonth, string $nbDays): DateTime
+    private function extractDate(string $pSign, string $nbYears, string $nbMonth, string $nbDays): \DateTime
     {
         /*if ($pSign == "")
         {echo ("$pSign, string $nbYears, string $nbMonth, string $nbDays");
@@ -654,96 +696,75 @@ class EntryController extends YesWikiController
         }
         else*/
 
-        $vDateInterval = new DateInterval(
+        $vDateInterval = new \DateInterval(
             'P'
-                    . (!empty($nbYears) ? $nbYears . 'Y' : '')
-                    . (!empty($nbMonth) ? $nbMonth . 'M' : '')
-                    . (!empty($nbDays) ? $nbDays . 'D' : (empty($nbYears) && empty($nbMonth) && empty($nbDays) ? '0D' : '')),
+                    .(!empty($nbYears) ? $nbYears.'Y' : '')
+                    .(!empty($nbMonth) ? $nbMonth.'M' : '')
+                    .(!empty($nbDays) ? $nbDays.'D' : (empty($nbYears) && empty($nbMonth) && empty($nbDays) ? '0D' : '')),
         );
-        $vDateInterval->invert = ($pSign == '-') ? 1 : 0;
+        $vDateInterval->invert = ('-' == $pSign) ? 1 : 0;
 
-        $vDate = new DateTime();
+        $vDate = new \DateTime();
         $vDate->add($vDateInterval);
 
         return $vDate;
     }
 
-    private function filterEntriesOnDateTraversing(?array $entry, string $mode, DateTime $date): bool
+    private function filterEntriesOnDateTraversing(?array $entry, string $mode, \DateTime $date): bool
     {
         if (empty($entry) || !isset($entry['bf_date_debut_evenement'])) {
             return false;
         }
 
-        $entryStartDate = new DateTime($entry['bf_date_debut_evenement']);
+        $entryStartDate = new \DateTime($entry['bf_date_debut_evenement']);
         if (isset($entry['bf_date_fin_evenement']) && !empty(trim($entry['bf_date_fin_evenement']))) {
-            $entryEndDate = new DateTime($entry['bf_date_fin_evenement']);
-            if ($entryEndDate && strpos($entry['bf_date_fin_evenement'], 'T') === false) {
+            $entryEndDate = new \DateTime($entry['bf_date_fin_evenement']);
+            if ($entryEndDate && false === strpos($entry['bf_date_fin_evenement'], 'T')) {
                 // all day (so = midnigth of next day)
-                $entryEndDate->add(new DateInterval('P1D'));
+                $entryEndDate->add(new \DateInterval('P1D'));
             }
         }
         if (empty($entryEndDate)) {
-            $entryEndDate = (clone $entryStartDate)->setTime(0, 0)->add(new DateInterval('P1D')); // endDate to next day after start day if empty
+            $entryEndDate = (clone $entryStartDate)->setTime(0, 0)->add(new \DateInterval('P1D')); // endDate to next day after start day if empty
         }
-        $nextDay = (clone $date)->add(new DateInterval('P1D'));
+        $nextDay = (clone $date)->add(new \DateInterval('P1D'));
+
         switch ($mode) {
             case '<':
                 // start before date and whatever finish
-                return $date->diff($entryStartDate)->invert == 1;
+                return 1 == $date->diff($entryStartDate)->invert;
+
                 break;
+
             case '>':
                 // start after date or (before date but and end should be after date, end is needed)
                 return
-                    $date->diff($entryStartDate)->invert == 0
+                    0 == $date->diff($entryStartDate)->invert
                     || !$this->dateIsStrictlyBefore($entryEndDate, $date);
+
                 break;
+
             case '=':
             default:
                 // start before next day midnight and should end after date midnigth
                 return
-                    $nextDay->diff($entryStartDate)->invert == 1
+                    1 == $nextDay->diff($entryStartDate)->invert
                     && !$this->dateIsStrictlyBefore($entryEndDate, $date);
         }
     }
 
-    private function dateIsStrictlyBefore(DateTime $dateToCompare, DateTime $referenceDate): bool
+    private function dateIsStrictlyBefore(\DateTime $dateToCompare, \DateTime $referenceDate): bool
     {
         $diff = $referenceDate->diff($dateToCompare);
 
-        return $diff->invert == 1 || (
-            $diff->invert == 0
-            && $diff->days == 0
-            && $diff->h == 0
-            && $diff->i == 0
-            && $diff->s == 0
-            && $diff->f == 0
+        return 1 == $diff->invert || (
+            0 == $diff->invert
+            && 0 == $diff->days
+            && 0 == $diff->h
+            && 0 == $diff->i
+            && 0 == $diff->s
+            && 0 == $diff->f
         );
-    }
-
-    /* END OF PART TO FILTER ON DATE */
-
-    public function renderBazarList($entries, $param = [], $showNumEntries = true)
-    {
-        $ids = [];
-        foreach ($entries as $entry) {
-            if (!empty($entry['id_fiche'])) {
-                $ids[] = $entry['id_fiche'];
-            }
-        }
-        $params['query'] = 'id_fiche=' . implode(',', $ids);
-        $params['shownumentries'] = $showNumEntries;
-
-        if (empty($ids)) {
-            return $this->render(
-                '@templates/alert-message.twig',
-                [
-                    'type' => 'info',
-                    'message' => _t('BAZ_IL_Y_A') . ' 0 ' . _t('BAZ_FICHE'),
-                ],
-            );
-        }
-
-        return $this->wiki->Action('bazarliste', 0, $params);
     }
 
     /**
@@ -757,7 +778,7 @@ class EntryController extends YesWikiController
             'error' => '',
             'output' => '',
         ];
-        if (isset($form['bn_only_one_entry']) && $form['bn_only_one_entry'] === 'Y') {
+        if (isset($form['bn_only_one_entry']) && 'Y' === $form['bn_only_one_entry']) {
             $formHasUserField = !empty(array_filter($form['prepared'], function ($field) {
                 return $field instanceof UserField;
             }));
@@ -795,18 +816,5 @@ class EntryController extends YesWikiController
         }
 
         return $results;
-    }
-
-    public function getIncomingUrl(): string
-    {
-        $request = $this->getRequest();
-        $incomingUrl = $request->query->get('incomingurl') ?? $request->request->get('incomingurl') ?? '';
-        if (!empty($incomingUrl)) {
-            $incomingUrl = urldecode($incomingUrl);
-            $incomingUrl = filter_var($incomingUrl, FILTER_VALIDATE_URL);
-        }
-
-        // TODO check if redirect to outside website ?
-        return empty($incomingUrl) ? '' : $incomingUrl;
     }
 }

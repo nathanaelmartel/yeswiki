@@ -15,15 +15,15 @@ class CleanBase64 extends YesWikiMigration
 
     private function searchPagesWithBase64(): array
     {
-        $anchor = '%src=\\\\\\\\\\"data:image\\\\\\\\/%;base64,%';
-        $select_entries_filter =
-            'SELECT DISTINCT resource FROM ' . $this->dbService->prefixTable('triples') .
-            'WHERE value = "fiche_bazar" AND property = "http://outils-reseaux.org/_vocabulary/type" ' .
-            'ORDER BY resource ASC';
+        $anchor = '%src=\\\\\\\\\"data:image\\\\\\\/%;base64,%';
+        $select_entries_filter
+            = 'SELECT DISTINCT resource FROM '.$this->dbService->prefixTable('triples')
+            .'WHERE value = "fiche_bazar" AND property = "http://outils-reseaux.org/_vocabulary/type" '
+            .'ORDER BY resource ASC';
 
-        $sql = 'SELECT * FROM ' . $this->dbService->prefixTable('pages') . ' ' .
-            "WHERE body LIKE '{$anchor}' " .
-            'AND tag IN (' . $select_entries_filter . ')';
+        $sql = 'SELECT * FROM '.$this->dbService->prefixTable('pages').' '
+            ."WHERE body LIKE '{$anchor}' "
+            .'AND tag IN ('.$select_entries_filter.')';
 
         $pages = $this->dbService->loadAll($sql);
 
@@ -61,10 +61,10 @@ class CleanBase64 extends YesWikiMigration
         }
         if ($updated) {
             $this->dbService->query(
-                "UPDATE {$this->dbService->prefixTable('pages')} " .
-                "SET body = '{$this->dbService->escape(chop($page['body']))}' " .
-                "WHERE tag = '{$this->dbService->escape($page['tag'])}' " .
-                "AND time = '{$this->dbService->escape($page['time'])}'"
+                "UPDATE {$this->dbService->prefixTable('pages')} "
+                ."SET body = '{$this->dbService->escape(chop($page['body']))}' "
+                ."WHERE tag = '{$this->dbService->escape($page['tag'])}' "
+                ."AND time = '{$this->dbService->escape($page['time'])}'"
             );
         }
 

@@ -11,23 +11,22 @@ use YesWiki\Core\Service\AclService;
  */
 class EmailField extends BazarField
 {
-    protected $seeEmailAcls;
-    protected $sendMail;
-    protected $showContactForm;
-
     // Field-specific
     protected const FIELD_SHOW_CONTACT_FORM = 6;
     protected const FIELD_SEE_MAIL_ACLS = 4;
     protected const FIELD_SEND_EMAIL = 9;
+    protected $seeEmailAcls;
+    protected $sendMail;
+    protected $showContactForm;
 
     public function __construct(array $values, ContainerInterface $services)
     {
         parent::__construct($values, $services);
 
         $this->type = 'email';
-        $this->sendMail = $values[self::FIELD_SEND_EMAIL] == 1;
-        $this->showContactForm = $values[self::FIELD_SHOW_CONTACT_FORM] === 'form';
-        $this->maxChars = $this->maxChars ?? 255;
+        $this->sendMail = 1 == $values[self::FIELD_SEND_EMAIL];
+        $this->showContactForm = 'form' === $values[self::FIELD_SHOW_CONTACT_FORM];
+        $this->maxChars ??= 255;
         $this->seeEmailAcls = (!empty($values[self::FIELD_SEE_MAIL_ACLS]) && is_string($values[self::FIELD_SEE_MAIL_ACLS]) && !empty(trim($values[self::FIELD_SEE_MAIL_ACLS])))
         ? trim($values[self::FIELD_SEE_MAIL_ACLS])
         : '@admins'; // default
@@ -39,8 +38,8 @@ class EmailField extends BazarField
     {
         if ($this->sendMail) {
             // add propertyName to the list of emails if several sendmail in same form
-            $sendmailList = !empty($entry['sendmail']) ?
-                $entry['sendmail'] . ',' . $this->propertyName
+            $sendmailList = !empty($entry['sendmail'])
+                ? $entry['sendmail'].','.$this->propertyName
                 : $this->propertyName;
             $sendmailArray = ['sendmail' => $sendmailList];
         } else {
@@ -51,23 +50,6 @@ class EmailField extends BazarField
             [$this->propertyName => $this->getValue($entry)],
             $sendmailArray
         );
-    }
-
-    protected function renderStatic($entry)
-    {
-        $value = $this->getValue($entry);
-        if (!$value) {
-            return '';
-        }
-
-        // TODO add JS libraries with Twig
-        if ($this->showContactForm) {
-            $GLOBALS['wiki']->addJavascriptFile('tools/contact/libs/contact.js');
-        }
-
-        return $this->render('@bazar/fields/email.twig', [
-            'value' => $value,
-        ]);
     }
 
     public function canRead($entry, ?string $userNameForRendering = null)
@@ -83,7 +65,7 @@ class EmailField extends BazarField
         // we test if we need an acl exception for an entry's email in a contact form, even if the display acls are against
         if ($canBeRead && $this->getShowContactForm()) {
             $tag = $wiki->GetPageTag();
-            if ($tag === 'api') {
+            if ('api' === $tag) {
                 // only authorized api routes /api/entries/html/{selectedEntry}&fields=html_output
                 $canBeRead = $bazarApiController->isEntryViewFastAccessHelper();
             } elseif ($aclService->check($this->getSeeEmailAcls(), $userNameForRendering, true)) {
@@ -122,5 +104,22 @@ class EmailField extends BazarField
                 'seeEmailAcls' => $this->getSeeEmailAcls(),
             ]
         );
+    }
+
+    protected function renderStatic($entry)
+    {
+        $value = $this->getValue($entry);
+        if (!$value) {
+            return '';
+        }
+
+        // TODO add JS libraries with Twig
+        if ($this->showContactForm) {
+            $GLOBALS['wiki']->addJavascriptFile('tools/contact/libs/contact.js');
+        }
+
+        return $this->render('@bazar/fields/email.twig', [
+            'value' => $value,
+        ]);
     }
 }

@@ -20,7 +20,7 @@ class GroupManager
      */
     public function groupExists(string $group_name): bool
     {
-        return $this->tripleStore->getMatching(GROUP_PREFIX . $group_name, null, null, '=') != null || $this->userManager->userExist($group_name);
+        return null != $this->tripleStore->getMatching(GROUP_PREFIX.$group_name, null, null, '=') || $this->userManager->userExist($group_name);
     }
 
     /**
@@ -35,12 +35,12 @@ class GroupManager
 
     public function delete(string $group_name): void
     {
-        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX . '%', null, '%@' . $group_name . '%', 'LIKE', '=', 'LIKE');
+        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX.'%', null, '%@'.$group_name.'%', 'LIKE', '=', 'LIKE');
         $this->tripleStore->delete($group_name, WIKINI_VOC_ACLS, null, GROUP_PREFIX);
         $prefix_len = strlen(GROUP_PREFIX);
         foreach ($group_list as $group) {
             $group = substr($group['resource'], $prefix_len);
-            $this->removeMembers($group, ['@' . $group_name]);
+            $this->removeMembers($group, ['@'.$group_name]);
         }
     }
 
@@ -51,7 +51,7 @@ class GroupManager
      */
     public function getall(): array
     {
-        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX . '%');
+        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX.'%');
         $prefix_len = strlen(GROUP_PREFIX);
 
         return array_map(fn ($value): string => substr($value['resource'], $prefix_len), $group_list);

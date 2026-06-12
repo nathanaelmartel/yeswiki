@@ -18,13 +18,13 @@ class SetWikiDefaultThemeAction extends YesWikiAction
         if (!$this->wiki->UserIsAdmin()) {
             return $this->render('@templates/alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('ERROR_NO_ACCESS') . ' setwikidefaulttheme',
+                'message' => _t('ERROR_NO_ACCESS').' setwikidefaulttheme',
             ]);
         }
         if (!is_writable(ConfigurationFileProvider::getConfigFileFromEnv())) {
             return $this->render('@templates/alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('ERROR_NO_ACCESS') . ' setwikidefaulttheme, ' . _t('FILE_WRITE_PROTECTED'),
+                'message' => _t('ERROR_NO_ACCESS').' setwikidefaulttheme, '._t('FILE_WRITE_PROTECTED'),
             ]);
         }
 
@@ -36,7 +36,7 @@ class SetWikiDefaultThemeAction extends YesWikiAction
         $config = $this->getService(ConfigurationService::class)->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
         $config->load();
 
-        if ($this->getRequest()->request->get('action') === 'setTemplate') {
+        if ('setTemplate' === $this->getRequest()->request->get('action')) {
             if ($this->securityController->isWikiHibernated()) {
                 return $this->securityController->getMessageWhenHibernated();
             }
@@ -61,7 +61,7 @@ class SetWikiDefaultThemeAction extends YesWikiAction
         }
 
         $params = [
-            'forceTheme' => isset($config->hide_action_template) && $config->hide_action_template === '1',
+            'forceTheme' => isset($config->hide_action_template) && '1' === $config->hide_action_template,
         ];
         // load defaut params from config after LoadExtensions
         if (isset($config->favorite_theme)) {
@@ -110,13 +110,13 @@ class SetWikiDefaultThemeAction extends YesWikiAction
             'theme' => $this->sanitizePost('theme_select'),
             'preset' => $this->sanitizePost('preset_select'),
         ];
-        if (!empty($values['squelette']) && substr($values['squelette'], -strlen('.tpl.html')) !== '.tpl.html') {
+        if (!empty($values['squelette']) && '.tpl.html' !== substr($values['squelette'], -strlen('.tpl.html'))) {
             $values['squelette'] .= '.tpl.html';
         }
-        if (!empty($values['style']) && substr($values['style'], -4) !== '.css') {
+        if (!empty($values['style']) && '.css' !== substr($values['style'], -4)) {
             $values['style'] .= '.css';
         }
-        if (!empty($values['preset']) && substr($values['preset'], -4) !== '.css') {
+        if (!empty($values['preset']) && '.css' !== substr($values['preset'], -4)) {
             $values['preset'] .= '.css';
         }
 
@@ -131,7 +131,7 @@ class SetWikiDefaultThemeAction extends YesWikiAction
             'style' => $values['style'],
             'squelette' => $values['squelette'],
             'preset' => (!array_key_exists('presets', $availableThemes[$values['theme']]) || empty($values['preset'])) ? null : $values['preset'],
-            'forceTheme' => ($this->getRequest()->request->get('forceTheme') === 'on'),
+            'forceTheme' => ('on' === $this->getRequest()->request->get('forceTheme')),
         ];
     }
 

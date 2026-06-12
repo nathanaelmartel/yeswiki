@@ -23,15 +23,15 @@ class CheckboxEntryField extends CheckboxField
 
         $wiki = $this->services->get(Wiki::class);
         $this->displayFilterLimit = $wiki->config['BAZ_MAX_CHECKBOXLISTE_SANS_FILTRE'];
-        $this->displaySelectAllLimit = empty($wiki->config['BAZ_MAX_CHECKBOXENTRY_WITHOUT_SELECTALL']) ?
-            $this->displayFilterLimit :
-            $wiki->config['BAZ_MAX_CHECKBOXENTRY_WITHOUT_SELECTALL'];
+        $this->displaySelectAllLimit = empty($wiki->config['BAZ_MAX_CHECKBOXENTRY_WITHOUT_SELECTALL'])
+            ? $this->displayFilterLimit
+            : $wiki->config['BAZ_MAX_CHECKBOXENTRY_WITHOUT_SELECTALL'];
         $this->formName = null;
         $this->normalDisplayMode = (in_array(
             $wiki->config['BAZ_MAX_CHECKBOXENTRY_DISPLAY_MODE'],
             array_keys(self::CHECKBOX_TWIG_LIST)
-        )) ? $wiki->config['BAZ_MAX_CHECKBOXENTRY_DISPLAY_MODE'] :
-            self::CHECKBOX_DISPLAY_MODE_LIST;
+        )) ? $wiki->config['BAZ_MAX_CHECKBOXENTRY_DISPLAY_MODE']
+            : self::CHECKBOX_DISPLAY_MODE_LIST;
         $this->dragAndDropDisplayMode = '@bazar/inputs/checkbox_drag_and_drop_entry.twig';
 
         $this->isDistantJson = filter_var($this->name, FILTER_VALIDATE_URL);
@@ -42,6 +42,19 @@ class CheckboxEntryField extends CheckboxField
             $this->options = null;
             $this->baseUrl = null;
         }
+    }
+
+    public function getOptions()
+    {
+        return $this->getEntriesOptions();
+    }
+
+    /**
+     * check if the current class is EnumEntry.
+     */
+    public function isEnumEntryField(): bool
+    {
+        return true;
     }
 
     protected function renderStatic($entry)
@@ -55,7 +68,7 @@ class CheckboxEntryField extends CheckboxField
                     if (!empty($this->optionsUrls[$key])) {
                         $values[$key]['href'] = $this->optionsUrls[$key];
                     } else {
-                        $values[$key]['href'] = $this->baseUrl . $key;
+                        $values[$key]['href'] = $this->baseUrl.$key;
                     }
                 } else {
                     $values[$key]['href'] = $this->services->get(Wiki::class)->Href('', $key);
@@ -75,22 +88,9 @@ class CheckboxEntryField extends CheckboxField
 
         if (!empty($this->name)) {
             $form = $this->services->get(FormManager::class)->getOne($this->name);
-            $this->formName = isset($form['bn_label_nature']) ? ('Fiches ' . $form['bn_label_nature']) : _t('BAZ_NO_FORMS_FOUND');
+            $this->formName = isset($form['bn_label_nature']) ? ('Fiches '.$form['bn_label_nature']) : _t('BAZ_NO_FORMS_FOUND');
         }
 
         return $this->formName;
-    }
-
-    public function getOptions()
-    {
-        return $this->getEntriesOptions();
-    }
-
-    /**
-     * check if the current class is EnumEntry.
-     */
-    public function isEnumEntryField(): bool
-    {
-        return true;
     }
 }

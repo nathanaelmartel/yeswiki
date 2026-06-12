@@ -1,6 +1,8 @@
 <?php
 
-$title = htmlspecialchars($this->services->get(\YesWiki\Templates\Service\Utils::class)->getTitleFromBody($this->page), ENT_COMPAT | ENT_HTML5);
+use YesWiki\Templates\Service\Utils;
+
+$title = htmlspecialchars($this->services->get(Utils::class)->getTitleFromBody($this->page), ENT_COMPAT | ENT_HTML5);
 if ($title) {
     echo $title;
 } else {

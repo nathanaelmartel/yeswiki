@@ -7,6 +7,7 @@ use YesWiki\Core\Service\ThemeManager;
 
 // inclusion de la bibliotheque de fonctions pour l'envoi des mails
 include_once 'includes/email.inc.php';
+
 include_once 'tools/contact/libs/contact.functions.php';
 
 $aclService = $this->services->get(AclService::class);
@@ -17,7 +18,7 @@ $output = '';
 
 // si le handler est appele en ajax, on traite l'envoi de mail et on repond en ajax
 if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-    && ($_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest')
+    && ('XMLHttpRequest' == $_SERVER['HTTP_X_REQUESTED_WITH'])
 ) {
     // entête de mail qd le champ $_GET['field'] est spécifié
     $infomsg = '';
@@ -34,11 +35,11 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
                 $mail_receiver[] = $val[$_GET['field']];
             }
             $form = baz_valeurs_formulaire($val['id_typeannonce']);
-            $infomsg .= '<em>' . _t('CONTACT_THIS_MESSAGE') . ' « <a href="' . $this->href('', $val['id_fiche']) . '">'
-                . $val['bf_titre'] . '</a> » ' . _t('CONTACT_FROM_FORM') . ' « ' . $form['bn_label_nature'] . ' » '
-                . _t('CONTACT_FROM_WEBSITE') . ' « ' . $this->config['wakka_name'] . ' ». ' .
-                ($mail_sender ? _t('CONTACT_REPLY') . ' <strong>' . $mail_sender . '</strong> '
-                    . _t('CONTACT_REPLY2') : '') . '.</em><br><br>';
+            $infomsg .= '<em>'._t('CONTACT_THIS_MESSAGE').' « <a href="'.$this->href('', $val['id_fiche']).'">'
+                .$val['bf_titre'].'</a> » '._t('CONTACT_FROM_FORM').' « '.$form['bn_label_nature'].' » '
+                ._t('CONTACT_FROM_WEBSITE').' « '.$this->config['wakka_name'].' ». '
+                .($mail_sender ? _t('CONTACT_REPLY').' <strong>'.$mail_sender.'</strong> '
+                    ._t('CONTACT_REPLY2') : '').'.</em><br><br>';
         }
     } else {
         $mail_receiver = (isset($_POST['mail'])) ? trim($_POST['mail']) : false;
@@ -47,17 +48,17 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
         $hasReadAccess = $aclService->hasAccess('read');
         if ($hasReadAccess) {
             // on prend le squelette du theme qui pourrait contenir des actions avec des mails
-            $chemin = 'themes/' . $themeManager->getFavoriteTheme() . '/squelettes/' . $themeManager->getFavoriteSquelette();
+            $chemin = 'themes/'.$themeManager->getFavoriteTheme().'/squelettes/'.$themeManager->getFavoriteSquelette();
             if (file_exists($chemin)) {
                 $file_content = file_get_contents($chemin);
-            } elseif (file_exists('tools/templates/' . $chemin)) {
-                $file_content = file_get_contents('tools/templates/' . $chemin);
+            } elseif (file_exists('tools/templates/'.$chemin)) {
+                $file_content = file_get_contents('tools/templates/'.$chemin);
             } else {
                 $file_content = '{WIKINI_PAGE}';
             }
             $body = str_replace('{WIKINI_PAGE}', $this->page['body'], $file_content);
-            $mail_receiver = (isset($_POST['nbactionmail'])) ?
-                FindMailFromWikiPage($body, $_POST['nbactionmail']) : false;
+            $mail_receiver = (isset($_POST['nbactionmail']))
+                ? FindMailFromWikiPage($body, $_POST['nbactionmail']) : false;
             if ($mail_receiver) {
                 $mailList = explode(',', $mail_receiver);
                 $mailList = array_map('trim', $mailList);
@@ -73,7 +74,7 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
     $type = !empty($_POST['type']) ? $_POST['type'] : '';
 
     // dans le cas d'une page wiki envoyee, on formate le message en html et en txt
-    if ($type == 'mail') {
+    if ('mail' == $type) {
         $hasReadAccess = $aclService->hasAccess('read');
         if ($hasReadAccess) {
             $subject = ((isset($_POST['subject'])) ? stripslashes($_POST['subject']) : false);
@@ -85,12 +86,12 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
             $message_html = html_entity_decode(_convert($renderedPage, YW_CHARSET));
             $message_txt = strip_tags(_convert($message_html, YW_CHARSET));
         }
-    } elseif ($type == 'abonnement' or $type == 'desabonnement') {
-        $message_html = $message_txt = 'Mailinglist : ' . $type;
+    } elseif ('abonnement' == $type or 'desabonnement' == $type) {
+        $message_html = $message_txt = 'Mailinglist : '.$type;
     } else {
         // pour un envoi de mail classique, le message en txt
-        $subject = ((isset($_POST['entete'])) ? '[' . trim($_POST['entete']) . '] ' : '') .
-            ((isset($_POST['subject'])) ? stripslashes(_convert($_POST['subject'], YW_CHARSET)) : false);
+        $subject = ((isset($_POST['entete'])) ? '['.trim($_POST['entete']).'] ' : '')
+            .((isset($_POST['subject'])) ? stripslashes(_convert($_POST['subject'], YW_CHARSET)) : false);
         $message = (isset($_POST['message'])) ? stripslashes(_convert(strip_tags($_POST['message']), YW_CHARSET)) : '';
         $message_txt = trim(strip_tags($message));
         // euro symbol is not replaced by htmlspecialchar
@@ -109,35 +110,35 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
         );
 
         // adding the infomsg after checking the size of the message
-        if ($type != 'abonnement' && $type != 'desabonnement' && !empty($infomsg)) {
-            $message_txt = strip_tags($infomsg) . '\n\n' . $message_txt;
-            $message_html = $infomsg . $message_html;
+        if ('abonnement' != $type && 'desabonnement' != $type && !empty($infomsg)) {
+            $message_txt = strip_tags($infomsg).'\n\n'.$message_txt;
+            $message_html = $infomsg.$message_html;
         }
     } else {
         $message = [
             'class' => 'danger',
-            'message' => _t('CONTACT_MESSAGE_NOT_SENT') . ' :<br />' . _t('LOGIN_NOT_AUTORIZED'),
+            'message' => _t('CONTACT_MESSAGE_NOT_SENT').' :<br />'._t('LOGIN_NOT_AUTORIZED'),
         ];
     }
 
     // si pas d'erreur on envoie
-    if ($message['class'] == 'success') {
+    if ('success' == $message['class']) {
         if (isset($_POST['mailinglist'])) {
             $mail_receiver = array_pop($mail_receiver); // for the lists, only one mail receiver possible
-            if ($_POST['mailinglist'] == 'ezmlm') {
-                $mail_receiver = str_replace('@', '-' . str_replace('@', '=', $mail_sender) . '@', $mail_receiver);
+            if ('ezmlm' == $_POST['mailinglist']) {
+                $mail_receiver = str_replace('@', '-'.str_replace('@', '=', $mail_sender).'@', $mail_receiver);
             }
 
             // test de presence de sympa, qui necessite de reformater le mail envoyé
-            if (isset($_POST['mailinglist']) and $_POST['mailinglist'] == 'sympa') {
+            if (isset($_POST['mailinglist']) and 'sympa' == $_POST['mailinglist']) {
                 $tabmail = explode('@', $mail_receiver);
                 $listname = $tabmail[0];
                 $listdomain = $tabmail[1];
-                $mail_receiver = 'sympa@' . $listdomain;
-                if ($type == 'abonnement') {
-                    $subject = 'subscribe ' . $listname;
-                } elseif ($type == 'desabonnement') {
-                    $subject = 'unsubscribe ' . $listname;
+                $mail_receiver = 'sympa@'.$listdomain;
+                if ('abonnement' == $type) {
+                    $subject = 'subscribe '.$listname;
+                } elseif ('desabonnement' == $type) {
+                    $subject = 'unsubscribe '.$listname;
                 }
             }
 
@@ -146,11 +147,11 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
             }
         }
         if (send_mail($mail_sender, $name_sender, $mail_receiver, $subject, $message_txt, $message_html)) {
-            if (empty($type) || $type == 'contact' || $type == 'mail') {
+            if (empty($type) || 'contact' == $type || 'mail' == $type) {
                 $message['message'] = _t('CONTACT_MESSAGE_SUCCESSFULLY_SENT');
-            } elseif ($type == 'abonnement') {
+            } elseif ('abonnement' == $type) {
                 $message['message'] = _t('CONTACT_SUBSCRIBE_ORDER_SENT');
-            } elseif ($type == 'desabonnement') {
+            } elseif ('desabonnement' == $type) {
                 $message['message'] = _t('CONTACT_UNSUBSCRIBE_ORDER_SENT');
             }
         } else {
@@ -166,53 +167,53 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
     // affichage des formulaire et chargement du js necessaire
     $this->addJavascriptFile('tools/contact/libs/contact.js');
     if ($aclService->hasAccess('read') && isset($_GET['field']) and !empty($_GET['field'])) {
-        $output .= '<form id="ajax-mail-form-handler" class="ajax-mail-form" action="' . $this->href('mail', '', 'field=' . $_GET['field']) . '">
+        $output .= '<form id="ajax-mail-form-handler" class="ajax-mail-form" action="'.$this->href('mail', '', 'field='.$_GET['field']).'">
             <div class="form-group">
               <div class="input-group">
                 <div class="input-group-addon"><i class="fa fa-envelope"></i></div>
                 <input required class="form-control" type="email" name="email" value=""
-                    placeholder="' . _t('CONTACT_YOUR_MAIL') . '" />
+                    placeholder="'._t('CONTACT_YOUR_MAIL').'" />
               </div>
             </div>
             <div class="form-group">
               <input required class="contact-subject form-control" type="text" name="subject"
-                    value="" placeholder="' . _t('CONTACT_SUBJECT') . '" />
+                    value="" placeholder="'._t('CONTACT_SUBJECT').'" />
             </div>
             <div class="form-group">
               <textarea required rows="6" class="form-control" name="message"
-                    placeholder="' . _t('CONTACT_YOUR_MESSAGE') . '"></textarea>
+                    placeholder="'._t('CONTACT_YOUR_MESSAGE').'"></textarea>
             </div>
             <button class="btn btn-lg btn-block btn-primary mail-submit" type="submit" name="submit">
-              <i class="fa fa-envelope"></i>&nbsp;' . _t('CONTACT_SEND_MESSAGE') . '
+              <i class="fa fa-envelope"></i>&nbsp;'._t('CONTACT_SEND_MESSAGE').'
             </button>
-            <input type="hidden" name="mail" value="' . htmlspecialchars($_GET['field']) . '">
+            <input type="hidden" name="mail" value="'.htmlspecialchars($_GET['field']).'">
         </form>';
     } elseif ($aclService->hasAccess('read') && $this->GetUser()) {
         // sinon on affiche le formulaire d'envoi de mail
         // si on est identifie
         // on verifie si l'on est bien identifie comme admin, pour eviter le spam
         $output .= '<h1>Envoyer la page par mail</h1>
-        <form id="ajax-mail-form-handler" class="ajax-mail-form" action="' . $this->href('mail') . '">
+        <form id="ajax-mail-form-handler" class="ajax-mail-form" action="'.$this->href('mail').'">
           <div class="form-group">
             <div class="input-group">
               <div class="input-group-addon"><i class="fa fa-envelope"></i></div>
               <input required class="form-control" type="email" name="email" value=""
-                    placeholder="' . _t('CONTACT_YOUR_MAIL') . '" />
+                    placeholder="'._t('CONTACT_YOUR_MAIL').'" />
             </div>
           </div>
           <div class="form-group">
             <div class="input-group">
               <div class="input-group-addon"><i class="fa fa-envelope"></i></div>
               <input required class="form-control" type="email" name="mail"
-                        value="" placeholder="' . _t('CONTACT_TO_PLACEHOLDER') . '" />
+                        value="" placeholder="'._t('CONTACT_TO_PLACEHOLDER').'" />
             </div>
           </div>
           <div class="form-group">
             <input required class="contact-subject form-control" type="text" name="subject"
-                  value="" placeholder="' . _t('CONTACT_SUBJECT') . '" />
+                  value="" placeholder="'._t('CONTACT_SUBJECT').'" />
           </div>
           <button class="btn btn-lg btn-block btn-primary mail-submit" type="submit" name="submit">
-            <i class="fa fa-envelope"></i>&nbsp;' . _t('CONTACT_SEND_MESSAGE') . '
+            <i class="fa fa-envelope"></i>&nbsp;'._t('CONTACT_SEND_MESSAGE').'
           </button>
           <input type="hidden" name="type" value="mail" />
         </form>';
@@ -222,14 +223,14 @@ if ((!empty($_POST['mail']) || !empty($_POST['email'])) && isset($_SERVER['HTTP_
             'type' => 'danger',
             'message' => ($this->GetUser())
                 ? _t('LOGIN_NOT_AUTORIZED')
-                : (_t('CONTACT_HANDLER_MAIL_FOR_CONNECTED') . '<br />'
-                    . _t('CONTACT_LOGIN_IF_CONNECTED')),
+                : (_t('CONTACT_HANDLER_MAIL_FOR_CONNECTED').'<br />'
+                    ._t('CONTACT_LOGIN_IF_CONNECTED')),
         ]);
-        $output .= $this->Format('{{login}}') . "\n";
+        $output .= $this->Format('{{login}}')."\n";
     }
 
     // affichage a l'ecran
     echo $this->Header();
-    echo "<div class=\"page\">\n$output\n<hr class=\"hr_clear\" />\n</div>\n";
+    echo "<div class=\"page\">\n{$output}\n<hr class=\"hr_clear\" />\n</div>\n";
     echo $this->Footer();
 }

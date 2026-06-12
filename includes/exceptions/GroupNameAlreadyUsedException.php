@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class GroupNameAlreadyUsedException extends \Exception
-{
-}
+class GroupNameAlreadyUsedException extends \Exception {}

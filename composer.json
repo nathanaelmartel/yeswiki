@@ -74,12 +74,17 @@
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.4",
     "phpunit/phpunit": "^12",
-    "symfony/var-dumper": "^5.1"
+    "symfony/var-dumper": "^5.1",
+    "phpstan/extension-installer": "^1",
+    "phpstan/phpstan": "^2",
+    "phpstan/phpstan-doctrine": "^2",
+    "phpstan/phpstan-symfony": "^2"
   },
   "config": {
     "allow-plugins": {
       "composer/installers": true,
-      "oomphinc/composer-installers-extender": true
+      "oomphinc/composer-installers-extender": true,
+      "phpstan/extension-installer": true
     },
     "optimize-autoloader": true,
     "platform": {

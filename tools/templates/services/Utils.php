@@ -36,25 +36,25 @@ class Utils
         if (isset($page['body'])) {
             // on cherche les actions attach avec image, puis les images bazar
             $images = [];
-            preg_match("/\{\{attach.*file=\"(.*\.(?i)(jpe?g|png))\".*\}\}/U", $page['body'], $images);
+            preg_match('/\\{\\{attach.*file="(.*\\.(?i)(jpe?g|png))".*\\}\\}/U', $page['body'], $images);
             if (!empty($images[1])) {
                 $image = $this->getResizedFilename($images[1], $page, $page['tag'], $width, $height, true);
             } else {
                 $images = [];
                 if (preg_match('/"imagebf_image":"(.*)"/U', $page['body'], $images)
                         && !empty($images[1])) {
-                    $imageFileName = json_decode('"' . $images[1] . '"', true);
+                    $imageFileName = json_decode('"'.$images[1].'"', true);
                     if (!empty($imageFileName)) {
-                        if (file_exists("files/$imageFileName")) {
-                            $image = $this->getResizedFilename("files/$imageFileName", $page, $page['tag'], $width, $height, false);
+                        if (file_exists("files/{$imageFileName}")) {
+                            $image = $this->getResizedFilename("files/{$imageFileName}", $page, $page['tag'], $width, $height, false);
                         }
                     }
                 } else {
                     $images = [];
-                    if (preg_match("/<img.*src=\"(.*\.(jpe?g|png))\"/U", $page['body'], $images)
+                    if (preg_match('/<img.*src="(.*\\.(jpe?g|png))"/U', $page['body'], $images)
                         && !empty($images[1])) {
-                        if (file_exists('files/' . basename($images[1][0]))) {
-                            $image = $this->getResizedFilename('files/' . basename($images[1]), $page, $page['tag'], $width, $height, false);
+                        if (file_exists('files/'.basename($images[1][0]))) {
+                            $image = $this->getResizedFilename('files/'.basename($images[1]), $page, $page['tag'], $width, $height, false);
                         }
                     }
                 }
@@ -67,91 +67,22 @@ class Utils
         return $image;
     }
 
-    protected function getDefaultOpenGraphImage(): string
-    {
-        $image = '';
-        if ($this->params->has('opengraph_image')) {
-            $opengraphImage = $this->params->get('opengraph_image');
-            if (!empty($opengraphImage)
-                && is_string($opengraphImage)
-                && file_exists($opengraphImage)
-            ) {
-                $image = "{$this->wiki->getBaseUrl()}/$opengraphImage";
-            }
-        }
-
-        return $image;
-    }
-
-    protected function getResizedFilename(string $fileName, array $page, string $tag, string $width, string $height, bool $extractFullFileName = false): string
-    {
-        $attach = $this->getAttach();
-
-        // current page
-        $previousTag = $this->wiki->tag;
-        $previousPage = $this->wiki->page;
-        // fake page
-        $this->wiki->tag = $tag;
-        $this->wiki->page = $page;
-        if ($extractFullFileName) {
-            if (!empty($fileName)) {
-                $attach->file = $fileName;
-                $fileName = $attach->GetFullFilename(false);
-            }
-        }
-        if (!empty($fileName) && file_exists($fileName)) {
-            $imageDest = $attach->getResizedFilename($fileName, $width, $height, 'crop');
-
-            if (!empty($imageDest)) {
-                if (!file_exists($imageDest)) {
-                    $resizedImage = $attach->redimensionner_image(
-                        $fileName,
-                        $imageDest,
-                        $width,
-                        $height,
-                        'crop'
-                    );
-
-                    if (!empty($resizedImage)) {
-                        $image = "{$this->wiki->getBaseUrl()}/$resizedImage";
-                    }
-                } else {
-                    $image = "{$this->wiki->getBaseUrl()}/$imageDest";
-                }
-            }
-        }
-
-        // reset params
-        unset($attach);
-        $this->wiki->tag = $previousTag;
-        $this->wiki->page = $previousPage;
-
-        return empty($image) ? '' : $image;
-    }
-
-    protected function getAttach()
-    {
-        if (!class_exists('attach')) {
-            include_once 'tools/attach/libs/attach.lib.php';
-        }
-
-        return new \Attach($this->wiki);
-    }
-
     /**
      * Verifie si le nombre d'elements graphiques d'un type trouvés et de leur fermeture correspondent.
      *
      * @param $element : name of element
      *
      * return bool vrai si chaque élément est bien fermé
+     * @param mixed $pagetag
+     * @param mixed $pagecontent
      */
     public function checkGraphicalElements($element, $pagetag, $pagecontent)
     {
-        if ($pagecontent == null) {
+        if (null == $pagecontent) {
             $pagecontent = '';
         }
-        preg_match_all('/{{\b' . $element . '\b.*}}/Ui', $pagecontent, $matchesaction);
-        preg_match_all('/{{end.*elem="' . $element . '".*}}/Ui', $pagecontent, $matchesendaction);
+        preg_match_all('/{{\b'.$element.'\b.*}}/Ui', $pagecontent, $matchesaction);
+        preg_match_all('/{{end.*elem="'.$element.'".*}}/Ui', $pagecontent, $matchesendaction);
 
         return count($matchesaction[0]) == count($matchesendaction[0]);
     }
@@ -169,11 +100,11 @@ class Utils
         $tab_themes = [];
         $dir = opendir($directory);
         while ($dir && ($file = readdir($dir)) !== false) {
-            if ($file != '.' && $file != '..' && $file != 'CVS' && is_dir($directory . DIRECTORY_SEPARATOR . $file)) {
-                $pathToStyles = $directory . DIRECTORY_SEPARATOR . $file . DIRECTORY_SEPARATOR . 'styles';
+            if ('.' != $file && '..' != $file && 'CVS' != $file && is_dir($directory.DIRECTORY_SEPARATOR.$file)) {
+                $pathToStyles = $directory.DIRECTORY_SEPARATOR.$file.DIRECTORY_SEPARATOR.'styles';
                 if (is_dir($pathToStyles) && $dir2 = opendir($pathToStyles)) {
                     while (false !== ($file2 = readdir($dir2))) {
-                        if (substr($file2, -4, 4) == '.css') {
+                        if ('.css' == substr($file2, -4, 4)) {
                             $tab_themes[$file]['isCustom'] = $isCustom;
                             $tab_themes[$file]['style'][$file2] = $this->removeExtension($file2);
                         }
@@ -181,10 +112,10 @@ class Utils
                     closedir($dir2);
                 }
 
-                $pathToSquelettes = $directory . DIRECTORY_SEPARATOR . $file . DIRECTORY_SEPARATOR . 'squelettes';
+                $pathToSquelettes = $directory.DIRECTORY_SEPARATOR.$file.DIRECTORY_SEPARATOR.'squelettes';
                 if (is_dir($pathToSquelettes) && $dir3 = opendir($pathToSquelettes)) {
                     while (false !== ($file3 = readdir($dir3))) {
-                        if (substr($file3, -9, 9) == '.tpl.html') {
+                        if ('.tpl.html' == substr($file3, -9, 9)) {
                             $tab_themes[$file]['isCustom'] = $isCustom;
                             $tab_themes[$file]['squelette'][$file3] = $this->removeExtension($file3, true);
                         }
@@ -192,11 +123,11 @@ class Utils
                     closedir($dir3);
                 }
 
-                $pathToPresets = $directory . DIRECTORY_SEPARATOR . $file . DIRECTORY_SEPARATOR . 'presets';
+                $pathToPresets = $directory.DIRECTORY_SEPARATOR.$file.DIRECTORY_SEPARATOR.'presets';
                 if (is_dir($pathToPresets) && $dir4 = opendir($pathToPresets)) {
                     while (false !== ($file4 = readdir($dir4))) {
-                        if (substr($file4, -4, 4) == '.css' && file_exists($pathToPresets . '/' . $file4)) {
-                            $css = file_get_contents($pathToPresets . '/' . $file4);
+                        if ('.css' == substr($file4, -4, 4) && file_exists($pathToPresets.'/'.$file4)) {
+                            $css = file_get_contents($pathToPresets.'/'.$file4);
                             if (!empty($css)) {
                                 $tab_themes[$file]['isCustom'] = $isCustom;
                                 $tab_themes[$file]['presets'][$file4] = $css;
@@ -222,10 +153,10 @@ class Utils
     public function removeExtension($filename, bool $onlyTemplate = false)
     {
         if ($onlyTemplate) {
-            return preg_replace("/(\.twig|\.tpl.html)$/", '', $filename);
+            return preg_replace('/(\\.twig|\\.tpl.html)$/', '', $filename);
         }
 
-        return preg_replace("/\..*/i", '', $filename);
+        return preg_replace('/\\..*/i', '', $filename);
     }
 
     public function strIreplacement($search, $replace, $subject)
@@ -237,9 +168,8 @@ class Utils
             $subject = substr_replace($subject, $token, $pos, strlen($search));
             $haystack = substr_replace($haystack, $token, $pos, strlen($search));
         }
-        $subject = str_replace($token, $replace, $subject);
 
-        return $subject;
+        return str_replace($token, $replace, $subject);
     }
 
     /**
@@ -254,96 +184,91 @@ class Utils
         // On teste si l'utilisateur peut lire la page
         if (!$this->wiki->HasAccess('read', $pagetag)) {
             return '<div class="alert alert-danger">'
-                . _t('TEMPLATE_NO_ACCESS_TO_PAGE') . '</div>'
-                . $this->wiki->Format('{{login template="minimal.tpl.html"}}');
-        } else {
-            // On teste si la page existe
-            if (!$page = $this->wiki->LoadPage($pagetag)) {
-                return '<div class="alert alert-danger">' . _t('TEMPLATE_PAGE_DOESNT_EXIST') . ' (' . $pagetag . ').</div>';
-            } else {
-                // $body_f = $this->wiki->Format($page["body"], 'wakka', $pagetag);
-                // on regarde si on gere la 2d pour reveal
-                // preg_match_all('/<h1>.*<\/h1>/m', $body_f, $titles);
-                preg_match_all('/======.*======/Um', $page['body'], $titles);
-                $istwodimensions = count($titles[0]) > 1;
-                $first = true;
-                // on decoupe pour chaque titre de niveau 1 ou 2, ou chaque fois que background-image est utilisée
-                // $body = preg_split(
-                //     '/(.*<h[12]>.*<\/h[12]>)'
-                //     .'|(.*<div class="background-image.*">.*<\!-- \/\.background-image -->)/m',
-                //     $body_f,
-                //     -1,
-                //     PREG_SPLIT_DELIM_CAPTURE
-                // );
-                $body = preg_split(
-                    '/(\======.*======)'
-                    . '|(=====.*=====)'
-                    . '|(\{\{backgroundimage.*\}\}\s*.*\s*\{\{endbackgroundimage\}\})/Um',
-                    $page['body'],
-                    -1,
-                    PREG_SPLIT_DELIM_CAPTURE
-                );
-                // var_dump($body);break;
-                if (!$body) {
-                    return '<div class="=alert alert-danger">'
-                        . _t('TEMPLATE_PAGE_CANNOT_BE_SLIDESHOW') . ' (' . $pagetag . ').</div>';
-                } else {
-                    // preparation des tableaux pour le squelette -------------------------
-                    $i = 0;
-                    $slides = [];
-                    $titles = [];
-                    $previousistitle = false;
-                    foreach ($body as $slide) {
-                        $slide = $this->wiki->Format($slide);
-                        // var_dump($slide);
-                        // s'il a des titres de niveau 1 ou 2 il s'agit des separateurs de diapo
-                        if (preg_match('/<h[12]>.*<\/h[12]>/', $slide)) {
-                            // s'il y a un titre de niveau 1 qui commence la diapositive, on la deplace en titre
-                            // et on gere l'aspect multidimentionnel
-                            if (preg_match('/<h1>.*<\/h1>/', $slide)) {
-                                if ($istwodimensions) {
-                                    if ($first) {
-                                        $first = false;
-                                    } else {
-                                        $slides[$i]['closesection'] = true;
-                                    }
-                                    $slides[$i]['opensection'] = true;
-                                }
-                            }
-                            // pour les titres de niveau 2, on les transforme en titre 1
-                            $titles[$i] = str_replace('<h2', '<h1', $slide);
-                            if ($previousistitle) {
-                                $slides[$i]['html'] = '';
-                                $i++;
-                            }
-                            $previousistitle = true;
-                        } elseif (!empty($slide) || $previousistitle) {
-                            $previousistitle = false;
-                            $slides[$i]['html'] = $slide;
-                            $slides[$i]['title'] = ((isset($titles[$i])) ? strip_tags($titles[$i]) : '');
-                            $i++;
+                ._t('TEMPLATE_NO_ACCESS_TO_PAGE').'</div>'
+                .$this->wiki->Format('{{login template="minimal.tpl.html"}}');
+        }
+        // On teste si la page existe
+        if (!$page = $this->wiki->LoadPage($pagetag)) {
+            return '<div class="alert alert-danger">'._t('TEMPLATE_PAGE_DOESNT_EXIST').' ('.$pagetag.').</div>';
+        }
+        // $body_f = $this->wiki->Format($page["body"], 'wakka', $pagetag);
+        // on regarde si on gere la 2d pour reveal
+        // preg_match_all('/<h1>.*<\/h1>/m', $body_f, $titles);
+        preg_match_all('/======.*======/Um', $page['body'], $titles);
+        $istwodimensions = count($titles[0]) > 1;
+        $first = true;
+        // on decoupe pour chaque titre de niveau 1 ou 2, ou chaque fois que background-image est utilisée
+        // $body = preg_split(
+        //     '/(.*<h[12]>.*<\/h[12]>)'
+        //     .'|(.*<div class="background-image.*">.*<\!-- \/\.background-image -->)/m',
+        //     $body_f,
+        //     -1,
+        //     PREG_SPLIT_DELIM_CAPTURE
+        // );
+        $body = preg_split(
+            '/(\======.*======)'
+            .'|(=====.*=====)'
+            .'|(\{\{backgroundimage.*\}\}\s*.*\s*\{\{endbackgroundimage\}\})/Um',
+            $page['body'],
+            -1,
+            PREG_SPLIT_DELIM_CAPTURE
+        );
+        // var_dump($body);break;
+        if (!$body) {
+            return '<div class="=alert alert-danger">'
+                ._t('TEMPLATE_PAGE_CANNOT_BE_SLIDESHOW').' ('.$pagetag.').</div>';
+        }
+        // preparation des tableaux pour le squelette -------------------------
+        $i = 0;
+        $slides = [];
+        $titles = [];
+        $previousistitle = false;
+        foreach ($body as $slide) {
+            $slide = $this->wiki->Format($slide);
+            // var_dump($slide);
+            // s'il a des titres de niveau 1 ou 2 il s'agit des separateurs de diapo
+            if (preg_match('/<h[12]>.*<\/h[12]>/', $slide)) {
+                // s'il y a un titre de niveau 1 qui commence la diapositive, on la deplace en titre
+                // et on gere l'aspect multidimentionnel
+                if (preg_match('/<h1>.*<\/h1>/', $slide)) {
+                    if ($istwodimensions) {
+                        if ($first) {
+                            $first = false;
+                        } else {
+                            $slides[$i]['closesection'] = true;
                         }
+                        $slides[$i]['opensection'] = true;
                     }
                 }
+                // pour les titres de niveau 2, on les transforme en titre 1
+                $titles[$i] = str_replace('<h2', '<h1', $slide);
+                if ($previousistitle) {
+                    $slides[$i]['html'] = '';
+                    ++$i;
+                }
+                $previousistitle = true;
+            } elseif (!empty($slide) || $previousistitle) {
+                $previousistitle = false;
+                $slides[$i]['html'] = $slide;
+                $slides[$i]['title'] = ((isset($titles[$i])) ? strip_tags($titles[$i]) : '');
+                ++$i;
             }
-
-            $buttons = '';
-            // si la fonction est appelee par le handler diaporama, on ajoute les liens d'edition et de retour
-            if ($this->wiki->GetMethod() == 'diaporama') {
-                $buttons .= '<a class="btn" href="' . $this->wiki->href('', $pagetag) . '">&times;</a>' . "\n";
-            }
-
-            // on affiche le template
-            $output = $this->wiki->render("@templates/$template", [
-                'pagetag' => $pagetag,
-                'slides' => $slides,
-                'titles' => $titles,
-                'buttons' => $buttons,
-                'class' => $class,
-            ]);
-
-            return $output;
         }
+
+        $buttons = '';
+        // si la fonction est appelee par le handler diaporama, on ajoute les liens d'edition et de retour
+        if ('diaporama' == $this->wiki->GetMethod()) {
+            $buttons .= '<a class="btn" href="'.$this->wiki->href('', $pagetag).'">&times;</a>'."\n";
+        }
+
+        // on affiche le template
+        return $this->wiki->render("@templates/{$template}", [
+            'pagetag' => $pagetag,
+            'slides' => $slides,
+            'titles' => $titles,
+            'buttons' => $buttons,
+            'class' => $class,
+        ]);
     }
 
     /**
@@ -365,12 +290,12 @@ class Utils
             }
             if (is_array($datas)) {
                 return $datas;
-            } else {
-                return null;
             }
-        } else {
+
             return null;
         }
+
+        return null;
     }
 
     public function postFormat($output)
@@ -448,12 +373,12 @@ class Utils
             if (preg_match('/<h[12].*>\s*(.*)\s*<\/h[12]>/iUs', $page['body'], $titles)) {
                 $title = $titles[1];
             } else {
-                preg_match_all("/\={6}(.*)\={6}/U", $page['body'], $titles);
-                if (is_array($titles[1]) && isset($titles[1][0]) && $titles[1][0] != '') {
+                preg_match_all('/\\={6}(.*)\\={6}/U', $page['body'], $titles);
+                if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
                     $title = $this->wiki->Format(trim($titles[1][0]));
                 } else {
                     preg_match_all('/={5}(.*)={5}/U', $page['body'], $titles);
-                    if (is_array($titles[1]) && isset($titles[1][0]) && $titles[1][0] != '') {
+                    if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
                         $title = $this->wiki->Format(trim($titles[1][0]));
                     }
                 }
@@ -488,12 +413,12 @@ class Utils
                     $desc = _convert($entry[$prop], 'UTF-8');
                 }
             }
-            if ($desc == '') {
+            if ('' == $desc) {
                 $desc = $this->wiki->services->get(EntryController::class)->view($entry, '', 0);
             }
-        } else {
-            // $desc = $this->wiki->Format($page['body'], 'wakka', $page["tag"]);
         }
+        // $desc = $this->wiki->Format($page['body'], 'wakka', $page["tag"]);
+
         // no javascript
         $desc = preg_replace('~<\s*\bscript\b[^>]*>(.*?)<\s*\/\s*script\s*>~Uis', '', $desc);
 
@@ -509,8 +434,78 @@ class Utils
                 )
             )
         );
-        $desc = strtok(wordwrap($desc, $length, "…\n"), "\n");
 
-        return $desc;
+        return strtok(wordwrap($desc, $length, "…\n"), "\n");
+    }
+
+    protected function getDefaultOpenGraphImage(): string
+    {
+        $image = '';
+        if ($this->params->has('opengraph_image')) {
+            $opengraphImage = $this->params->get('opengraph_image');
+            if (!empty($opengraphImage)
+                && is_string($opengraphImage)
+                && file_exists($opengraphImage)
+            ) {
+                $image = "{$this->wiki->getBaseUrl()}/{$opengraphImage}";
+            }
+        }
+
+        return $image;
+    }
+
+    protected function getResizedFilename(string $fileName, array $page, string $tag, string $width, string $height, bool $extractFullFileName = false): string
+    {
+        $attach = $this->getAttach();
+
+        // current page
+        $previousTag = $this->wiki->tag;
+        $previousPage = $this->wiki->page;
+        // fake page
+        $this->wiki->tag = $tag;
+        $this->wiki->page = $page;
+        if ($extractFullFileName) {
+            if (!empty($fileName)) {
+                $attach->file = $fileName;
+                $fileName = $attach->GetFullFilename(false);
+            }
+        }
+        if (!empty($fileName) && file_exists($fileName)) {
+            $imageDest = $attach->getResizedFilename($fileName, $width, $height, 'crop');
+
+            if (!empty($imageDest)) {
+                if (!file_exists($imageDest)) {
+                    $resizedImage = $attach->redimensionner_image(
+                        $fileName,
+                        $imageDest,
+                        $width,
+                        $height,
+                        'crop'
+                    );
+
+                    if (!empty($resizedImage)) {
+                        $image = "{$this->wiki->getBaseUrl()}/{$resizedImage}";
+                    }
+                } else {
+                    $image = "{$this->wiki->getBaseUrl()}/{$imageDest}";
+                }
+            }
+        }
+
+        // reset params
+        unset($attach);
+        $this->wiki->tag = $previousTag;
+        $this->wiki->page = $previousPage;
+
+        return empty($image) ? '' : $image;
+    }
+
+    protected function getAttach()
+    {
+        if (!class_exists('attach')) {
+            include_once 'tools/attach/libs/attach.lib.php';
+        }
+
+        return new \Attach($this->wiki);
     }
 }

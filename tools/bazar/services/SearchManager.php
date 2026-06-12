@@ -12,12 +12,11 @@ use YesWiki\Wiki;
 
 class SearchManager
 {
+    public const MISSING_PROPERTY = '_MISSING_PROPERTY_';
+    public const MISSING_FIELD = '_MISSING_FIELD_';
     protected $wiki;
     protected $dbService;
     protected $aclService;
-
-    public const MISSING_PROPERTY = '_MISSING_PROPERTY_';
-    public const MISSING_FIELD = '_MISSING_FIELD_';
 
     public function __construct(
         Wiki $wiki,
@@ -49,7 +48,7 @@ class SearchManager
         if (!empty($phrase) && preg_match_all('/^([^" ]+)|(?:")([^"]+)(?:")|([^" ]+)$|(?: )([^" ]+)(?: )/', $phrase, $matches)) {
             // find needles
             foreach ($matches[0] as $key => $match) {
-                for ($i = 1; $i < 5; $i++) {
+                for ($i = 1; $i < 5; ++$i) {
                     if (!empty($matches[$i][$key])) {
                         if (!array_key_exists($matches[$i][$key], $needles)) {
                             $needle = $this->prepareNeedleForRegexp($matches[$i][$key]);
@@ -77,82 +76,6 @@ class SearchManager
     }
 
     /**
-     * search needles in values (options) of EnumField and return array [['propertyName' => ...,'key'=>$key,'isCheckbox' => true],].
-     */
-    private function searchInFormOptions(array $needles, array $form): array
-    {
-        $results = [];
-        foreach ($form['prepared'] as $field) {
-            if ($field instanceof EnumField) {
-                $options = $field->getOptions();
-                if (is_array($options)) {
-                    foreach ($options as $key => $option) {
-                        foreach ($needles as $needle => $values) {
-                            if (is_array($option)) {
-                                $option = implode(' ', $option); // rare cases with arrays, ex: usernames
-                            }
-                            // mb_strtolower instead of strtolower to manage utf 8 characters
-                            if (preg_match('/' . mb_strtolower(preg_quote($needle)) . '/i', mb_strtolower($option), $matches)) {
-                                $results[] = [
-                                    'propertyName' => $field->getPropertyName(),
-                                    'key' => $key,
-                                    'isCheckBox' => ($field instanceof CheckboxField),
-                                    'needle' => $needle,
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return $results;
-    }
-
-    /**
-     * prepare needle by removing accents and define string for regexp.
-     */
-    private function prepareNeedleForRegexp(string $needle): string
-    {
-        // be careful to ( and )
-        $needle = str_replace(['(', ')', '/'], ['\\(', '\\)', '\\/'], $needle);
-
-        // remove accents
-        $needle = str_replace(
-            ['à', 'á', 'â', 'ã', 'ä', 'ç', 'è', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'À', 'Á', 'Â', 'Ã', 'Ä', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ù', 'Ú', 'Û', 'Ü', 'Ý'],
-            ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y'],
-            $needle
-        );
-
-        // add for regexp
-        $needle = str_replace(
-            [
-                'a',
-                'c',
-                'e',
-                'i',
-                'n',
-                'o',
-                'u',
-                'y',
-            ],
-            [
-                '(a|à|á|â|ã|ä|A|À|Á|Â|Ã|Ä)',
-                '(c|ç|C|Ç)',
-                '(e|è|é|ê|ë|E|È|É|Ê|Ë)',
-                '(i|ì|í|î|ï|I|Ì|Í|Î|Ï)',
-                '(n|ñ|N|Ñ)',
-                '(o|ò|ó|ô|õ|ö|O|Ò|Ó|Ô|Õ|Ö)',
-                '(u|ù|ú|û|ü|U|Ù|Ú|Û|Ü)',
-                '(y|ý|ÿ|Y|Ý)',
-            ],
-            $needle
-        );
-
-        return $needle;
-    }
-
-    /**
      * Build the SQL fields conditions for keywords.
      *
      *  @param pKeywords <string> : the keywords search string in the format :
@@ -170,6 +93,9 @@ class SearchManager
      *  @param pSearchFields <array> of <fields>
      *				   <fields> = <array> of properties
      *		: fields descriptions (structures, etc...)
+     * @param mixed $pKeywords
+     * @param mixed $pSearchFields
+     * @param mixed $pMinKeywordsLength
      *
      * @return <string> : fields conditions for keywords
      */
@@ -181,7 +107,7 @@ class SearchManager
 
         // if there is nothing to do, there is nothing to do
 
-        if ((count($vParsedKeywords['CNF']) == 0 && count($vParsedKeywords['excludeds']) == 0) || count($pSearchFields) == 0) {
+        if ((0 == count($vParsedKeywords['CNF']) && 0 == count($vParsedKeywords['excludeds'])) || 0 == count($pSearchFields)) {
             return '';
         }
 
@@ -220,38 +146,37 @@ class SearchManager
                                 // Add a field condition adapted to a regexp or not
 
                                 if ($vIsRegExp) {
-                                    $vORRequest = $this->renameJSONPathVariable($vFieldName) . ' COLLATE ' . $this->dbService->getCollation() . ' REGEXP \'' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vOR)) . '\'';
+                                    $vORRequest = $this->renameJSONPathVariable($vFieldName).' COLLATE '.$this->dbService->getCollation().' REGEXP \''.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vOR)).'\'';
                                 } else {
-                                    $vORRequest = $this->renameJSONPathVariable($vFieldName) . ' COLLATE ' . $this->dbService->getCollation() . ' LIKE \'%' . mysqli_real_escape_string($this->wiki->dblink, $vOR) . '%\'';
+                                    $vORRequest = $this->renameJSONPathVariable($vFieldName).' COLLATE '.$this->dbService->getCollation().' LIKE \'%'.mysqli_real_escape_string($this->wiki->dblink, $vOR).'%\'';
                                 }
 
-                            break;
-
-                            // If this field instance is intended to store multiple values separated by comma...
+                                break;
+                                // If this field instance is intended to store multiple values separated by comma...
 
                             case 'multiple':
                                 // Add a field condition adapted to a regexp or not
 
                                 if ($vIsRegExp) {
-                                    $vORRequest = '(s.champ = \'' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . '\' AND s.elt COLLATE ' . $this->dbService->getCollation() . ' REGEXP \'^' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vOR)) . '$\')';
+                                    $vORRequest = '(s.champ = \''.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).'\' AND s.elt COLLATE '.$this->dbService->getCollation().' REGEXP \'^'.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vOR)).'$\')';
                                 } else {
-                                    $vORRequest = '(s.champ = \'' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . '\' AND s.elt COLLATE ' . $this->dbService->getCollation() . ' LIKE \'%' . mysqli_real_escape_string($this->wiki->dblink, $vOR) . '%\')';
+                                    $vORRequest = '(s.champ = \''.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).'\' AND s.elt COLLATE '.$this->dbService->getCollation().' LIKE \'%'.mysqli_real_escape_string($this->wiki->dblink, $vOR).'%\')';
                                 }
 
-                            break;
+                                break;
                         }
 
                         // If the field can have multiple structures, we need to specify the form IDs to which the condition apply
 
                         if ($vField['hasMultipleStructures']) {
-                            if ($vORRequest != '') {
-                                $vORRequest = '( ' . $this->renameJSONPathVariable('id_typeannonce') . ' IN (' . implode(',', array_map(function ($pFormID) {
-                                    return '\'' . $pFormID . '\'';
-                                }, $vFieldDescriptor['_ids_'])) . ') AND ' . $vORRequest . ')';
+                            if ('' != $vORRequest) {
+                                $vORRequest = '( '.$this->renameJSONPathVariable('id_typeannonce').' IN ('.implode(',', array_map(function ($pFormID) {
+                                    return '\''.$pFormID.'\'';
+                                }, $vFieldDescriptor['_ids_'])).') AND '.$vORRequest.')';
                             }
                         }
 
-                        if ($vORRequest != '') {
+                        if ('' != $vORRequest) {
                             $vORs[] = $vORRequest;
                         }
                     }
@@ -259,7 +184,7 @@ class SearchManager
             }
 
             if (count($vORs) > 0) {
-                $vANDs[] = '(' . implode(' OR ', $vORs) . ')';
+                $vANDs[] = '('.implode(' OR ', $vORs).')';
             }
         }
 
@@ -285,38 +210,37 @@ class SearchManager
                             // Add a field condition adapted to a regexp or not
 
                             if ($vIsRegExp) {
-                                $vExcludedRequest = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ' NOT REGEXP \'' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vExcluded)) . '\'';
+                                $vExcludedRequest = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().' NOT REGEXP \''.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vExcluded)).'\'';
                             } else {
-                                $vExcludedRequest = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ' NOT LIKE \'%' . mysqli_real_escape_string($this->wiki->dblink, $vExcluded) . '%\'';
+                                $vExcludedRequest = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().' NOT LIKE \'%'.mysqli_real_escape_string($this->wiki->dblink, $vExcluded).'%\'';
                             }
 
-                        break;
-
-                        // If this field instance is intended to store multiple values separated by comma...
+                            break;
+                            // If this field instance is intended to store multiple values separated by comma...
 
                         case 'multiple':
                             // Add a field condition adapted to a regexp or not
 
                             if ($vIsRegExp) {
-                                $vExcludedRequest = '(s.champ = \'' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . '\' AND s.elt COLLATE ' . $this->dbService->getCollation() . ' NOT REGEXP \'^' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vExcluded)) . '$\')';
+                                $vExcludedRequest = '(s.champ = \''.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).'\' AND s.elt COLLATE '.$this->dbService->getCollation().' NOT REGEXP \'^'.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vExcluded)).'$\')';
                             } else {
-                                $vExcludedRequest = '(s.champ = \'' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . '\' AND s.elt COLLATE ' . $this->dbService->getCollation() . ' NOT LIKE \'%' . mysqli_real_escape_string($this->wiki->dblink, $vExcluded) . '%\')';
+                                $vExcludedRequest = '(s.champ = \''.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).'\' AND s.elt COLLATE '.$this->dbService->getCollation().' NOT LIKE \'%'.mysqli_real_escape_string($this->wiki->dblink, $vExcluded).'%\')';
                             }
 
-                        break;
+                            break;
                     }
 
                     // If the field can have multiple structures, we need to specify the form IDs to which the condition apply
 
                     if ($vField['hasMultipleStructures']) {
-                        if ($vExcludedRequest != '') {
-                            $vExcludedRequest = '( ' . $this->renameJSONPathVariable('id_typeannonce') . ' IN (' . implode(',', array_map(function ($pFormID) {
-                                return '\'' . $pFormID . '\'';
-                            }, $vFieldDescriptor['_ids_'])) . ') AND ' . $vExcludedRequest . ')';
+                        if ('' != $vExcludedRequest) {
+                            $vExcludedRequest = '( '.$this->renameJSONPathVariable('id_typeannonce').' IN ('.implode(',', array_map(function ($pFormID) {
+                                return '\''.$pFormID.'\'';
+                            }, $vFieldDescriptor['_ids_'])).') AND '.$vExcludedRequest.')';
                         }
                     }
 
-                    if ($vExcludedRequest != '') {
+                    if ('' != $vExcludedRequest) {
                         $vANDs[] = $vExcludedRequest;
                     }
                 }
@@ -332,8 +256,9 @@ class SearchManager
     /**
      * Build the SQL fields conditions for queries.
      *
-     * @param $pQueries : <array> of <query>
-     *			   <query> = [ "name" => <string>, "operator" => <string>, "values" => <array of strings> ]
+     * @param       $pQueries : <array> of <query>
+     *                       <query> = [ "name" => <string>, "operator" => <string>, "values" => <array of strings> ]
+     * @param mixed $pFields
      *
      * @return = <string> fields conditions for queries
      */
@@ -373,34 +298,46 @@ class SearchManager
                     $vRegExpOperator = 'REGEXP';
                     $vComparisonOperator = '=';
                     $vFindInSetOperator = 'FIND_IN_SET';
-                break;
+
+                    break;
+
                 case '!=':
                     $vRegExpOperator = 'NOT REGEXP';
                     $vComparisonOperator = '!=';
                     $vFindInSetOperator = 'NOT FIND_IN_SET';
-                break;
+
+                    break;
+
                 case '<':
                     $vRegExpOperator = 'REGEXP'; // Should not be used or not yet implemented
                     $vComparisonOperator = '<';
                     $vFindInSetOperator = 'FIND_IN_SET'; // Should not be used or not yet implemented
-                break;
+
+                    break;
+
                 case '>':
                     $vRegExpOperator = 'REGEXP'; // Should not be used or not yet implemented
                     $vComparisonOperator = '>';
                     $vFindInSetOperator = 'FIND_IN_SET'; // Should not be used or not yet implemented
-                break;
+
+                    break;
+
                 case '<=':
                     $vRegExpOperator = 'REGEXP'; // Should not be used or not yet implemented
                     $vComparisonOperator = '<=';
                     $vFindInSetOperator = 'FIND_IN_SET'; // Should not be used or not yet implemented
-                break;
+
+                    break;
+
                 case '>=':
                     $vRegExpOperator = 'REGEXP'; // Should not be used or not yet implemented
                     $vComparisonOperator = '>=';
                     $vFindInSetOperator = 'FIND_IN_SET'; // Should not be used or not yet implemented
-                break;
+
+                    break;
+
                 default:
-                    throw new Exception($vOperator . ' is not recognized');
+                    throw new Exception($vOperator.' is not recognized');
 
                     return [];
             }
@@ -427,49 +364,47 @@ class SearchManager
                             // It the value is a regexp, let's build a condition that match (or NOT) the regexp
 
                             if ($vIsRegExp) {
-                                $vValueConditions[] = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ' ' . $vRegExpOperator . ' \'' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vValue)) . '\'';
+                                $vValueConditions[] = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().' '.$vRegExpOperator.' \''.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vValue)).'\'';
                             }
 
                             // else let's just compare using the appropriated comparison operator
 
                             else {
-                                if ($vDescriptor['_type_'] == 'number') {
-                                    if (isset($vValue) && trim($vValue) !== '') {
+                                if ('number' == $vDescriptor['_type_']) {
+                                    if (isset($vValue) && '' !== trim($vValue)) {
                                         if (!is_numeric(trim($vValue)) || !is_finite((float) trim($vValue))) {
                                             $vValueConditions[] = 'FALSE';
                                         } else {
-                                            $vValueConditions[] = 'CAST(' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' AS DOUBLE) ' . $vComparisonOperator . ' ' . (float) trim($vValue);
+                                            $vValueConditions[] = 'CAST('.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' AS DOUBLE) '.$vComparisonOperator.' '.(float) trim($vValue);
                                         }
                                     } else {
-                                        $vValueConditions[] = '(' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ' ' . $vComparisonOperator . ' \'\' )';
+                                        $vValueConditions[] = '('.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().' '.$vComparisonOperator.' \'\' )';
                                     }
                                 } else {
-                                    $vValueConditions[] = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ' ' . $vComparisonOperator . ' \'' . mysqli_real_escape_string($this->wiki->dblink, $vValue) . '\'';
+                                    $vValueConditions[] = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().' '.$vComparisonOperator.' \''.mysqli_real_escape_string($this->wiki->dblink, $vValue).'\'';
                                 }
                             }
 
-                        break;
-
-                        // If the field is intended to store multiple values separated by comma...
+                            break;
+                            // If the field is intended to store multiple values separated by comma...
 
                         case 'multiple':
                             // It the value is a regexp, let's build a condition that match (or NOT) the regexp in the list of values extracted in temporary tables earlier
 
                             if ($vIsRegExp) {
-                                $vValueConditions[] = '(s.champ = \'' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . '\' AND s.elt COLLATE ' . $this->dbService->getCollation() . ' ' . $vRegExpOperator . ' \'' . mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vValue)) . '\')';
+                                $vValueConditions[] = '(s.champ = \''.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).'\' AND s.elt COLLATE '.$this->dbService->getCollation().' '.$vRegExpOperator.' \''.mysqli_real_escape_string($this->wiki->dblink, $this->extractRegExp($vValue)).'\')';
                             } else { // else let's just check in the value belongs (or NOT) to the set of values
-                                $vValueConditions[] = $vFindInSetOperator . ' (\'' . mysqli_real_escape_string($this->wiki->dblink, $vValue) . '\' COLLATE ' . $this->dbService->getCollation() . ', ' . mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)) . ' COLLATE ' . $this->dbService->getCollation() . ')';
+                                $vValueConditions[] = $vFindInSetOperator.' (\''.mysqli_real_escape_string($this->wiki->dblink, $vValue).'\' COLLATE '.$this->dbService->getCollation().', '.mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName)).' COLLATE '.$this->dbService->getCollation().')';
                             }
 
-                        break;
-
-                        // The field is missing : we need to add a specific condition
+                            break;
+                            // The field is missing : we need to add a specific condition
 
                         case self::MISSING_FIELD:
                         case self::MISSING_PROPERTY:
                             $vValueConditions[] = 'FALSE';
 
-                        break;
+                            break;
                     }
                 }
 
@@ -484,25 +419,25 @@ class SearchManager
                     // we need to specify the form IDs that use this structure in the condition request
 
                     if ($vField['hasMultipleStructures']) {
-                        if ($vDescriptorCondition != '') {
-                            $vDescriptorCondition = $this->renameJSONPathVariable('id_typeannonce') . ' IN (' . implode(',', array_map(function ($pFormID) {
-                                return '\'' . $pFormID . '\'';
-                            }, $vDescriptor['_ids_'])) . ') AND (' . $vDescriptorCondition . ')';
+                        if ('' != $vDescriptorCondition) {
+                            $vDescriptorCondition = $this->renameJSONPathVariable('id_typeannonce').' IN ('.implode(',', array_map(function ($pFormID) {
+                                return '\''.$pFormID.'\'';
+                            }, $vDescriptor['_ids_'])).') AND ('.$vDescriptorCondition.')';
                         }
                     }
                 }
 
                 // Add the structure conditions to the field conditions
 
-                if ($vDescriptorCondition != '') {
-                    $vQueryConditions[] = '(' . $vDescriptorCondition . ')';
+                if ('' != $vDescriptorCondition) {
+                    $vQueryConditions[] = '('.$vDescriptorCondition.')';
                 }
             }
 
             // Merge all the field conditions with a logical OR
 
             if (count($vQueryConditions) > 0) {
-                $vQueriesConditions[] = '(' . implode(' OR ', $vQueryConditions) . ')';
+                $vQueriesConditions[] = '('.implode(' OR ', $vQueryConditions).')';
             }
         }
 
@@ -554,19 +489,19 @@ class SearchManager
                 function ($vID) {
                     $vType = \gettype($vID);
 
-                    if ($vType == 'integer') {
+                    if ('integer' == $vType) {
                         return $vID;
                     }
 
-                    if ($vType == 'string') {
+                    if ('string' == $vType) {
                         $vTrimmed = trim($vID);
                         $vIntValue = intval($vID);
 
                         if (strval($vID) == strval($vIntValue)) {
                             return $vIntValue;
-                        } else {
-                            return null;
                         }
+
+                        return null;
                     }
 
                     return null;
@@ -577,13 +512,13 @@ class SearchManager
             $vFormIDs = array_filter(
                 $vFormIDs,
                 function ($pID) {
-                    return $pID !== null;
+                    return null !== $pID;
                 }
             );
 
-            $vIDsRequest .= 'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.id_typeannonce\')) IN (' . join(',', array_map(function ($pFormID) {
-                return '\'' . $pFormID . '\'';
-            }, $vFormIDs)) . ')';
+            $vIDsRequest .= 'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.id_typeannonce\')) IN ('.join(',', array_map(function ($pFormID) {
+                return '\''.$pFormID.'\'';
+            }, $vFormIDs)).')';
         } else {
             $vFormIDs = [];
         }
@@ -592,7 +527,7 @@ class SearchManager
         $vPeriodRequest = '';
 
         if (!empty($params['minDate'])) {
-            $vPeriodRequest .= 'time >= "' . mysqli_real_escape_string($this->wiki->dblink, $params['minDate']) . '"';
+            $vPeriodRequest .= 'time >= "'.mysqli_real_escape_string($this->wiki->dblink, $params['minDate']).'"';
         }
 
         // Limit the request to a user if specified
@@ -600,7 +535,7 @@ class SearchManager
         $vUserRequest = '';
 
         if (!empty($params['user'])) {
-            $vUserRequest .= 'owner = _utf8\'' . mysqli_real_escape_string($this->wiki->dblink, $params['user']) . '\'';
+            $vUserRequest .= 'owner = _utf8\''.mysqli_real_escape_string($this->wiki->dblink, $params['user']).'\'';
         }
 
         // Determine the necessary fields from searchfields and queries
@@ -608,7 +543,7 @@ class SearchManager
         $vKeywordsFields = [];
         $vQueriesFields = [];
 
-        if ($vKeywords != '') {
+        if ('' != $vKeywords) {
             $vSearchFields = isset($params['searchfields'])
                                 ? is_array($params['searchfields'])
                                     ? $params['searchfields']
@@ -636,8 +571,8 @@ class SearchManager
 
         $vHash = $this->buildFieldDescriptorHash($vFieldDescriptor);
 
-        $vFields['id_fiche'] =
-        [
+        $vFields['id_fiche']
+        = [
             'needSplit' => false,
             'hasMultipleStructures' => false,
             'isExtracted' => false,
@@ -745,7 +680,7 @@ class SearchManager
 
                         // If the "mode" of this field in this form Id is "multiple", let's remember we have to split it
 
-                        if ($vFieldDescriptor['_mode_'] == 'multiple') {
+                        if ('multiple' == $vFieldDescriptor['_mode_']) {
                             $vFields[$vField]['needSplit'] = true;
                         }
 
@@ -787,10 +722,10 @@ class SearchManager
 
         // - Retrieves all columns and extract id_typeannonce
 
-        $vSelectRequest =
-        [
+        $vSelectRequest
+        = [
             'p.*',
-            'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.id_typeannonce\')) AS `' . $this->renameJSONPathVariable('id_typeannonce') . '`',
+            'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.id_typeannonce\')) AS `'.$this->renameJSONPathVariable('id_typeannonce').'`',
         ];
 
         // - Extract all fields ("single" and "multiple" mode)
@@ -806,7 +741,7 @@ class SearchManager
                 $vSQLNom = mysqli_real_escape_string($this->wiki->dblink, $vFieldName);
                 $vRenamedSQLNom = mysqli_real_escape_string($this->wiki->dblink, $this->renameJSONPathVariable($vFieldName));
 
-                $vSelectRequest[] = 'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.' . $vSQLNom . '\')) AS `' . $vRenamedSQLNom . '`';
+                $vSelectRequest[] = 'JSON_UNQUOTE(JSON_EXTRACT(body, \'$.'.$vSQLNom.'\')) AS `'.$vRenamedSQLNom.'`';
 
                 // rembember it was extracted
 
@@ -837,32 +772,32 @@ class SearchManager
 
             // else we split it
 
-            $vSplitteds[] = 'SELECT id, champ, elt FROM ' . $this->renameJSONPathVariable($vFieldName) . '_multiple';
+            $vSplitteds[] = 'SELECT id, champ, elt FROM '.$this->renameJSONPathVariable($vFieldName).'_multiple';
 
-            $vSplittedsRequest .=
-                        ', ' . $this->renameJSONPathVariable($vFieldName) . '_multiple AS ' .
-                        '( ' .
-                            'SELECT ' .
-                                'id, ' .
-                                '\'' . $this->renameJSONPathVariable($vFieldName) . '\' AS champ, ' .
-                                'TRIM(SUBSTRING_INDEX(' . $vFieldName . ', \',\', 1)) AS elt, ' .
-                                'CASE ' .
-                                    'WHEN INSTR(' . $this->renameJSONPathVariable($vFieldName) . ', \',\') = 0 THEN \'\' ' .
-                                    'ELSE SUBSTR(' . $this->renameJSONPathVariable($vFieldName) . ', INSTR(' . $this->renameJSONPathVariable($vFieldName) . ', \',\') + 1) ' .
-                                'END AS rest ' .
-                            'FROM filteredPages ' .
-                            'UNION ALL ' .
-                            'SELECT ' .
-                                'id, ' .
-                                'champ, ' .
-                                'TRIM(SUBSTRING_INDEX(rest, \',\', 1)) AS elt, ' .
-                                'CASE ' .
-                                    'WHEN INSTR(rest, \',\') = 0 THEN \'\' ' .
-                                    'ELSE SUBSTR(rest, INSTR(rest, \',\') + 1) ' .
-                                'END AS rest ' .
-                            'FROM ' . $this->renameJSONPathVariable($vFieldName) . '_multiple ' .
-                            'WHERE rest <> \'\'' .
-                        ')';
+            $vSplittedsRequest
+                        .= ', '.$this->renameJSONPathVariable($vFieldName).'_multiple AS '
+                        .'( '
+                            .'SELECT '
+                                .'id, '
+                                .'\''.$this->renameJSONPathVariable($vFieldName).'\' AS champ, '
+                                .'TRIM(SUBSTRING_INDEX('.$vFieldName.', \',\', 1)) AS elt, '
+                                .'CASE '
+                                    .'WHEN INSTR('.$this->renameJSONPathVariable($vFieldName).', \',\') = 0 THEN \'\' '
+                                    .'ELSE SUBSTR('.$this->renameJSONPathVariable($vFieldName).', INSTR('.$this->renameJSONPathVariable($vFieldName).', \',\') + 1) '
+                                .'END AS rest '
+                            .'FROM filteredPages '
+                            .'UNION ALL '
+                            .'SELECT '
+                                .'id, '
+                                .'champ, '
+                                .'TRIM(SUBSTRING_INDEX(rest, \',\', 1)) AS elt, '
+                                .'CASE '
+                                    .'WHEN INSTR(rest, \',\') = 0 THEN \'\' '
+                                    .'ELSE SUBSTR(rest, INSTR(rest, \',\') + 1) '
+                                .'END AS rest '
+                            .'FROM '.$this->renameJSONPathVariable($vFieldName).'_multiple '
+                            .'WHERE rest <> \'\''
+                        .')';
 
             // And we remember it has been done
 
@@ -874,11 +809,11 @@ class SearchManager
         $vSplittedsCount = count($vSplitteds);
 
         if ($vSplittedsCount > 0) {
-            $vSplittedsRequest .=
-                        ', all_multiples AS ' .
-                        '( ' .
-                            implode(' UNION ALL ', $vSplitteds) .
-                        ') ';
+            $vSplittedsRequest
+                        .= ', all_multiples AS '
+                        .'( '
+                            .implode(' UNION ALL ', $vSplitteds)
+                        .') ';
         }
 
         // Construct WHERE part with queries and keywords conditions
@@ -914,40 +849,40 @@ class SearchManager
             return '';
         }
 
-        if ($vQueriesConditions != '') {
-            $vWhereRequest .= ($vWhereRequest != '' ? ' AND ' : '') . $vQueriesConditions;
+        if ('' != $vQueriesConditions) {
+            $vWhereRequest .= ('' != $vWhereRequest ? ' AND ' : '').$vQueriesConditions;
         }
 
         // Optionnaly, filter on read ACL
 
         if (!$this->wiki->UserIsAdmin() && $filterOnReadACL) {
-            $vWhereRequest .= ($vWhereRequest != '' ? ' AND ' : '') . $this->aclService->updateRequestWithACL();
+            $vWhereRequest .= ('' != $vWhereRequest ? ' AND ' : '').$this->aclService->updateRequestWithACL();
         }
 
         // Construct full request
 
-        $vCompleteRequest = 'WITH RECURSIVE ' .
-                                'filteredPages AS ' .
-                                '( ' .
-                                    'SELECT ' .
-                                        $vSelectRequest . ' ' .
-                                    'FROM ' . $this->dbService->prefixTable('pages') . ' p ' .
-                                    'JOIN ' . $this->dbService->prefixTable('triples') . ' t ON ' .
-                                        't.resource = p.tag AND ' .
-                                        't.value = \'' . $this->wiki->services->get(EntryManager::class)::TRIPLES_ENTRY_ID . '\' AND ' .
-                                        't.property = \'http://outils-reseaux.org/_vocabulary/type\' ' .
-                                    'WHERE ' .
-                                        ($applyOnAllRevisions ? '' : 'latest=\'Y\' AND ') .
-                                        'p.comment_on = \'\'' .
-                                        ($vUserRequest !== '' ? ' AND ' . $vUserRequest : '') .
-                                        ($vPeriodRequest !== '' ? ' AND ' . $vPeriodRequest : '') .
-                                        ($vIDsRequest !== '' ? ' AND ' . $vIDsRequest : '') .
-                                ')' .
-                                ($vSplittedsRequest != '' ? $vSplittedsRequest . ' ' : ' ') .
-                                'SELECT DISTINCT f.* ' .
-                                'FROM filteredPages f ' .
-                                ($vSplittedsCount > 0 ? 'LEFT JOIN all_multiples s ON s.id = f.id ' : '') .
-                                ($vWhereRequest != '' ? 'WHERE ' . $vWhereRequest : '');
+        $vCompleteRequest = 'WITH RECURSIVE '
+                                .'filteredPages AS '
+                                .'( '
+                                    .'SELECT '
+                                        .$vSelectRequest.' '
+                                    .'FROM '.$this->dbService->prefixTable('pages').' p '
+                                    .'JOIN '.$this->dbService->prefixTable('triples').' t ON '
+                                        .'t.resource = p.tag AND '
+                                        .'t.value = \''.$this->wiki->services->get(EntryManager::class)::TRIPLES_ENTRY_ID.'\' AND '
+                                        .'t.property = \'http://outils-reseaux.org/_vocabulary/type\' '
+                                    .'WHERE '
+                                        .($applyOnAllRevisions ? '' : 'latest=\'Y\' AND ')
+                                        .'p.comment_on = \'\''
+                                        .('' !== $vUserRequest ? ' AND '.$vUserRequest : '')
+                                        .('' !== $vPeriodRequest ? ' AND '.$vPeriodRequest : '')
+                                        .('' !== $vIDsRequest ? ' AND '.$vIDsRequest : '')
+                                .')'
+                                .('' != $vSplittedsRequest ? $vSplittedsRequest.' ' : ' ')
+                                .'SELECT DISTINCT f.* '
+                                .'FROM filteredPages f '
+                                .($vSplittedsCount > 0 ? 'LEFT JOIN all_multiples s ON s.id = f.id ' : '')
+                                .('' != $vWhereRequest ? 'WHERE '.$vWhereRequest : '');
 
         /*
                 // requete de jointure : reprend la requete precedente et ajoute des criteres
@@ -1012,7 +947,7 @@ class SearchManager
         // debug
 
         if ($this->wiki->request->query->has('showreq')) {
-            echo '<hr><code style="width:100%;height:100px;">' . $vCompleteRequest . '</code><hr>';
+            echo '<hr><code style="width:100%;height:100px;">'.$vCompleteRequest.'</code><hr>';
         }
 
         return $vCompleteRequest;
@@ -1030,11 +965,11 @@ class SearchManager
         $requete = $this->prepareSearchRequest($params, $filterOnReadACL);
 
         $searchResults = [];
-        if ($requete === '') {
+        if ('' === $requete) {
             return $searchResults;
         }
         $results = $this->dbService->loadAll($requete);
-        $debug = ($this->wiki->GetConfigValue('debug') == 'yes');
+        $debug = ('yes' == $this->wiki->GetConfigValue('debug'));
 
         $vPageManager = $this->wiki->services->get(PageManager::class);
         $vEntryManager = $this->wiki->services->get(EntryManager::class);
@@ -1055,96 +990,17 @@ class SearchManager
     }
 
     /**
-     * Parse a keywords search string
-     * Keywords search string are composed of tokens
-     * Tokens can be single words (without space) or expression composed of several words seperated by spaces enclosed in quote or double quote.
-     * Tokens may be separated by |
-     * | stands for logical AND
-     * A token may be prefixed with - to exclude the results containing the token
-     * The position of excluded tokens is not relevant
-     * Ex : cat "my dog" -parrot | bulldog "small bird" -"cocker spaniel"
-     *    will match result that contain ("cat" or "my dog") and ("bulldog" or "small bird)
-     *    excluding results containing "parrot" or "cocker spaniel".
-     *
-     * @param pKeywords <string> : the keywords search string
-     *
-     * @return <array> : an associative array containing the keys :
-     * 	- CNF =	the Conjonctive Normal Form (= [a OR b] AND [d or e]) of the keywords search string
-     *			(ie : an AND-array of OR-arrays)
-     *	- excludeds = <array> an array of excluded tokens
-     */
-    private function parseKeywords($pKeywords, $pMinKeywordLength = null)
-    {
-        if ($pMinKeywordLength == null) {
-            $vMinKeywordLength = $this->getMinSearchKeywordLength();
-        } else {
-            $vMinKeywordLength = $pMinKeywordLength;
-        }
-
-        // The default results : nothing recognized
-
-        $vResults = ['CNF' => [], 'excludeds' => []];
-
-        // Check if the $pKeywords parameter is valid for parsing
-
-        if (!(is_string($pKeywords) && trim($pKeywords) != '' && $pKeywords != _t('BAZ_MOT_CLE'))) {
-            return $vResults;
-        }
-
-        // Let's analyse the keywords to build a structure representing the CNF and to extract the excludeds tokens
-
-        // Separates AND clauses
-
-        $vANDs = array_filter(array_unique(array_map('trim', explode('|', $pKeywords))), function ($pKeyword) use ($vMinKeywordLength) {
-            return strlen($pKeyword) >= $vMinKeywordLength;
-        });
-
-        foreach ($vANDs as $vAND) {
-            // Extract tokens
-
-            preg_match_all(
-                '/(-)?("(?:\\\\.|[^"\\\\])*"|' .	// double quoted with optional backslash escapes
-                '\'(?:\\\\.|[^\'\\\\])*\'|' .   	// single quoted
-                '\S+)/u',                      	  	// or unquoted token
-                 $vAND,
-                $vTokens,
-                PREG_SET_ORDER
-            );
-
-            // Update the CNF and the excludeds token
-
-            $vORs = [];
-
-            foreach ($vTokens as $vToken) {
-                if ($vToken[1] == '-') {
-                    $vResults['excludeds'][] = trim($vToken[2], '"\'');
-                } else {
-                    $vORs[] = trim($vToken[2], '"\'');
-                }
-            }
-
-            if (count($vORs) > 0) {
-                $vResults['CNF'][] = $vORs;
-            }
-        }
-
-        // Return the parsed keywords array
-
-        return $vResults;
-    }
-
-    /**
      * Parse a query string.
      *
      * @param $pQuery
-     *		<string> : the query string
-     *		<array> : the already parsed array
+     *                <string> : the query string
+     *                <array> : the already parsed array
      *
      * @return <array> of [
-                            "name" => <string>,
-                            "operator" => <string>,
-                            "values" => [ <string> ... ]
-                        ];
+     * "name" => <string>,
+     * "operator" => <string>,
+     * "values" => [ <string> ... ]
+     * ];
      */
     public function parseQuery($pQuery)
     {
@@ -1154,7 +1010,7 @@ class SearchManager
             $vQuery = $pQuery;
         }
 
-        if (trim($vQuery) == '') {
+        if ('' == trim($vQuery)) {
             return [];
         }
 
@@ -1165,14 +1021,14 @@ class SearchManager
                 function ($pValue) {
                     // Extract name, operator and values
 
-                    preg_match_all("/\s*([^=!<>]*)\s*(==|!=|<=|>=|=|<|>)(.*)/", $pValue, $pMatches);
+                    preg_match_all('/\\s*([^=!<>]*)\\s*(==|!=|<=|>=|=|<|>)(.*)/', $pValue, $pMatches);
                     $vName = isset($pMatches[1][0]) ? trim($pMatches[1][0]) : null;
 
                     $vOperator = isset($pMatches[2][0]) ? trim($pMatches[2][0]) : null;
 
                     // Convert old operator format to new refactored format
 
-                    if ($vOperator == '=') {
+                    if ('=' == $vOperator) {
                         $vOperator = '==';
                     }
 
@@ -1185,17 +1041,20 @@ class SearchManager
                             // TODO: make it a service that could be used for any params
                             if (preg_match('/^\[(.*)\]$/', $vValue, $matches)) {
                                 switch ($matches[1]) {
-                                case 'user.name':
-                                    $vValue = $this->wiki->getUserName();
-                                    break;
-                                case 'user.entry.id_fiche':
-                                    $vUserManager = $this->wiki->services->get(UserManager::class);
-                                    $entry = $vUserManager->getAssociatedEntry();
-                                    if (!empty($entry)) {
-                                        $vValue = $entry['id_fiche'];
-                                    }
-                                    break;
-                            }
+                                    case 'user.name':
+                                        $vValue = $this->wiki->getUserName();
+
+                                        break;
+
+                                    case 'user.entry.id_fiche':
+                                        $vUserManager = $this->wiki->services->get(UserManager::class);
+                                        $entry = $vUserManager->getAssociatedEntry();
+                                        if (!empty($entry)) {
+                                            $vValue = $entry['id_fiche'];
+                                        }
+
+                                        break;
+                                }
                             }
                             if (!in_array($vValue, $vUniqueValues, true)) {
                                 $vUniqueValues[] = $vValue;
@@ -1218,7 +1077,7 @@ class SearchManager
                 array_filter(
                     array_unique(explode('|', $vQuery)),
                     function ($pValue) {
-                        return trim($pValue) != '';
+                        return '' != trim($pValue);
                     }
                 )
             ),
@@ -1226,7 +1085,7 @@ class SearchManager
             // Remove query with no parameter name
 
             function ($pValue) {
-                return isset($pValue['name']) && trim($pValue['name']) != '';
+                return isset($pValue['name']) && '' != trim($pValue['name']);
             }
         );
     }
@@ -1244,9 +1103,7 @@ class SearchManager
             $vMinimumSearchKeywordLength = MIN_SEARCH_KEYWORD_LENGTH;
         }
 
-        $vMinimumSearchKeywordLength = intval($vMinimumSearchKeywordLength);
-
-        return $vMinimumSearchKeywordLength;
+        return intval($vMinimumSearchKeywordLength);
     }
 
     public function paramsToURLSearchParams($pParameters)
@@ -1256,16 +1113,16 @@ class SearchManager
         if (isset($pParameters['queries'])) {
             $vQuery = trim($this->queryToString($pParameters['queries']));
 
-            if ($vQuery != '') {
-                $vParameters[] = 'query=' . urlencode($vQuery);
+            if ('' != $vQuery) {
+                $vParameters[] = 'query='.urlencode($vQuery);
             }
         }
 
         if (isset($pParameters['keywords'])) {
             $vKeywords = $this->keywordsToString($pParameters['keywords']);
 
-            if ($vKeywords != '') {
-                $vParameters[] = 'keywords=' . urlencode($vKeywords);
+            if ('' != $vKeywords) {
+                $vParameters[] = 'keywords='.urlencode($vKeywords);
             }
         }
 
@@ -1276,37 +1133,37 @@ class SearchManager
                                     return trim($pField);
                                 }, $pParameters['searchfields']));
 
-            $vParameters[] = 'searchfields=' . $vSearchFields;
+            $vParameters[] = 'searchfields='.$vSearchFields;
         }
 
         if (isset($pParameters['correspondance'])) {
             $vCorrespondances = $pParameters['correspondance'];
 
-            $vParameters[] = 'correspondance=' . urlencode(is_array($vCorrespondances)
+            $vParameters[] = 'correspondance='.urlencode(is_array($vCorrespondances)
                     ? implode(',', array_map(function ($pName) use ($vCorrespondances) {
-                        return $pName . '=' . trim($vCorrespondances[$pName]);
+                        return $pName.'='.trim($vCorrespondances[$pName]);
                     }, array_keys($vCorrespondances)))
                     : $vCorrespondances);
         }
 
         if (isset($pParameters['datefilter'])) {
-            $vParameters[] = 'datefilter=' . trim($pParameters['datefilter']);
+            $vParameters[] = 'datefilter='.trim($pParameters['datefilter']);
         }
 
         if (isset($pParameters['nb'])) {
-            $vParameters[] = 'nb=' . trim($pParameters['nb']);
+            $vParameters[] = 'nb='.trim($pParameters['nb']);
         }
 
         if (isset($pParameters['period'])) {
-            $vParameters[] = 'period=' . trim($pParameters['period']);
+            $vParameters[] = 'period='.trim($pParameters['period']);
         }
 
         if (isset($pParameters['ordre'])) {
-            $vParameters[] = 'ordre=' . trim($pParameters['ordre']);
+            $vParameters[] = 'ordre='.trim($pParameters['ordre']);
         }
 
         if (isset($pParameters['champ'])) {
-            $vParameters[] = 'champ=' . trim($pParameters['champ']);
+            $vParameters[] = 'champ='.trim($pParameters['champ']);
         }
 
         return implode('&', array_filter($vParameters, function ($pParameter) {
@@ -1318,19 +1175,19 @@ class SearchManager
      * Transform a query to a string.
      *
      * @param $pQuery array|string|null the query in different format :
-     * 		new array format [ [ "name" => "bf_field", "operator" => "==" , values [ "toto", ... ] ], ... ]
-     *			OR
-     *   	old array format : [ "bf_field" => "toto", "bf_field2!" => "tata" ]
-     *			OR
-     *		new string format : bf_field == toto1 | bf_field2 <= tata
-     *			OR
-     *		old string format bf_field=toto1|bf_field2!=tata
+     *                new array format [ [ "name" => "bf_field", "operator" => "==" , values [ "toto", ... ] ], ... ]
+     *                OR
+     *                old array format : [ "bf_field" => "toto", "bf_field2!" => "tata" ]
+     *                OR
+     *                new string format : bf_field == toto1 | bf_field2 <= tata
+     *                OR
+     *                old string format bf_field=toto1|bf_field2!=tata
      *
      * @return the string representing the query
      */
     public function queryToString($pQuery)
     {
-        if ($pQuery === null) {
+        if (null === $pQuery) {
             return '';
         }
 
@@ -1346,12 +1203,11 @@ class SearchManager
                         if (is_int($pKey)) {
                             // format [ [ "name" => "bf_field", "operator" => "==" , values => "toto, tata" ] ]
 
-                            return $pQuery[$pKey]['name'] . $pQuery[$pKey]['operator'] . (is_array($pQuery[$pKey]['values']) ? implode(',', $pQuery[$pKey]['values']) : $pQuery[$pKey]['values']);
-                        } else {
-                            // format [ "bf_field" => "toto", "bf_field2!" => "tata" ]
-
-                            return $pKey . '=' . $pQuery[$pKey];
+                            return $pQuery[$pKey]['name'].$pQuery[$pKey]['operator'].(is_array($pQuery[$pKey]['values']) ? implode(',', $pQuery[$pKey]['values']) : $pQuery[$pKey]['values']);
                         }
+                        // format [ "bf_field" => "toto", "bf_field2!" => "tata" ]
+
+                        return $pKey.'='.$pQuery[$pKey];
                     },
                     array_keys($pQuery)
                 )
@@ -1393,10 +1249,10 @@ class SearchManager
      * Aggregate keywords.
      *
      * @param $pArguments : list of <argument>
-     *		<argument> as
-     *     		<string> keywords specification
-     *				OR
-     *			null
+     *                    <argument> as
+     *                    <string> keywords specification
+     *                    OR
+     *                    null
      *
      * @return <string> aggregated keywords
      */
@@ -1418,7 +1274,7 @@ class SearchManager
                 array_filter(
                     explode('|', implode('|', $vKeywords)),
                     function ($vValue) use ($vMinSearchKeywordLength) {
-                        return trim($vValue) != '' && strlen($vValue) >= $vMinSearchKeywordLength;
+                        return '' != trim($vValue) && strlen($vValue) >= $vMinSearchKeywordLength;
                     }
                 )
             )
@@ -1426,19 +1282,19 @@ class SearchManager
 
         if (isset($vResult)) {
             return $vResult;
-        } else {
-            return '';
         }
+
+        return '';
     }
 
     /**
      * Aggregate queries.
      *
      * @param $pArguments : list of <argument>
-     *		<argument> as
-     *			<array> argument array containing "query"
-     *			<string> a query string
-     *			null
+     *                    <argument> as
+     *                    <array> argument array containing "query"
+     *                    <string> a query string
+     *                    null
      *
      * @return <string> aggregated queries
      */
@@ -1454,7 +1310,7 @@ class SearchManager
                     $vQuery = urldecode($vArgument);
                 }
 
-                if (trim($vQuery) != '') {
+                if ('' != trim($vQuery)) {
                     $vQueries[] = $vQuery;
                 }
             }
@@ -1466,7 +1322,7 @@ class SearchManager
                 array_filter(
                     $vQueries,
                     function ($vValue) {
-                        return trim($vValue) != '';
+                        return '' != trim($vValue);
                     }
                 )
             )
@@ -1474,9 +1330,176 @@ class SearchManager
 
         if (isset($vResult)) {
             return $vResult;
-        } else {
-            return '';
         }
+
+        return '';
+    }
+
+    /**
+     * Rename a JSON path variable (ex : "geolocation.bf_latitude") in order to be exploitable in SQL request.
+     *
+     * @param string $pPath
+     *
+     * @return string the transformed path
+     */
+    protected function renameJSONPathVariable($pPath)
+    {
+        return str_replace('.', '__', $pPath);
+    }
+
+    /**
+     * search needles in values (options) of EnumField and return array [['propertyName' => ...,'key'=>$key,'isCheckbox' => true],].
+     */
+    private function searchInFormOptions(array $needles, array $form): array
+    {
+        $results = [];
+        foreach ($form['prepared'] as $field) {
+            if ($field instanceof EnumField) {
+                $options = $field->getOptions();
+                if (is_array($options)) {
+                    foreach ($options as $key => $option) {
+                        foreach ($needles as $needle => $values) {
+                            if (is_array($option)) {
+                                $option = implode(' ', $option); // rare cases with arrays, ex: usernames
+                            }
+                            // mb_strtolower instead of strtolower to manage utf 8 characters
+                            if (preg_match('/'.mb_strtolower(preg_quote($needle)).'/i', mb_strtolower($option), $matches)) {
+                                $results[] = [
+                                    'propertyName' => $field->getPropertyName(),
+                                    'key' => $key,
+                                    'isCheckBox' => ($field instanceof CheckboxField),
+                                    'needle' => $needle,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * prepare needle by removing accents and define string for regexp.
+     */
+    private function prepareNeedleForRegexp(string $needle): string
+    {
+        // be careful to ( and )
+        $needle = str_replace(['(', ')', '/'], ['\(', '\)', '\/'], $needle);
+
+        // remove accents
+        $needle = str_replace(
+            ['à', 'á', 'â', 'ã', 'ä', 'ç', 'è', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'À', 'Á', 'Â', 'Ã', 'Ä', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ù', 'Ú', 'Û', 'Ü', 'Ý'],
+            ['a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y'],
+            $needle
+        );
+
+        // add for regexp
+        return str_replace(
+            [
+                'a',
+                'c',
+                'e',
+                'i',
+                'n',
+                'o',
+                'u',
+                'y',
+            ],
+            [
+                '(a|à|á|â|ã|ä|A|À|Á|Â|Ã|Ä)',
+                '(c|ç|C|Ç)',
+                '(e|è|é|ê|ë|E|È|É|Ê|Ë)',
+                '(i|ì|í|î|ï|I|Ì|Í|Î|Ï)',
+                '(n|ñ|N|Ñ)',
+                '(o|ò|ó|ô|õ|ö|O|Ò|Ó|Ô|Õ|Ö)',
+                '(u|ù|ú|û|ü|U|Ù|Ú|Û|Ü)',
+                '(y|ý|ÿ|Y|Ý)',
+            ],
+            $needle
+        );
+    }
+
+    /**
+     * Parse a keywords search string
+     * Keywords search string are composed of tokens
+     * Tokens can be single words (without space) or expression composed of several words seperated by spaces enclosed in quote or double quote.
+     * Tokens may be separated by |
+     * | stands for logical AND
+     * A token may be prefixed with - to exclude the results containing the token
+     * The position of excluded tokens is not relevant
+     * Ex : cat "my dog" -parrot | bulldog "small bird" -"cocker spaniel"
+     *    will match result that contain ("cat" or "my dog") and ("bulldog" or "small bird)
+     *    excluding results containing "parrot" or "cocker spaniel".
+     *
+     * @param pKeywords <string> : the keywords search string
+     * @param mixed      $pKeywords
+     * @param null|mixed $pMinKeywordLength
+     *
+     * @return <array> : an associative array containing the keys :
+     * 	- CNF =	the Conjonctive Normal Form (= [a OR b] AND [d or e]) of the keywords search string
+     *			(ie : an AND-array of OR-arrays)
+     *	- excludeds = <array> an array of excluded tokens
+     */
+    private function parseKeywords($pKeywords, $pMinKeywordLength = null)
+    {
+        if (null == $pMinKeywordLength) {
+            $vMinKeywordLength = $this->getMinSearchKeywordLength();
+        } else {
+            $vMinKeywordLength = $pMinKeywordLength;
+        }
+
+        // The default results : nothing recognized
+
+        $vResults = ['CNF' => [], 'excludeds' => []];
+
+        // Check if the $pKeywords parameter is valid for parsing
+
+        if (!(is_string($pKeywords) && '' != trim($pKeywords) && $pKeywords != _t('BAZ_MOT_CLE'))) {
+            return $vResults;
+        }
+
+        // Let's analyse the keywords to build a structure representing the CNF and to extract the excludeds tokens
+
+        // Separates AND clauses
+
+        $vANDs = array_filter(array_unique(array_map('trim', explode('|', $pKeywords))), function ($pKeyword) use ($vMinKeywordLength) {
+            return strlen($pKeyword) >= $vMinKeywordLength;
+        });
+
+        foreach ($vANDs as $vAND) {
+            // Extract tokens
+
+            preg_match_all(
+                '/(-)?("(?:\\\.|[^"\\\])*"|'	// double quoted with optional backslash escapes
+                .'\'(?:\\\.|[^\'\\\])*\'|'   	// single quoted
+                .'\S+)/u',                      	  	// or unquoted token
+                $vAND,
+                $vTokens,
+                PREG_SET_ORDER
+            );
+
+            // Update the CNF and the excludeds token
+
+            $vORs = [];
+
+            foreach ($vTokens as $vToken) {
+                if ('-' == $vToken[1]) {
+                    $vResults['excludeds'][] = trim($vToken[2], '"\'');
+                } else {
+                    $vORs[] = trim($vToken[2], '"\'');
+                }
+            }
+
+            if (count($vORs) > 0) {
+                $vResults['CNF'][] = $vORs;
+            }
+        }
+
+        // Return the parsed keywords array
+
+        return $vResults;
     }
 
     /**
@@ -1520,7 +1543,7 @@ class SearchManager
 
         // 6. En dernier recours : translitération ASCII pour les restes (ex: ñ -> n)
         $translit = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
-        if ($translit !== false) {
+        if (false !== $translit) {
             $s = $translit;
         }
 
@@ -1538,6 +1561,7 @@ class SearchManager
      *	if it begins and ends with "/".
      *
      * @param pString <string> : the string to test
+     * @param mixed $pString
      *
      * @return <integer> :
      *	0 if the string doesn't represent a regexp
@@ -1546,13 +1570,14 @@ class SearchManager
      */
     private function isRegExp($pString) // return true is $pString is a regular expression
     {
-        if ((mb_substr($pString, 0, 1) == '/' && mb_substr($pString, -1, 1) == '/')) {
+        if ('/' == mb_substr($pString, 0, 1) && '/' == mb_substr($pString, -1, 1)) {
             return 2;
-        } elseif (preg_match('/\.\*/', $pString) == 1) {
-            return 1;
-        } else {
-            return 0;
         }
+        if (1 == preg_match('/\.\*/', $pString)) {
+            return 1;
+        }
+
+        return 0;
     }
 
     /**
@@ -1562,6 +1587,8 @@ class SearchManager
      *
      * @param pString : <string> a regexp string recognized by isRegExp as a regexp
      * @param pAccentInsensitive : <boolean> true to make the regexp accent insensitive
+     * @param mixed $pString
+     * @param mixed $pAccentInsensitive
      *
      * @return <string> : the transformed regexp string
      */
@@ -1571,16 +1598,21 @@ class SearchManager
 
         switch ($this->isRegExp($pString)) {
             case 0:
-                 throw new Exception($pString . ' is not a regexp');
+                throw new Exception($pString.' is not a regexp');
 
-                 return '';
-            break;
+                return '';
+
+                break;
+
             case 1:
-                 $vString = '^' . $pString . '$';
-            break;
+                $vString = '^'.$pString.'$';
+
+                break;
+
             case 2:
-                 $vString = mb_substr($pString, 1, mb_strlen($pString) - 2);
-            break;
+                $vString = mb_substr($pString, 1, mb_strlen($pString) - 2);
+
+                break;
         }
 
         if ($pAccentInsensitive) {
@@ -1620,23 +1652,13 @@ class SearchManager
      *
      * @param pStructure <array> : the structure as
      * 	[
-         ]
+     * ]
+     * @param mixed $pStructure
+     *
      * @return <string> : the hash
      */
     private function buildFieldDescriptorHash($pStructure)
     {
-        return $pStructure['_mode_'] ?? '#' . '|' . $pStructure['_type_'] ?? '#';
-    }
-
-    /**
-     * Rename a JSON path variable (ex : "geolocation.bf_latitude") in order to be exploitable in SQL request.
-     *
-     * @param string $pPath
-     *
-     * @return string the transformed path
-     */
-    protected function renameJSONPathVariable($pPath)
-    {
-        return str_replace('.', '__', $pPath);
+        return $pStructure['_mode_'] ?? '#|'.$pStructure['_type_'] ?? '#';
     }
 }

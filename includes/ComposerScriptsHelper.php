@@ -43,6 +43,7 @@ class ComposerScriptsHelper
     private static function getPdfJsDistFiles(): array
     {
         $url = 'https://api.github.com/repos/mozilla/pdf.js/releases/latest';
+
         try {
             $content = file_get_contents($url, false, stream_context_create([
                 'http' => [
@@ -72,7 +73,7 @@ class ComposerScriptsHelper
             foreach ($data['assets'] as $asset) {
                 if (!empty($asset['name']) && is_string($asset['name'])
                     && !empty($asset['browser_download_url']) && is_string($asset['browser_download_url'])
-                    && preg_match("/^pdfjs-(\d+)\.(\d+)\.(\d+)-legacy-dist\.zip$/i", $asset['name'], $match)) {
+                    && preg_match('/^pdfjs-(\\d+)\\.(\\d+)\\.(\\d+)-legacy-dist\\.zip$/i', $asset['name'], $match)) {
                     return [
                         'fileName' => $asset['name'],
                         'url' => $asset['browser_download_url'],
@@ -104,7 +105,7 @@ class ComposerScriptsHelper
                             $temp = tmpfile();
                             if ($temp) {
                                 $tmpFilename = stream_get_meta_data($temp)['uri'];
-                                if (file_put_contents($tmpFilename, $zipContent) !== false) {
+                                if (false !== file_put_contents($tmpFilename, $zipContent)) {
                                     $zip = new \ZipArchive();
                                     if ($zip->open($tmpFilename)) {
                                         if (is_dir('javascripts/vendor/pdfjs-dist/')) {
@@ -122,11 +123,11 @@ class ComposerScriptsHelper
                                             );
                                             file_put_contents(
                                                 'javascripts/vendor/pdfjs-dist/.htaccess',
-                                                <<<TXT
-                                                <IfModule mod_mime.c>
-                                                  AddType text/javascript .mjs
-                                                </IfModule>
-                                                TXT
+                                                <<<'TXT'
+                                                    <IfModule mod_mime.c>
+                                                      AddType text/javascript .mjs
+                                                    </IfModule>
+                                                    TXT
                                             );
                                             if (file_exists('tools/attach/libs/pdf-viewer.php')) {
                                                 copy('tools/attach/libs/pdf-viewer.php', 'javascripts/vendor/pdfjs-dist/web/pdf-viewer.php');
@@ -139,10 +140,10 @@ class ComposerScriptsHelper
                                         }
                                         $zip->close();
                                     } else {
-                                        echo "!! Zip not downloaded : $zipContent\n";
+                                        echo "!! Zip not downloaded : {$zipContent}\n";
                                     }
                                 } else {
-                                    echo "erro while putting zip into $tmpFilename\n";
+                                    echo "erro while putting zip into {$tmpFilename}\n";
                                 }
                             } else {
                                 echo "Not possible to create a tempfile !\n";
@@ -151,7 +152,7 @@ class ComposerScriptsHelper
                     } catch (\Throwable $th) {
                         echo "error {$th->getMessage()}\n";
                         if (isset($zipContent)) {
-                            echo "zipContent: $zipContent\n";
+                            echo "zipContent: {$zipContent}\n";
                         }
                     }
                     if (isset($temp) && $temp) {
@@ -167,6 +168,7 @@ class ComposerScriptsHelper
         if (!is_file($filePath)) {
             return true;
         }
+
         try {
             $jsonContent = file_get_contents($filePath);
             if (!empty($jsonContent)) {
@@ -193,23 +195,22 @@ class ComposerScriptsHelper
     {
         $file2ignore = ['.', '..'];
         if (is_link($path)) {
-            return unlink($path) !== false;
-        } else {
-            if ($res = opendir($path)) {
-                $continue = true;
-                while (($file = readdir($res)) !== false && $continue) {
-                    if (!in_array($file, $file2ignore)) {
-                        $continue = self::delete($path . '/' . $file);
-                    }
-                }
-                closedir($res);
-            }
-            if ($continue) {
-                return rmdir($path) !== false;
-            } else {
-                return false;
-            }
+            return false !== unlink($path);
         }
+        if ($res = opendir($path)) {
+            $continue = true;
+            while (($file = readdir($res)) !== false && $continue) {
+                if (!in_array($file, $file2ignore)) {
+                    $continue = self::delete($path.'/'.$file);
+                }
+            }
+            closedir($res);
+        }
+        if ($continue) {
+            return false !== rmdir($path);
+        }
+
+        return false;
 
         return false;
     }

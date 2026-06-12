@@ -20,6 +20,12 @@ use YesWiki\Wiki;
 
 class EntryManager
 {
+    public const TRIPLES_ENTRY_ID = 'fiche_bazar';
+
+    public const VALIDATE_FLAG_ANTISPAM = 1 << 0;
+    public const VALIDATE_FLAG_BF_TITRE = 1 << 1;
+    public const VALIDATE_FLAG_ID_TYPEANNONCE = 1 << 2;
+    public const VALIDATE_FLAG_ALL = self::VALIDATE_FLAG_ANTISPAM | self::VALIDATE_FLAG_BF_TITRE | self::VALIDATE_FLAG_ID_TYPEANNONCE;
     protected $wiki;
     protected $mailer;
     protected $authController;
@@ -35,13 +41,6 @@ class EntryManager
     protected $searchManager;
 
     private $cachedEntriestags;
-
-    public const TRIPLES_ENTRY_ID = 'fiche_bazar';
-
-    public const VALIDATE_FLAG_ANTISPAM = 1 << 0;
-    public const VALIDATE_FLAG_BF_TITRE = 1 << 1;
-    public const VALIDATE_FLAG_ID_TYPEANNONCE = 1 << 2;
-    public const VALIDATE_FLAG_ALL = self::VALIDATE_FLAG_ANTISPAM | self::VALIDATE_FLAG_BF_TITRE | self::VALIDATE_FLAG_ID_TYPEANNONCE;
 
     public function __construct(
         Wiki $wiki,
@@ -76,6 +75,8 @@ class EntryManager
 
     /**
      * Returns true if the provided page is a Bazar fiche.
+     *
+     * @param mixed $tag
      */
     public function isEntry($tag): bool
     {
@@ -112,9 +113,10 @@ class EntryManager
      * @param string      $time                   pour consulter une fiche dans l'historique
      * @param bool        $cache                  if false, don't use the page cache
      * @param bool        $bypassAcls             if true, all fields are loaded regardless of acls
-     * @param string|null $userNameForCheckingACL userName used to get entry, if empty uses the connected user
+     * @param null|string $userNameForCheckingACL userName used to get entry, if empty uses the connected user
+     * @param mixed       $tag
      *
-     * @return mixed|null
+     * @return null|mixed
      *
      * @throws \Exception
      */
@@ -125,61 +127,10 @@ class EntryManager
         }
 
         $page = $this->pageManager->getOne($tag, empty($time) ? null : $time, $cache, $bypassAcls, $userNameForCheckingACL);
-        $debug = ($this->wiki->GetConfigValue('debug') == 'yes');
+        $debug = ('yes' == $this->wiki->GetConfigValue('debug'));
+
         //  $debug = $this->wiki->isDebugEnabled ();
-        $data = $this->getDataFromPage($page, $semantic, $debug);
-
-        return $data;
-    }
-
-    /*
-    * Remove unknown fields
-    *
-    *	Remove fields that are not part of the form definition and that are not used by YesWiki framework
-    *
-    */
-
-    protected function removeUnknownFields($pFormID, $pData)
-    {
-        /*
-        We remove this code because it removes fields that are unknown in the form definition
-        Recurrent event use extra fields...
-        We should refactor date fields so that all informations are contained in one field as an array
-
-                // Keep only the fields defined in the form definition
-
-                $form = $this->wiki->services->get(FormManager::class)->getOne($pFormID);
-
-                $vAuthorizedFields = [];
-
-                foreach ($form['prepared'] as $field) {
-                    if ($field instanceof BazarField) {
-                        $propName = $field->getPropertyName();
-                        // be carefull : BazarField's objects, that do not save data (as ACL, Label, Hidden), do not have propertyName
-                        if (!empty($propName)) {
-                            if (isset($pData[$propName])) {
-                                $vAuthorizedFields[$propName] = $pData[$propName];
-                            }
-                        }
-                    }
-                }
-        */
-        $vAuthorizedFields = [...$pData ?? []];
-
-        // Add extra fields that doesn't belong to the form definition
-        $extraFields = [
-            'id_fiche', 'id_typeannonce', 'date_creation_fiche',
-            'date_maj_fiche', 'statut_fiche', 'url',
-            '-is-external-', 'external-data',
-        ];
-
-        foreach ($extraFields as $key) {
-            if (isset($pData[$key])) {
-                $vAuthorizedFields[$key] = $pData[$key];
-            }
-        }
-
-        return $vAuthorizedFields;
+        return $this->getDataFromPage($page, $semantic, $debug);
     }
 
     /** getDataFromPage.
@@ -242,7 +193,7 @@ class EntryManager
             if ($debug) {
                 if (empty($data['id_fiche'])) {
                     trigger_error('empty \'id_fiche\' in EntryManager::getDataFromPage in body of page \''
-                        . $page['tag'] . '\'. Edit it to create id_fiche', E_USER_WARNING);
+                        .$page['tag'].'\'. Edit it to create id_fiche', E_USER_WARNING);
                 }
                 if (empty($page['tag'])) {
                     trigger_error('empty $page[\'tag\'] in EntryManager::getDataFromPage! ', E_USER_WARNING);
@@ -257,46 +208,38 @@ class EntryManager
             // TODO call this function only when necessary
             $this->appendDisplayData($data, $semantic, $correspondance, $page);
         } elseif ($debug) {
-            trigger_error('empty \'body\' in EntryManager::getDataFromPage for page \'' . ($page['tag'] ?? '!!empty tag!!') . '\'', E_USER_WARNING);
+            trigger_error('empty \'body\' in EntryManager::getDataFromPage for page \''.($page['tag'] ?? '!!empty tag!!').'\'', E_USER_WARNING);
         }
 
         return $data;
     }
 
-    /** format data as in sql.
-     * @return string $formatedValue
-     */
-    private function convertToRawJSONStringForREGEXP(string $rawValue): string
-    {
-        $valueJSON = substr(json_encode($rawValue), 1, strlen(json_encode($rawValue)) - 2);
-        $formattedValue = str_replace(['\\', '\''], ['\\\\', '\\\''], $valueJSON);
-
-        return $this->dbService->escape($formattedValue);
-    }
-
     /**
      * Validate the fiche's data.
+     *
+     * @param mixed $data
+     * @param mixed $pFlags
      *
      * @throws \Exception
      */
     public function validate($data, $pFlags = self::VALIDATE_FLAG_ALL)
     {
         if ($pFlags & self::VALIDATE_FLAG_ANTISPAM) {
-            if (!isset($data['antispam']) || !$data['antispam'] == 1) {
-                throw new Exception(_t('BAZ_PROTECTION_ANTISPAM'));
+            if (!isset($data['antispam']) || 1 == !$data['antispam']) {
+                throw new \Exception(_t('BAZ_PROTECTION_ANTISPAM'));
             }
         }
 
         if ($pFlags & self::VALIDATE_FLAG_BF_TITRE) {
             if (!isset($data['bf_titre'])) {
-                throw new Exception(_t('BAZ_FICHE_NON_SAUVEE_PAS_DE_TITRE'));
+                throw new \Exception(_t('BAZ_FICHE_NON_SAUVEE_PAS_DE_TITRE'));
             }
         }
 
         if ($pFlags & self::VALIDATE_FLAG_ID_TYPEANNONCE) {
             // form metadata
             if (!isset($data['id_typeannonce'])) {
-                throw new Exception(_t('BAZ_NO_FORMS_FOUND'));
+                throw new \Exception(_t('BAZ_NO_FORMS_FOUND'));
             }
         }
     }
@@ -306,6 +249,8 @@ class EntryManager
      *
      * @param false $semantic
      * @param null  $sourceUrl
+     * @param mixed $formId
+     * @param mixed $data
      *
      * @return array
      *
@@ -317,7 +262,7 @@ class EntryManager
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
 
-        $data['id_typeannonce'] = "$formId"; // Must be a string
+        $data['id_typeannonce'] = "{$formId}"; // Must be a string
 
         if ($semantic) {
             $data = $this->semanticTransformer->convertFromSemanticData($formId, $data);
@@ -368,7 +313,7 @@ class EntryManager
 
         // on cree un triple pour specifier que la page wiki creee est une fiche
         // bazar
-        if ($saved == 0) {
+        if (0 == $saved) {
             $this->tripleStore->create(
                 $data['id_fiche'],
                 TripleStore::TYPE_URI,
@@ -408,8 +353,8 @@ class EntryManager
         }
 
         if ($this->activityPubService->isEnabled($form) && !$sourceUrl) {
-             // Notify followers about the new object
-             $this->activityPubService->notifyFollowers($form, $data, 'Create');
+            // Notify followers about the new object
+            $this->activityPubService->notifyFollowers($form, $data, 'Create');
         }
 
         return $data;
@@ -420,6 +365,8 @@ class EntryManager
      *
      * @param false $semantic
      * @param false $replace  If true, all the data will be provided (no merge with the previous data)
+     * @param mixed $tag
+     * @param mixed $data
      *
      * @return array
      *
@@ -481,87 +428,17 @@ class EntryManager
 
         $isExternalEntry = !empty($this->tripleStore->getMatching($data['id_fiche'], TripleStore::SOURCE_URL_URI, null, '=', '=', ''));
         if ($this->activityPubService->isEnabled($form) && !$isExternalEntry) {
-             // Notify followers about the updated object (skip if external)
-             $this->activityPubService->notifyFollowers($form, $data, 'Update');
+            // Notify followers about the updated object (skip if external)
+            $this->activityPubService->notifyFollowers($form, $data, 'Update');
         }
 
         return $data;
     }
 
     /**
-     * Replace the field values which are restricted at reading and writing. These values must be loaded to save them
-     * without user modification.
-     * As the fields are rectricted at reading, the right must be bypassed to load them.
+     * @param mixed $entryId
+     * @param mixed $accepted
      *
-     * @param array $data         the provided data to update
-     * @param array $previousData the provided previousData to update
-     * @param array $form         the entry form
-     *
-     * @return array the data with the restricted values added
-     */
-    protected function assignRestrictedFields(array $data, array $previousData, array $form)
-    {
-        // check if there are some restricted fields at writing
-        $restrictedFields = [];
-
-        $vDefaults = [];
-
-        foreach ($form['prepared'] as $field) {
-            if ($field instanceof BazarField) {
-                $propName = $field->getPropertyName();
-                // be carefull : BazarField's objects, that do not save data (as ACL, Label, Hidden), do not have propertyName
-                // see BazarField->formatValuesBeforeSave() for details
-                // so do not save the previous data even if existing
-                if (!empty($propName) && !$field->canEdit($data)) {
-                    $restrictedFields[] = $propName;
-
-                    $vDefaults[$propName] = $field->getDefault();
-                }
-            }
-        }
-
-        if (!empty($restrictedFields)) {
-            // get the value of the restricted fields in the previous data
-            foreach ($restrictedFields as $propName) {
-                if (isset($previousData[$propName])) {
-                    $data[$propName] = $previousData[$propName];
-                }
-
-                if (trim($data[$propName] ?? '') == '' && trim($vDefaults[$propName]) != '') {
-                    $data[$propName] = $vDefaults[$propName];
-                }
-            }
-        }
-
-        return $data;
-    }
-
-    /**
-     * Add the $previousData attributes which match the actual form and which are not in $data.
-     *
-     * @param array $previousData the data saved in the entry
-     * @param array $form         the entry form
-     * @param array $data         the provided data to update
-     *
-     * @return array the data with the merged values
-     *
-     * @throws \Exception
-     */
-    protected function mergeFields(array $previousData, array $data, array $form)
-    {
-        foreach ($form['prepared'] as $field) {
-            if ($field instanceof BazarField) {
-                $propName = $field->getPropertyName();
-                if (!empty($propName) && !isset($data[$propName]) && isset($previousData[$propName])) {
-                    $data[$propName] = $previousData[$propName];
-                }
-            }
-        }
-
-        return $data;
-    }
-
-    /**
      * @throws \Exception
      */
     public function publish($entryId, $accepted)
@@ -572,9 +449,9 @@ class EntryManager
         // not possible to init the Guard in the constructor because of circular reference problem
         if ($this->wiki->services->get(Guard::class)->isAllowed('valider_fiche')) {
             if ($accepted) {
-                $this->dbService->query('UPDATE' . $this->dbService->prefixTable('fiche') . 'SET bf_statut_fiche=1 WHERE bf_id_fiche="' . $this->dbService->escape($entryId) . '"');
+                $this->dbService->query('UPDATE'.$this->dbService->prefixTable('fiche').'SET bf_statut_fiche=1 WHERE bf_id_fiche="'.$this->dbService->escape($entryId).'"');
             } else {
-                $this->dbService->query('UPDATE' . $this->dbService->prefixTable('fiche') . 'SET bf_statut_fiche=2 WHERE bf_id_fiche="' . $this->dbService->escape($entryId) . '"');
+                $this->dbService->query('UPDATE'.$this->dbService->prefixTable('fiche').'SET bf_statut_fiche=2 WHERE bf_id_fiche="'.$this->dbService->escape($entryId).'"');
             }
             // TODO envoie mail annonceur
         }
@@ -582,6 +459,8 @@ class EntryManager
 
     /**
      * Delete a fiche.
+     *
+     * @param mixed $tag
      *
      * @throws \Exception
      */
@@ -591,12 +470,12 @@ class EntryManager
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
         if (!$forceEvenIfNotOwner && !$this->wiki->UserIsAdmin() && !$this->wiki->UserIsOwner($tag)) {
-            throw new \Exception(_t('DELETEPAGE_NOT_DELETED') . _t('DELETEPAGE_NOT_OWNER'));
+            throw new \Exception(_t('DELETEPAGE_NOT_DELETED')._t('DELETEPAGE_NOT_OWNER'));
         }
 
         $fiche = $this->getOne($tag, false, null, true, $forceEvenIfNotOwner);
         if (empty($fiche)) {
-            throw new \Exception("Not existing entry : $tag");
+            throw new \Exception("Not existing entry : {$tag}");
         }
 
         $form = $this->wiki->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
@@ -606,21 +485,19 @@ class EntryManager
         $this->tripleStore->delete($tag, TripleStore::SOURCE_URL_URI, null, '', '');
         $this->wiki->LogAdministrativeAction(
             $this->authController->getLoggedUserName(),
-            'Suppression de la page ->""' . $tag . '""'
+            'Suppression de la page ->""'.$tag.'""'
         );
 
         $isExternalEntry = !empty($this->tripleStore->getMatching($tag, TripleStore::SOURCE_URL_URI, null, '=', '=', ''));
         if ($this->activityPubService->isEnabled($form) && !$isExternalEntry) {
-             // Notify followers about the deleted object
-             $this->activityPubService->notifyFollowers($form, $fiche, 'Delete');
+            // Notify followers about the deleted object
+            $this->activityPubService->notifyFollowers($form, $fiche, 'Delete');
         }
 
         unset($this->cachedEntriestags[$tag]);
     }
 
-    /*
-     * Convert body to JSON object
-     */
+    // Convert body to JSON object
     public function decode($body)
     {
         $data = json_decode($body, true);
@@ -647,21 +524,21 @@ class EntryManager
     {
         // Let's set the value of id_typeannonce
 
-        $data['id_typeannonce'] = isset($data['id_typeannonce']) ? $data['id_typeannonce'] : $this->wiki->request->get('id_typeannonce');
+        $data['id_typeannonce'] ??= $this->wiki->request->get('id_typeannonce');
 
         // not possible to init the formManager in the constructor because of circular reference problem
         $form = $this->wiki->services->get(FormManager::class)->getOne($data['id_typeannonce']);
         if (empty($form)) {
-            throw new Exception('No form with id: ' . $data['id_typeannonce']);
+            throw new \Exception('No form with id: '.$data['id_typeannonce']);
         }
 
         // We first need to ensure default values for uneditable fields are set
         // so we can use it later to build the automatic title if necessary
 
         foreach ($form['prepared'] as $bazarField) {
-            if ($bazarField instanceof BazarField &&
-                !($bazarField instanceof TitleField) &&
-                !($bazarField->requireIDFiche()) // Some fields like ImageField and File Field need the id_fiche to be defined before to call formatValuesBeforeSave. So we will handle them later.
+            if ($bazarField instanceof BazarField
+                && !($bazarField instanceof TitleField)
+                && !$bazarField->requireIDFiche() // Some fields like ImageField and File Field need the id_fiche to be defined before to call formatValuesBeforeSave. So we will handle them later.
             ) {
                 $tab = $bazarField->formatValuesBeforeSaveIfEditable($data);
 
@@ -694,12 +571,12 @@ class EntryManager
         if (!isset($data['id_fiche'])) {
             // Generate the ID from the title
             if (empty($data['id_fiche'] = genere_nom_wiki($data['bf_titre']))) {
-                throw new Exception('$data[\'id_fiche\'] can not be generated from $data[\'bf_titre\'] !');
+                throw new \Exception('$data[\'id_fiche\'] can not be generated from $data[\'bf_titre\'] !');
             }
-            // TODO see if we can remove this
-            //$_POST['id_fiche'] = $data['id_fiche'];
+        // TODO see if we can remove this
+        // $_POST['id_fiche'] = $data['id_fiche'];
         } elseif (empty($data['id_fiche'])) {
-            throw new Exception('$data[\'id_fiche\'] is set but with empty value !');
+            throw new \Exception('$data[\'id_fiche\'] is set but with empty value !');
         }
 
         // We can now handle fields like ImageField and File Field that require id_fiche in order to format their values
@@ -724,8 +601,8 @@ class EntryManager
 
         // Get creation date if it exists, initialize it otherwise
         $tag = $this->dbService->escape($data['id_fiche']);
-        $result = $this->dbService->loadSingle('SELECT MIN(time) as firsttime FROM ' . $this->dbService->prefixTable('pages') . "WHERE tag='" . $tag . "'");
-        $data['date_creation_fiche'] = $data['date_creation_fiche'] ?? $result['firsttime'] ?? date('Y-m-d H:i:s', time());
+        $result = $this->dbService->loadSingle('SELECT MIN(time) as firsttime FROM '.$this->dbService->prefixTable('pages')."WHERE tag='".$tag."'");
+        $data['date_creation_fiche'] ??= $result['firsttime'] ?? date('Y-m-d H:i:s', time());
 
         // Entry status
         if ($this->wiki->UserIsAdmin()) {
@@ -736,28 +613,18 @@ class EntryManager
 
         // Let's ensure $data['id_typeannonce'] is not empty
         if (empty($data['id_typeannonce'])) {
-            throw new Exception('$data[\'id_typeannonce\'] is empty !');
+            throw new \Exception('$data[\'id_typeannonce\'] is empty !');
         }
 
         // Let's ensure $data['id_fiche'] is not empty
         if (empty($data['id_fiche'])) {
-            throw new Exception('$data[\'id_fiche\'] is empty !');
+            throw new \Exception('$data[\'id_fiche\'] is empty !');
         }
 
-        $data['date_maj_fiche'] = $data['date_maj_fiche'] ?? date('Y-m-d H:i:s', time());
+        $data['date_maj_fiche'] ??= date('Y-m-d H:i:s', time());
 
         // on enleve les champs hidden ou non necessaires a la fiche
-        unset($data['valider']);
-        unset($data['MAX_FILE_SIZE']);
-        unset($data['antispam']);
-        unset($data['mot_de_passe_wikini']);
-        unset($data['mot_de_passe_repete_wikini']);
-        unset($data['html_data']);
-        unset($data['url']);
-        unset($data['incomingurl']);
-
-        unset($data['-is-external-']);
-        unset($data['external-data']);
+        unset($data['valider'], $data['MAX_FILE_SIZE'], $data['antispam'], $data['mot_de_passe_wikini'], $data['mot_de_passe_repete_wikini'], $data['html_data'], $data['url'], $data['incomingurl'], $data['-is-external-'], $data['external-data']);
 
         // on nettoie le champ owner qui n'est pas sauvegardé (champ owner de la page)
         if (isset($data['owner'])) {
@@ -778,7 +645,7 @@ class EntryManager
                 $vPropertyName = $vBazarField->getPropertyName();
 
                 if (!empty($vPropertyName) && $vBazarField->isRequired() && $vBazarField->isEmpty($data[$vPropertyName] ?? null)) {
-                    throw new Exception(_t('BAZ_CHAMPS_REQUIS') . ':' . $vPropertyName);
+                    throw new \Exception(_t('BAZ_CHAMPS_REQUIS').':'.$vPropertyName);
                 }
             }
         }
@@ -790,7 +657,8 @@ class EntryManager
      * Apply field correspondances to an entry.
      *
      * @param array        $pEntry
-     * @param string|array $pCorrespondances
+     * @param array|string $pCorrespondances
+     * @param mixed        $pPage
      *
      * @return the entry with modified fields
      *
@@ -817,11 +685,11 @@ class EntryManager
                             $pEntry[$vKey] = $this->wiki->services->get(Guard::class)->isFieldDataAuthorizedForCorrespondance($pPage, $pEntry, $vData);
                         }
                     } else {
-                        echo '<div class="alert alert-danger">' . _t('BAZ_CORRESPONDANCE_ERROR') . '</div>';
+                        echo '<div class="alert alert-danger">'._t('BAZ_CORRESPONDANCE_ERROR').'</div>';
                     }
                 }
             } catch (ParsingMultipleException $th) {
-                echo '<div class="alert alert-danger">' . str_replace("\n", '<br/>', _t('BAZ_CORRESPONDANCE_ERROR2')) . '</div>';
+                echo '<div class="alert alert-danger">'.str_replace("\n", '<br/>', _t('BAZ_CORRESPONDANCE_ERROR2')).'</div>';
             }
         }
 
@@ -884,81 +752,28 @@ class EntryManager
         // If fails to explode the data, then throws ParsingMultipleException
         $tabparam = [];
         // check if first and second separators are at least somewhere
-        if (strpos($param, $secondseparator) === false) {
-            throw new ParsingMultipleException("Not able to parse multiple parameters because '$secondseparator' is not included in furnished param.");
-        } else {
-            $params = explode($firstseparator, $param);
-            $params = array_map('trim', $params);
-            if (count($params) == 0) {
-                throw new ParsingMultipleException('There is no parameter to parse !');
+        if (false === strpos($param, $secondseparator)) {
+            throw new ParsingMultipleException("Not able to parse multiple parameters because '{$secondseparator}' is not included in furnished param.");
+        }
+        $params = explode($firstseparator, $param);
+        $params = array_map('trim', $params);
+        if (0 == count($params)) {
+            throw new ParsingMultipleException('There is no parameter to parse !');
+        }
+        foreach ($params as $value) {
+            if (empty($value)) {
+                throw new ParsingMultipleException('One parameter should not be empty !');
+            }
+            $tab = explode($secondseparator, $value);
+            $tab = array_map('trim', $tab);
+            if (count($tab) > 1) {
+                $tabparam[$tab[0]] = $tab[1];
             } else {
-                foreach ($params as $value) {
-                    if (empty($value)) {
-                        throw new ParsingMultipleException('One parameter should not be empty !');
-                    } else {
-                        $tab = explode($secondseparator, $value);
-                        $tab = array_map('trim', $tab);
-                        if (count($tab) > 1) {
-                            $tabparam[$tab[0]] = $tab[1];
-                        } else {
-                            throw new ParsingMultipleException("One parameter does not contain '$secondseparator'!");
-                        }
-                    }
-                }
+                throw new ParsingMultipleException("One parameter does not contain '{$secondseparator}'!");
             }
         }
 
         return $tabparam;
-    }
-
-    private function removeSendmail(array &$data): ?string
-    {
-        $sendmail = null;
-        if (isset($data['sendmail'])) {
-            $sendmail = $data['sendmail'];
-            unset($data['sendmail']);
-        }
-
-        return $sendmail;
-    }
-
-    private function sendMailToNotifiedEmails(?string $sendmail, ?array $data, bool $isCreation, ?array $previousEntry = null)
-    {
-        if ($sendmail) {
-            $emailsFieldnames = array_unique(explode(',', $sendmail));
-            foreach ($emailsFieldnames as $emailFieldName) {
-                if (!empty($data[$emailFieldName])) {
-                    $this->mailer->notifyEmail($data[$emailFieldName], $data, $isCreation, $previousEntry);
-                }
-            }
-        }
-    }
-
-    /**
-     * sanitize formsIds and get forms.
-     *
-     * @return array $forms
-     */
-    private function getFormsFromIds($formsIds): array
-    {
-        $formManager = $this->wiki->services->get(FormManager::class); // not load in contruct to prevent circular loading
-        if (!empty($formsIds)) {
-            if (is_scalar($formsIds)) {
-                $formsIds = [$formsIds];
-            }
-            if (is_array($formsIds)) {
-                $formsIds = array_filter($formsIds, function ($formId) {
-                    return is_scalar($formId) && (strval(intval($formId)) == strval($formId));
-                });
-            } else {
-                $formsIds = null;
-            }
-        }
-        if (!empty($formsIds)) {
-            return $formManager->getMany($formsIds);
-        } else {
-            return $formManager->getAll();
-        }
     }
 
     /**
@@ -1011,6 +826,285 @@ class EntryManager
         return $this->manageAttributes($params, $attributesNames, $applyOnAllRevisions, 'rename');
     }
 
+    // SEARCH : DEPRECATED use SearchManager->search instead
+
+    public function search($params = [], bool $filterOnReadACL = false, bool $useGuard = false): array
+    {
+        return $this->searchManager->search($params, $filterOnReadACL, $useGuard);
+    }
+
+    /*
+    * Remove unknown fields
+    *
+    *	Remove fields that are not part of the form definition and that are not used by YesWiki framework
+    *
+    */
+
+    protected function removeUnknownFields($pFormID, $pData)
+    {
+        /*
+        We remove this code because it removes fields that are unknown in the form definition
+        Recurrent event use extra fields...
+        We should refactor date fields so that all informations are contained in one field as an array
+
+                // Keep only the fields defined in the form definition
+
+                $form = $this->wiki->services->get(FormManager::class)->getOne($pFormID);
+
+                $vAuthorizedFields = [];
+
+                foreach ($form['prepared'] as $field) {
+                    if ($field instanceof BazarField) {
+                        $propName = $field->getPropertyName();
+                        // be carefull : BazarField's objects, that do not save data (as ACL, Label, Hidden), do not have propertyName
+                        if (!empty($propName)) {
+                            if (isset($pData[$propName])) {
+                                $vAuthorizedFields[$propName] = $pData[$propName];
+                            }
+                        }
+                    }
+                }
+        */
+        $vAuthorizedFields = [...$pData ?? []];
+
+        // Add extra fields that doesn't belong to the form definition
+        $extraFields = [
+            'id_fiche', 'id_typeannonce', 'date_creation_fiche',
+            'date_maj_fiche', 'statut_fiche', 'url',
+            '-is-external-', 'external-data',
+        ];
+
+        foreach ($extraFields as $key) {
+            if (isset($pData[$key])) {
+                $vAuthorizedFields[$key] = $pData[$key];
+            }
+        }
+
+        return $vAuthorizedFields;
+    }
+
+    /**
+     * Replace the field values which are restricted at reading and writing. These values must be loaded to save them
+     * without user modification.
+     * As the fields are rectricted at reading, the right must be bypassed to load them.
+     *
+     * @param array $data         the provided data to update
+     * @param array $previousData the provided previousData to update
+     * @param array $form         the entry form
+     *
+     * @return array the data with the restricted values added
+     */
+    protected function assignRestrictedFields(array $data, array $previousData, array $form)
+    {
+        // check if there are some restricted fields at writing
+        $restrictedFields = [];
+
+        $vDefaults = [];
+
+        foreach ($form['prepared'] as $field) {
+            if ($field instanceof BazarField) {
+                $propName = $field->getPropertyName();
+                // be carefull : BazarField's objects, that do not save data (as ACL, Label, Hidden), do not have propertyName
+                // see BazarField->formatValuesBeforeSave() for details
+                // so do not save the previous data even if existing
+                if (!empty($propName) && !$field->canEdit($data)) {
+                    $restrictedFields[] = $propName;
+
+                    $vDefaults[$propName] = $field->getDefault();
+                }
+            }
+        }
+
+        if (!empty($restrictedFields)) {
+            // get the value of the restricted fields in the previous data
+            foreach ($restrictedFields as $propName) {
+                if (isset($previousData[$propName])) {
+                    $data[$propName] = $previousData[$propName];
+                }
+
+                if ('' == trim($data[$propName] ?? '') && '' != trim($vDefaults[$propName])) {
+                    $data[$propName] = $vDefaults[$propName];
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Add the $previousData attributes which match the actual form and which are not in $data.
+     *
+     * @param array $previousData the data saved in the entry
+     * @param array $form         the entry form
+     * @param array $data         the provided data to update
+     *
+     * @return array the data with the merged values
+     *
+     * @throws \Exception
+     */
+    protected function mergeFields(array $previousData, array $data, array $form)
+    {
+        foreach ($form['prepared'] as $field) {
+            if ($field instanceof BazarField) {
+                $propName = $field->getPropertyName();
+                if (!empty($propName) && !isset($data[$propName]) && isset($previousData[$propName])) {
+                    $data[$propName] = $previousData[$propName];
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    protected function is_multidimensional_array(array $array): bool
+    {
+        foreach ($array as $item) {
+            if (is_array($item)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function buildHtmlDataAttributes(array $data): string
+    {
+        $htmldata = '';
+        foreach ($data as $key => $value) {
+            $attributeValue = '';
+
+            if (is_array($value)) {
+                if ($this->is_multidimensional_array($value)) {
+                    $attributeValue = json_encode($value);
+                } else {
+                    $attributeValue = '['.implode(',', $value).']';
+                }
+            } else {
+                $attributeValue = $value;
+            }
+
+            // Always HTML-escape the key and the attribute value
+            $htmldata .= 'data-'.htmlspecialchars($key, ENT_QUOTES, 'UTF-8').'="'
+                     .htmlspecialchars($attributeValue, ENT_QUOTES, 'UTF-8').'" ';
+        }
+
+        return $htmldata;
+    }
+
+    protected function getHtmlDataAttributes($fiche, $formtab = '')
+    {
+        $htmldata = '';
+        $filterFieldIds = [
+            'id_typeannonce',
+            'owner',
+            'date_creation_fiche',
+            'date_debut_validite_fiche',
+            'date_fin_validite_fiche',
+            'id_fiche',
+            'statut_fiche',
+            'date_maj_fiche',
+        ];
+        $notFilterFieldIds = ['bf_titre'];
+        $notFilterFieldClasses = [
+            'YesWiki\Bazar\Field\MapField', 'YesWiki\Bazar\Field\HiddenField', 'YesWiki\Bazar\Field\FileField', 'YesWiki\Bazar\Field\ImageField', 'YesWiki\Bazar\Field\LabelField', 'YesWiki\Bazar\Field\LinkField', 'YesWiki\Bazar\Field\TextareaField', 'YesWiki\Bazar\Field\TitleField', 'YesWiki\Bazar\Field\UserField',
+        ];
+        if (is_array($fiche) && isset($fiche['id_typeannonce'])) {
+            $form = $formtab[$fiche['id_typeannonce']] ?? $GLOBALS['wiki']->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
+            foreach ($fiche as $key => $value) {
+                if (!empty($value)) {
+                    if (
+                        in_array(
+                            $key,
+                            $filterFieldIds
+                        )
+                    ) {
+                        $htmldata .= 'data-'.htmlspecialchars($key).'="'
+                        .htmlspecialchars($value).'" ';
+                    } else {
+                        if (isset($form['prepared'])) {
+                            foreach ($form['prepared'] as $field) {
+                                $propertyName = $field->getPropertyName();
+                                if ($propertyName === $key) {
+                                    if (
+                                        !in_array(get_class($field), $notFilterFieldClasses)
+                                        && !in_array($propertyName, $notFilterFieldIds)
+                                    ) {
+                                        $htmldata .= $this->buildHtmlDataAttributes([$key => $value]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $htmldata;
+    }
+
+    /** format data as in sql.
+     * @return string $formatedValue
+     */
+    private function convertToRawJSONStringForREGEXP(string $rawValue): string
+    {
+        $valueJSON = substr(json_encode($rawValue), 1, strlen(json_encode($rawValue)) - 2);
+        $formattedValue = str_replace(['\\', '\''], ['\\\\', '\\\''], $valueJSON);
+
+        return $this->dbService->escape($formattedValue);
+    }
+
+    private function removeSendmail(array &$data): ?string
+    {
+        $sendmail = null;
+        if (isset($data['sendmail'])) {
+            $sendmail = $data['sendmail'];
+            unset($data['sendmail']);
+        }
+
+        return $sendmail;
+    }
+
+    private function sendMailToNotifiedEmails(?string $sendmail, ?array $data, bool $isCreation, ?array $previousEntry = null)
+    {
+        if ($sendmail) {
+            $emailsFieldnames = array_unique(explode(',', $sendmail));
+            foreach ($emailsFieldnames as $emailFieldName) {
+                if (!empty($data[$emailFieldName])) {
+                    $this->mailer->notifyEmail($data[$emailFieldName], $data, $isCreation, $previousEntry);
+                }
+            }
+        }
+    }
+
+    /**
+     * sanitize formsIds and get forms.
+     *
+     * @param mixed $formsIds
+     *
+     * @return array $forms
+     */
+    private function getFormsFromIds($formsIds): array
+    {
+        $formManager = $this->wiki->services->get(FormManager::class); // not load in contruct to prevent circular loading
+        if (!empty($formsIds)) {
+            if (is_scalar($formsIds)) {
+                $formsIds = [$formsIds];
+            }
+            if (is_array($formsIds)) {
+                $formsIds = array_filter($formsIds, function ($formId) {
+                    return is_scalar($formId) && (strval(intval($formId)) == strval($formId));
+                });
+            } else {
+                $formsIds = null;
+            }
+        }
+        if (!empty($formsIds)) {
+            return $formManager->getMany($formsIds);
+        }
+
+        return $formManager->getAll();
+    }
+
     /**
      * manage attributes from entries only for admins !!!
      *
@@ -1027,14 +1121,15 @@ class EntryManager
             return [];
         }
 
-        /* sanitize params */
+        // sanitize params
         if (empty($attributesNames)) {
             throw new \Exception('$attributesNames sould not be empty !');
-        } elseif ($mode === 'rename') {
+        }
+        if ('rename' === $mode) {
             if (!empty(array_filter(
                 $attributesNames,
                 function ($attributeName) {
-                    return !is_array($attributeName) || count($attributeName) != 1 || !is_scalar($attributeName[array_keys($attributeName)[0]]);
+                    return !is_array($attributeName) || 1 != count($attributeName) || !is_scalar($attributeName[array_keys($attributeName)[0]]);
                 }
             ))) {
                 throw new \Exception('$attributesNames sould be array of arrays with only one elem !');
@@ -1052,7 +1147,7 @@ class EntryManager
 
         $attributesQueries = [];
         foreach ($attributesNames as $attributeName) {
-            if ($mode === 'rename') {
+            if ('rename' === $mode) {
                 foreach ($attributeName as $oldName => $newName) {
                     $attributesQueries[$oldName] = '*';
                 }
@@ -1075,7 +1170,7 @@ class EntryManager
             $entry = $this->decode($page['body']);
 
             foreach ($attributesNames as $attributeName) {
-                if ($mode === 'rename') {
+                if ('rename' === $mode) {
                     foreach ($attributeName as $oldName => $newName) {
                         if (isset($entry[$oldName])) {
                             $entry[$newName] = $entry[$oldName];
@@ -1104,8 +1199,8 @@ class EntryManager
             }
             $body = json_encode($entry);
             if ($applyOnAllRevisions) {
-                $this->dbService->query('UPDATE' . $this->dbService->prefixTable('pages') . "SET body = '" . $this->dbService->escape(chop($body)) . "'" .
-                    " WHERE id = '" . $this->dbService->escape($page['id']) . "';");
+                $this->dbService->query('UPDATE'.$this->dbService->prefixTable('pages')."SET body = '".$this->dbService->escape(chop($body))."'"
+                    ." WHERE id = '".$this->dbService->escape($page['id'])."';");
             } else {
                 $this->pageManager->save($entry['id_fiche'], $body);
             }
@@ -1117,102 +1212,8 @@ class EntryManager
     private function duplicate($sourceTag, $destinationTag): bool
     {
         $result = false;
-        $this->wiki->LogAdministrativeAction($this->authController->getLoggedUserName(), 'Duplication de la fiche ""' . $sourceTag . '"" vers la fiche ""' . $destinationTag . '""');
+        $this->wiki->LogAdministrativeAction($this->authController->getLoggedUserName(), 'Duplication de la fiche ""'.$sourceTag.'"" vers la fiche ""'.$destinationTag.'""');
 
         return $result;
-    }
-
-    protected function is_multidimensional_array(array $array): bool
-    {
-        foreach ($array as $item) {
-            if (is_array($item)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    protected function buildHtmlDataAttributes(array $data): string
-    {
-        $htmldata = '';
-        foreach ($data as $key => $value) {
-            $attributeValue = '';
-
-            if (is_array($value)) {
-                if ($this->is_multidimensional_array($value)) {
-                    $attributeValue = json_encode($value);
-                } else {
-                    $attributeValue = '[' . implode(',', $value) . ']';
-                }
-            } else {
-                $attributeValue = $value;
-            }
-
-            // Always HTML-escape the key and the attribute value
-            $htmldata .= 'data-' . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . '="' .
-                     htmlspecialchars($attributeValue, ENT_QUOTES, 'UTF-8') . '" ';
-        }
-
-        return $htmldata;
-    }
-
-    protected function getHtmlDataAttributes($fiche, $formtab = '')
-    {
-        $htmldata = '';
-        $filterFieldIds = [
-            'id_typeannonce',
-            'owner',
-            'date_creation_fiche',
-            'date_debut_validite_fiche',
-            'date_fin_validite_fiche',
-            'id_fiche',
-            'statut_fiche',
-            'date_maj_fiche',
-        ]
-        ;
-        $notFilterFieldIds = ['bf_titre'];
-        $notFilterFieldClasses = [
-            'YesWiki\Bazar\Field\MapField', 'YesWiki\Bazar\Field\HiddenField', 'YesWiki\Bazar\Field\FileField', 'YesWiki\Bazar\Field\ImageField', 'YesWiki\Bazar\Field\LabelField', 'YesWiki\Bazar\Field\LinkField', 'YesWiki\Bazar\Field\TextareaField', 'YesWiki\Bazar\Field\TitleField', 'YesWiki\Bazar\Field\UserField',
-        ];
-        if (is_array($fiche) && isset($fiche['id_typeannonce'])) {
-            $form = isset($formtab[$fiche['id_typeannonce']]) ? $formtab[$fiche['id_typeannonce']] : $GLOBALS['wiki']->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
-            foreach ($fiche as $key => $value) {
-                if (!empty($value)) {
-                    if (
-                        in_array(
-                            $key,
-                            $filterFieldIds
-                        )
-                    ) {
-                        $htmldata .= 'data-' . htmlspecialchars($key) . '="' .
-                        htmlspecialchars($value) . '" ';
-                    } else {
-                        if (isset($form['prepared'])) {
-                            foreach ($form['prepared'] as $field) {
-                                $propertyName = $field->getPropertyName();
-                                if ($propertyName === $key) {
-                                    if (
-                                        !in_array(get_class($field), $notFilterFieldClasses)
-                                        && !in_array($propertyName, $notFilterFieldIds)
-                                    ) {
-                                        $htmldata .= $this->buildHtmlDataAttributes([$key => $value]);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return $htmldata;
-    }
-
-    /* SEARCH : DEPRECATED use SearchManager->search instead */
-
-    public function search($params = [], bool $filterOnReadACL = false, bool $useGuard = false): array
-    {
-        return $this->searchManager->search($params, $filterOnReadACL, $useGuard);
     }
 }

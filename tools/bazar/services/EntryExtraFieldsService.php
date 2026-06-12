@@ -28,17 +28,12 @@ class EntryExtraFieldsService
     // get('comments'), get('nb_comments')
     public function get($prop)
     {
-        $methodName = 'get' . $this->snakeToPascal($prop);
+        $methodName = 'get'.$this->snakeToPascal($prop);
         if (method_exists($this, $methodName)) {
-            return $this->$methodName();
+            return $this->{$methodName}();
         }
 
         return null;
-    }
-
-    private function snakeToPascal(string $string): string
-    {
-        return str_replace(' ', '', ucwords(str_replace('_', ' ', $string)));
     }
 
     public function getReactions()
@@ -97,7 +92,7 @@ class EntryExtraFieldsService
             $fields[$prop] = [];
             if (!empty($entry[$prop])) {
                 $entries = explode(',', $entry[$prop]);
-                if (count($entries) === 1) {
+                if (1 === count($entries)) {
                     $val = array_pop($entries);
                     $fields[$prop][$val] = $entryManager->getOne($entry[$prop]);
                 } else {
@@ -119,12 +114,17 @@ class EntryExtraFieldsService
             foreach ($entries as $entry) {
                 $htmlData .= str_replace(
                     'data-',
-                    'data-' . $fieldName . $sep . $entry['id_fiche'] . $sep,
+                    'data-'.$fieldName.$sep.$entry['id_fiche'].$sep,
                     $entry['html_data']
-                ) . ' ';
+                ).' ';
             }
         }
 
         return $htmlData;
+    }
+
+    private function snakeToPascal(string $string): string
+    {
+        return str_replace(' ', '', ucwords(str_replace('_', ' ', $string)));
     }
 }

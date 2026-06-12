@@ -3,7 +3,6 @@
 namespace YesWiki\Core\Controller;
 
 use DateTime;
-use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use YesWiki\Core\Entity\CookieData;
 use YesWiki\Core\Entity\User;
@@ -47,13 +46,13 @@ class AuthController extends YesWikiController
     public const DEFAULT_PASSWORD_MINIMUM_LENGTH = 5;
     protected const DATE_LENGTH_IN_TOKEN = 17;
     protected const DATE_FORMAT_IN_TOKEN = 'Ymd-H-i-s';
-
-    private $limitations;
     protected $params;
     protected $passwordHasherFactory;
     protected $securityController;
     protected $userManager;
-    private $loggedUserCache = null;
+
+    private $limitations;
+    private $loggedUserCache;
 
     public function __construct(
         ParameterBagInterface $params,
@@ -68,22 +67,6 @@ class AuthController extends YesWikiController
         $this->securityController = $securityController;
         $this->wiki = $wiki;
         $this->initLimitations();
-    }
-
-    /** Initializes object limitation properties using values from the config file.
-     *
-     * @return void
-     */
-    private function initLimitations()
-    {
-        $this->limitations = [];
-        $this->initLimitationHelper(
-            'user_password_min_length',
-            'passwordMinimumLength',
-            FILTER_VALIDATE_INT,
-            self::DEFAULT_PASSWORD_MINIMUM_LENGTH,
-            'USER_PASSWORD_MIN_LENGTH_NOT_INT'
-        );
     }
 
     /** checks if the given string is the user's password.
@@ -126,7 +109,7 @@ class AuthController extends YesWikiController
     public function checkPasswordValidateRequirements(string $password): bool
     {
         if (strlen($password) < $this->limitations['passwordMinimumLength']) {
-            throw new BadFormatPasswordException(_t('USER_PASSWORD_TOO_SHORT') . '. ' . _t('USER_PASSWORD_MINIMUM_NUMBER_OF_CHARACTERS_IS') . ' ' . $this->limitations['passwordMinimumLength'] . '.');
+            throw new BadFormatPasswordException(_t('USER_PASSWORD_TOO_SHORT').'. '._t('USER_PASSWORD_MINIMUM_NUMBER_OF_CHARACTERS_IS').' '.$this->limitations['passwordMinimumLength'].'.');
         }
 
         return true;
@@ -138,6 +121,7 @@ class AuthController extends YesWikiController
     public function connectUser()
     {
         $this->cleanOldFormatCookie();
+
         try {
             try {
                 // faster to connect from session
@@ -157,10 +141,10 @@ class AuthController extends YesWikiController
             $this->login($data['user'], $data['remember'] ? 1 : 0);
         } catch (BadUserConnectException $th) {
             if (
-                empty($_SESSION['user']['name']) ||
-                empty($data['user']['name']) ||
-                $data['user']['name'] != $_SESSION['user']['name'] ||
-                !$this->wiki->UserIsAdmin($data['user']['name'])
+                empty($_SESSION['user']['name'])
+                || empty($data['user']['name'])
+                || $data['user']['name'] != $_SESSION['user']['name']
+                || !$this->wiki->UserIsAdmin($data['user']['name'])
             ) {
                 // do not disconnect admin during update
                 $this->logout();
@@ -178,7 +162,7 @@ class AuthController extends YesWikiController
         }
 
         // Else, if user is logged, store the user in a cache
-        if ($this->loggedUserCache === null || (is_array($this->loggedUserCache) && $this->loggedUserCache['name'] !== $_SESSION['user']['name'])) {
+        if (null === $this->loggedUserCache || (is_array($this->loggedUserCache) && $this->loggedUserCache['name'] !== $_SESSION['user']['name'])) {
             $user = $this->userManager->getOneByName($_SESSION['user']['name']);
             if (!empty($user)) {
                 $this->loggedUserCache = $user->getArrayCopy();
@@ -201,7 +185,7 @@ class AuthController extends YesWikiController
         return $name;
     }
 
-    public function getExpirationTimeStamp(DateTime $startTime, bool $remember): int
+    public function getExpirationTimeStamp(\DateTime $startTime, bool $remember): int
     {
         // 90 days if remember otherwise 1 hour
         return $startTime->getTimestamp() + ($remember ? 90 * 24 * 60 * 60 : 60 * 60);
@@ -214,20 +198,20 @@ class AuthController extends YesWikiController
         }
         $remember = filter_var($remember, FILTER_VALIDATE_BOOL);
 
-        $currentDateTime = new DateTime();
-        $_SESSION['user'] =
-            empty($user['name'])
+        $currentDateTime = new \DateTime();
+        $_SESSION['user']
+            = empty($user['name'])
             ? []
             : [
                 'name' => $user['name'],
                 'lastConnection' => $currentDateTime->getTimestamp(),
             ];
         if (!$this->wiki->isCli()) {
-            if (!($user instanceof User)) {
+            if (!$user instanceof User) {
                 if (!empty($user['name'])) {
                     $user = $this->userManager->getOneByName($user['name']);
                 } else {
-                    throw new Exception("`\$user['name']` must not be empty when retrieving user from `\$user['name']`");
+                    throw new \Exception("`\$user['name']` must not be empty when retrieving user from `\$user['name']`");
                 }
             }
             // prevent setting cookies in CLI (could be errors)
@@ -238,7 +222,7 @@ class AuthController extends YesWikiController
 
             $expires = $this->getExpirationTimeStamp($currentDateTime, $remember);
             $this->setPersistentCookie('name', $user['name'], $expires);
-            $this->setPersistentCookie('token', $currentDateTime->format(self::DATE_FORMAT_IN_TOKEN) . ($remember ? '1' : '0') . $encryptedData, $expires);
+            $this->setPersistentCookie('token', $currentDateTime->format(self::DATE_FORMAT_IN_TOKEN).($remember ? '1' : '0').$encryptedData, $expires);
 
             // TODO : find a more secure way to autologin
             // (see https://www.php.net/manual/en/features.session.security.management.php#features.session.security.management.session-and-autologin)
@@ -268,7 +252,7 @@ class AuthController extends YesWikiController
      * connect the firstAdmin and return if
      * SHOULD NOT BE USED but, waiting an alternative, this hack exists.
      *
-     * @return User|null $firtAdmin
+     * @return null|User $firtAdmin
      */
     public function connectFirstAdmin(): ?User
     {
@@ -283,11 +267,6 @@ class AuthController extends YesWikiController
         $this->login($firstAdmin);
 
         return $firstAdmin;
-    }
-
-    private function updateSessionCookieExpires(int $expires)
-    {
-        $this->setPersistentCookie(session_name(), session_id(), $expires);
     }
 
     public function setPersistentCookie(string $name, string $value, int $expires)
@@ -379,9 +358,9 @@ class AuthController extends YesWikiController
             throw new BadUserConnectException('No last connection date');
         }
 
-        $lastConnectionDate = DateTime::createFromFormat('U', $userFromSession['lastConnection']);
+        $lastConnectionDate = \DateTime::createFromFormat('U', $userFromSession['lastConnection']);
 
-        if ($lastConnectionDate === false || !($lastConnectionDate instanceof DateTime)) {
+        if (false === $lastConnectionDate || !($lastConnectionDate instanceof \DateTime)) {
             throw new BadUserConnectException('Last connection date badly formatted');
         }
 
@@ -414,13 +393,13 @@ class AuthController extends YesWikiController
         }
 
         $lastConnectionDateStr = substr($token, 0, self::DATE_LENGTH_IN_TOKEN);
-        $lastConnectionDate = DateTime::createFromFormat(self::DATE_FORMAT_IN_TOKEN, $lastConnectionDateStr);
+        $lastConnectionDate = \DateTime::createFromFormat(self::DATE_FORMAT_IN_TOKEN, $lastConnectionDateStr);
 
-        if ($lastConnectionDate === false || !($lastConnectionDate instanceof DateTime)) {
+        if (false === $lastConnectionDate || !($lastConnectionDate instanceof \DateTime)) {
             throw new BadUserConnectException('cookie \'token\' does not begin by a date');
         }
 
-        $remember = (substr($token, self::DATE_LENGTH_IN_TOKEN, 1) === '1');
+        $remember = ('1' === substr($token, self::DATE_LENGTH_IN_TOKEN, 1));
 
         $encryptedData = substr($token, self::DATE_LENGTH_IN_TOKEN + 1);
 
@@ -430,9 +409,9 @@ class AuthController extends YesWikiController
     /**
      * prepare raw data from $lastConnectionDate, $remember, $hashedPassword.
      */
-    protected function prepareRawData(DateTime $lastConnectionDate, bool $remember, string $hashedPassword): string
+    protected function prepareRawData(\DateTime $lastConnectionDate, bool $remember, string $hashedPassword): string
     {
-        return $hashedPassword . $lastConnectionDate->format(self::DATE_FORMAT_IN_TOKEN) . ($remember ? '1' : '0');
+        return $hashedPassword.$lastConnectionDate->format(self::DATE_FORMAT_IN_TOKEN).($remember ? '1' : '0');
     }
 
     /**
@@ -467,5 +446,25 @@ class AuthController extends YesWikiController
             // update session cookies to be only for session
             $this->updateSessionCookieExpires(0);
         }
+    }
+
+    /** Initializes object limitation properties using values from the config file.
+     *
+     */
+    private function initLimitations()
+    {
+        $this->limitations = [];
+        $this->initLimitationHelper(
+            'user_password_min_length',
+            'passwordMinimumLength',
+            FILTER_VALIDATE_INT,
+            self::DEFAULT_PASSWORD_MINIMUM_LENGTH,
+            'USER_PASSWORD_MIN_LENGTH_NOT_INT'
+        );
+    }
+
+    private function updateSessionCookieExpires(int $expires)
+    {
+        $this->setPersistentCookie(session_name(), session_id(), $expires);
     }
 }

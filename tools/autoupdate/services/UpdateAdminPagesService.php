@@ -45,14 +45,14 @@ class UpdateAdminPagesService
         $defaultSQL = file_get_contents('setup/sql/default-content.sql');
         $defaultSQLSplittedByBlock = explode('INSERT INTO', $defaultSQL);
         $blocks = [];
-        for ($i = 1; $i < count($defaultSQLSplittedByBlock); $i++) {
+        for ($i = 1; $i < count($defaultSQLSplittedByBlock); ++$i) {
             $block = $defaultSQLSplittedByBlock[$i];
             if (
-                substr($block, 0, 1) !== '#' &&
-                substr($defaultSQLSplittedByBlock[$i - 1], 0, strlen('# YesWiki pages')) === '# YesWiki pages'
+                '#' !== substr($block, 0, 1)
+                && '# YesWiki pages' === substr($defaultSQLSplittedByBlock[$i - 1], 0, strlen('# YesWiki pages'))
             ) { // only working for pages
                 $typeBlock = explode('`', substr($block, strlen(' `{{prefix}}')), 2);
-                if ($typeBlock[0] == 'pages') {
+                if ('pages' == $typeBlock[0]) {
                     $blocks[] = $typeBlock[1];
                 }
             }
@@ -67,7 +67,7 @@ class UpdateAdminPagesService
             } else {
                 $separator = "\n";
             }
-            $splittedBlock = explode('),' . $separator . "('", $splittedBlock[1]);
+            $splittedBlock = explode('),'.$separator."('", $splittedBlock[1]);
             foreach ($splittedBlock as $extract) {
                 $tag = explode('\'', $extract)[0];
                 $defaultSQLSplitted[$tag] = $extract;
@@ -76,13 +76,13 @@ class UpdateAdminPagesService
         $output = '';
         foreach ($adminPagesToUpdate as $page) {
             if (isset($defaultSQLSplitted[$page])) {
-                if (preg_match('/' . $page . '\',\s*(?:now\(\))?\s*,\s*\'([\S\s]*)\',\s*\'\'\s*,\s*\'{{WikiName}}\',\s*\'{{WikiName}}\', \'(?:Y|N)\', \'page\', \'\'/U', $defaultSQLSplitted[$page], $matches)) {
-                    $pageContent = str_replace('\\"', '"', $matches[1]);
+                if (preg_match('/'.$page.'\',\s*(?:now\(\))?\s*,\s*\'([\S\s]*)\',\s*\'\'\s*,\s*\'{{WikiName}}\',\s*\'{{WikiName}}\', \'(?:Y|N)\', \'page\', \'\'/U', $defaultSQLSplitted[$page], $matches)) {
+                    $pageContent = str_replace('\"', '"', $matches[1]);
                     $pageContent = str_replace('\\\'', '\'', $pageContent);
                     $pageContent = str_replace('{{rootPage}}', $this->params->get('root_page'), $pageContent);
                     $pageContent = str_replace('{{url}}', $this->params->get('base_url'), $pageContent);
-                    if ($this->pageManager->save($page, $pageContent) !== 0) {
-                        $output .= (!empty($output) ? ', ' : '') . _t('NO_RIGHT_TO_WRITE_IN_THIS_PAGE') . $page;
+                    if (0 !== $this->pageManager->save($page, $pageContent)) {
+                        $output .= (!empty($output) ? ', ' : '')._t('NO_RIGHT_TO_WRITE_IN_THIS_PAGE').$page;
                     } else {
                         // save links
                         $this->linkTracker->registerLinks($this->pageManager->getOne($page));

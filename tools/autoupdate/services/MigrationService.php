@@ -2,7 +2,6 @@
 
 namespace YesWiki\AutoUpdate\Service;
 
-use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use YesWiki\AutoUpdate\Entity\Messages;
 use YesWiki\Core\Service\DbService;
@@ -38,7 +37,7 @@ class MigrationService
     public function run()
     {
         if ($this->wiki->services->get(SecurityController::class)->isWikiHibernated()) {
-            throw new Exception(_t('WIKI_IN_HIBERNATION'));
+            throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
 
         $messages = new Messages();
@@ -49,16 +48,16 @@ class MigrationService
         // Run the file if it was not already run in the past
         $folders = array_merge(['includes/'], $this->wiki->extensions); // root folder + extensions folders
         foreach ($folders as $folder) {
-            $folder = $folder . 'migrations/';
+            $folder = $folder.'migrations/';
             if (file_exists($folder) && $dh = opendir($folder)) {
                 $vFiles = [];
 
                 while (($file = readdir($dh)) !== false) {
-                    if ($file == '0000000000000_DemoMigration.php') {
+                    if ('0000000000000_DemoMigration.php' == $file) {
                         continue;
                     }
 
-                    if (preg_match("/^([a-zA-Z0-9_-]+)\.php$/", $file, $matches)) {
+                    if (preg_match('/^([a-zA-Z0-9_-]+)\\.php$/', $file, $matches)) {
                         $fileName = $matches[1]; // 2024040500000_TestMigration
 
                         if (in_array($fileName, $completedMigrations)) {
@@ -72,17 +71,18 @@ class MigrationService
                 sort($vFiles);
 
                 foreach ($vFiles as $vFile) {
-                    $vFilename = $vFile . '.php';
+                    $vFilename = $vFile.'.php';
 
-                    $filePath = $folder . $vFilename; // tools/publication/2024040500000_TestMigration.php
+                    $filePath = $folder.$vFilename; // tools/publication/2024040500000_TestMigration.php
+
                     require_once $filePath;
 
-                    preg_match("/^([\d]*)/", $vFile, $vMatches);
+                    preg_match('/^([\\d]*)/', $vFile, $vMatches);
                     $vDate = $vMatches[1] ?? 'unknow date';
 
                     $className = preg_replace('/^[\d_]*/', '', $vFile); // TestMigration
                     if (!class_exists($className)) {
-                        throw new Exception("Error while loading $filePath. The class inside should be $className");
+                        throw new \Exception("Error while loading {$filePath}. The class inside should be {$className}");
                     }
 
                     // Run Migration
@@ -92,10 +92,10 @@ class MigrationService
                         $instance->setDbService($this->dbService);
                         $instance->setParams($this->params);
                         $instance->run();
-                        $messages->add("Migration $className ($vDate)", 'AU_OK');
+                        $messages->add("Migration {$className} ({$vDate})", 'AU_OK');
                         $tripleStore->create($vFile, TripleStore::TYPE_URI, self::TRIPLES_MIGRATION_ID, '', '');
-                    } catch (Exception $e) {
-                        $messages->add("Migration $className ($vDate) failed with error {$e->getMessage()}", 'AU_ERROR');
+                    } catch (\Exception $e) {
+                        $messages->add("Migration {$className} ({$vDate}) failed with error {$e->getMessage()}", 'AU_ERROR');
                     }
                 }
             }

@@ -6,7 +6,7 @@ class StringUtilService
 {
     public static function folderToNamespace(string $folder): string
     {
-        if (preg_match_all('/[a-zA-Z0-9]+/', $folder, $matches) === false) {
+        if (false === preg_match_all('/[a-zA-Z0-9]+/', $folder, $matches)) {
             return '';
         }
 

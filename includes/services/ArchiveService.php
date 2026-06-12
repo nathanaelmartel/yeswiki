@@ -2,17 +2,12 @@
 
 namespace YesWiki\Core\Service;
 
-use DateInterval;
-use DateTime;
-use Exception;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Process\Process;
-use Throwable;
 use YesWiki\Core\Exception\StopArchiveException;
 use YesWiki\Security\Controller\SecurityController;
 use YesWiki\Wiki;
-use ZipArchive;
 
 class ArchiveService
 {
@@ -61,17 +56,17 @@ class ArchiveService
     public const KEY_FOR_FOLDERS_TO_INCLUDE = 'foldersToInclude';
     public const KEY_FOR_FOLDERS_TO_EXCLUDE = 'foldersToExclude';
     public const KEY_FOR_HIDE_CONFIG_VALUES = 'hideConfigValues';
-    protected const DEFAULT_FOLDER_NAME_IN_TMP = 'yeswiki_archive';
     public const ARCHIVE_SUFFIX = '_archive';
     public const ARCHIVE_ONLY_FILES_SUFFIX = '_archive_only_files';
     public const ARCHIVE_ONLY_DATABASE_SUFFIX = '_archive_only_db';
     public const PRIVATE_FOLDER_NAME_IN_ZIP = 'private/backups';
     public const SQL_FILENAME_IN_PRIVATE_FOLDER_IN_ZIP = 'content.sql';
-    public const PRIVATE_FOLDER_README_DEFAULT_CONTENT = "# Description of the usage of folder private/backups\n\n" .
-        "This folder is **reserved to backups**.\n\n" .
-        "It **MUST NOT** be accessible from the internet.\n\n" .
-        " - On Apache server, check that the file `.htaccess` is taken in count.\n" .
-        " - On Nginx server or other, configure the server to **deny all** access on this folder\n";
+    public const PRIVATE_FOLDER_README_DEFAULT_CONTENT = "# Description of the usage of folder private/backups\n\n"
+        ."This folder is **reserved to backups**.\n\n"
+        ."It **MUST NOT** be accessible from the internet.\n\n"
+        ." - On Apache server, check that the file `.htaccess` is taken in count.\n"
+        ." - On Nginx server or other, configure the server to **deny all** access on this folder\n";
+    protected const DEFAULT_FOLDER_NAME_IN_TMP = 'yeswiki_archive';
 
     protected $configurationService;
     protected $consoleService;
@@ -99,9 +94,9 @@ class ArchiveService
     /**
      * archive data in zip file.
      *
-     * @param string|OutputInterface &$output
+     * @param OutputInterface|string &$output
      *
-     * @throws Exception
+     * @throws \Exception
      */
     public function archive(
         &$output,
@@ -124,7 +119,7 @@ class ArchiveService
             $this->unsetWikiStatus();
             $this->writeOutput($output, 'STOP', true, $outputFile);
 
-            throw new Exception(_t('AU_CANNOT_ARCHIVE') . implode(', ', $vMessages));
+            throw new \Exception(_t('AU_CANNOT_ARCHIVE').implode(', ', $vMessages));
         }
         $privatePath = $this->getPrivateFolder();
 
@@ -136,18 +131,18 @@ class ArchiveService
             }
         }
         if (!empty($outputFile)) {
-            if (@file_put_contents($outputFile, '') === false) {
-                throw new Exception('Cannot write to archive output file. Please check file system access rights');
+            if (false === @file_put_contents($outputFile, '')) {
+                throw new \Exception('Cannot write to archive output file. Please check file system access rights');
             }
         }
 
         // checking folder not available on the internet
-        if (@file_put_contents("$privatePath/tmpTestFile000.txt", 'test') === false) {
-            throw new Exception('Cannot write to test file. Please check file system access rights');
+        if (false === @file_put_contents("{$privatePath}/tmpTestFile000.txt", 'test')) {
+            throw new \Exception('Cannot write to test file. Please check file system access rights');
         }
         $error = !$this->localPrivateFolderNotAvailableOnInternet($privatePath, 'tmpTestFile000.txt');
-        if (file_exists("$privatePath/tmpTestFile000.txt")) {
-            unlink("$privatePath/tmpTestFile000.txt");
+        if (file_exists("{$privatePath}/tmpTestFile000.txt")) {
+            unlink("{$privatePath}/tmpTestFile000.txt");
         }
         if ($error) {
             $this->writeOutput($output, '! Private folder available on the internet', true, $outputFile);
@@ -159,13 +154,15 @@ class ArchiveService
 
         $this->writeOutput($output, '=== Checking free space ===', true, $outputFile);
         $blacklistedRootFolders = $this->generateListRootFolders('black', $foldersToExclude);
+
         try {
             $this->assertEnoughtSpace($blacklistedRootFolders);
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             $this->writeOutput($output, 'There is not enough free space.', true, $outputFile);
             $this->writeOutput($output, "=> {$th->getMessage()}", true, $outputFile);
             $this->unsetWikiStatus();
             $this->writeOutput($output, 'STOP', true, $outputFile);
+
             throw $th;
         }
         $this->writeOutput($output, 'There is enough free space.', true, $outputFile);
@@ -179,8 +176,9 @@ class ArchiveService
         $onlyDb = false;
         // check options and prepare file suffix
         if (!$savefiles && !$savedatabase) {
-            throw new Exception("Invalid options : It is not possible to use 'savefiles = false' and 'savedatabase = false' options in same time.");
-        } elseif (!$savefiles) {
+            throw new \Exception("Invalid options : It is not possible to use 'savefiles = false' and 'savedatabase = false' options in same time.");
+        }
+        if (!$savefiles) {
             $fileSuffix = self::ARCHIVE_ONLY_DATABASE_SUFFIX;
             $onlyDb = true;
         } elseif (!$savedatabase) {
@@ -197,16 +195,16 @@ class ArchiveService
         }
         // prepare location of zip file
 
-        $archiveFileName = (new DateTime())->format('Y-m-d\\TH-i-s') . "$fileSuffix.zip";
-        $location = $privatePath . DIRECTORY_SEPARATOR . $archiveFileName;
+        $archiveFileName = (new \DateTime())->format('Y-m-d\TH-i-s')."{$fileSuffix}.zip";
+        $location = $privatePath.DIRECTORY_SEPARATOR.$archiveFileName;
         if (file_exists($location)) {
-            throw new Exception('Zip file already existing !');
+            throw new \Exception('Zip file already existing !');
         }
         if (file_exists($location)) {
-            throw new Exception('Zip file already existing !');
+            throw new \Exception('Zip file already existing !');
         }
         if ($this->securityController->isWikiHibernated()) {
-            throw new Exception(_t('WIKI_IN_HIBERNATION'));
+            throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
 
         try {
@@ -225,7 +223,7 @@ class ArchiveService
             $this->writeOutput($output, '=== Creating zip archive ===', true, $outputFile);
 
             if ($this->createZip($location, $foldersToInclude, $blacklistedRootFolders, $output, $sqlContent, $onlyDb, $hideConfigValuesParams, $inputFile, $outputFile)) {
-                $this->writeOutput($output, "Archive \"$location\" successfully created !", true, $outputFile);
+                $this->writeOutput($output, "Archive \"{$location}\" successfully created !", true, $outputFile);
 
                 // clean oldest files
                 $this->cleanOldestFiles();
@@ -242,7 +240,7 @@ class ArchiveService
             $this->writeOutput($output, 'STOP', true, $outputFile);
 
             return '';
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             @unlink($location);
             $this->unsetWikiStatus();
             $this->writeOutput($output, 'STOP', true, $outputFile);
@@ -291,11 +289,11 @@ class ArchiveService
         $vConfig = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
         $vConfig->load();
 
-        if (trim($vConfig['wiki_status'] ?? '') == '') {
+        if ('' == trim($vConfig['wiki_status'] ?? '')) {
             return 'running';
-        } else {
-            return trim($vConfig['wiki_status']);
         }
+
+        return trim($vConfig['wiki_status']);
     }
 
     /**
@@ -356,17 +354,22 @@ class ArchiveService
             switch ($this->getWikiStatus()) {
                 case 'archiving':
                     $archiving = true;
+
                     break;
+
                 case 'hibernate':
                     $hibernated = true;
+
                     break;
+
                 default:
                     break;
             }
         }
+
         try {
             $privatePath = $this->getPrivateFolder();
-        } catch (Exception $th) {
+        } catch (\Exception $th) {
             $privatePathWritable = false;
             $privatePath = '';
         }
@@ -374,29 +377,30 @@ class ArchiveService
             if (!$this->canWriteFolder($privatePath)) {
                 $privatePathWritable = false;
             } else {
-                $tmpFileName = "$privatePath/tmp.txt";
+                $tmpFileName = "{$privatePath}/tmp.txt";
                 if (file_exists($tmpFileName)) {
                     unlink($tmpFileName);
                 }
+
                 try {
-                    if (@file_put_contents($tmpFileName, 'test') === false) {
-                        throw new Exception('Cannot write to tmp file. Please check file system access rights');
+                    if (false === @file_put_contents($tmpFileName, 'test')) {
+                        throw new \Exception('Cannot write to tmp file. Please check file system access rights');
                     }
                     if (!file_exists($tmpFileName)) {
-                        throw new Exception('Not writable folder');
+                        throw new \Exception('Not writable folder');
                     }
                     $content = @file_get_contents($tmpFileName);
 
-                    if ($content === false) {
-                        throw new Exception('Cannot read tmp file. Please check file system access rights');
+                    if (false === $content) {
+                        throw new \Exception('Cannot read tmp file. Please check file system access rights');
                     }
 
-                    if ($content != 'test') {
-                        throw new Exception('Bad content');
+                    if ('test' != $content) {
+                        throw new \Exception('Bad content');
                     }
                     $notAvailableOnTheInternet = $this->localPrivateFolderNotAvailableOnInternet($privatePath, basename($tmpFileName));
                     unlink($tmpFileName);
-                } catch (Throwable $th) {
+                } catch (\Throwable $th) {
                     $privatePathWritable = false;
                     if (file_exists($tmpFileName)) {
                         unlink($tmpFileName);
@@ -411,13 +415,13 @@ class ArchiveService
             if (!empty($results)) {
                 $result = $results[array_key_first($results)];
                 if (
-                    empty($result['stderr']) && !empty($result['stdout']) &&
-                    preg_match("/Hello !(?:\r|\n)+/", $result['stdout'])
+                    empty($result['stderr']) && !empty($result['stdout'])
+                    && preg_match("/Hello !(?:\r|\n)+/", $result['stdout'])
                 ) {
                     $canExec = true;
                 }
             }
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             $canExec = false;
         }
 
@@ -425,23 +429,24 @@ class ArchiveService
         if ($canExec) {
             $dB = $this->testDb();
         }
+
         // free space
         try {
             $this->assertEnoughtSpace();
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             $enoughSpace = false;
         }
 
         $canArchive = (
-            !$archiving &&
-            !$hibernated &&
-            $privatePathWritable &&
-            $notAvailableOnTheInternet &&
-            (
-                !$callAsync ||
-                $canExec
-            ) &&
-            $enoughSpace
+            !$archiving
+            && !$hibernated
+            && $privatePathWritable
+            && $notAvailableOnTheInternet
+            && (
+                !$callAsync
+                || $canExec
+            )
+            && $enoughSpace
         );
 
         return compact(['canArchive', 'archiving', 'hibernated', 'privatePathWritable', 'canExec', 'callAsync', 'notAvailableOnTheInternet', 'enoughSpace', 'dB']);
@@ -510,22 +515,20 @@ class ArchiveService
                 $this->updatePIDForUID($process->getPid(), $uidData['uid'], $privatePath);
 
                 return $uidData['uid'];
-            } else {
-                $this->cleanUID($uidData['uid'], $privatePath);
-
-                return '';
             }
-        } else {
-            $output = '';
-            $location = $this->archive($output, $savefiles, $savedatabase, $foldersToInclude, $foldersToExclude, null, $uidData['uid']);
-            if (empty($location)) {
-                $this->cleanUID($uidData['uid'], $privatePath);
+            $this->cleanUID($uidData['uid'], $privatePath);
 
-                return '';
-            } else {
-                return $uidData['uid'];
-            }
+            return '';
         }
+        $output = '';
+        $location = $this->archive($output, $savefiles, $savedatabase, $foldersToInclude, $foldersToExclude, null, $uidData['uid']);
+        if (empty($location)) {
+            $this->cleanUID($uidData['uid'], $privatePath);
+
+            return '';
+        }
+
+        return $uidData['uid'];
     }
 
     /**
@@ -537,11 +540,11 @@ class ArchiveService
         $privatePath = $this->getPrivateFolder();
         $files = scandir($privatePath);
         foreach ($files as $filename) {
-            if (preg_match("/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})_archive(?:_(only_files|only_db))?\.zip$/", $filename, $matches)) {
-                list(, $year, $month, $day, $hours, $minutes, $seconds) = $matches;
+            if (preg_match('/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2})-(\\d{2})-(\\d{2})_archive(?:_(only_files|only_db))?\\.zip$/', $filename, $matches)) {
+                [, $year, $month, $day, $hours, $minutes, $seconds] = $matches;
                 $archives[] = [
                     'filename' => $filename,
-                    'date' => "$year-$month-{$day}T$hours-$minutes-$seconds",
+                    'date' => "{$year}-{$month}-{$day}T{$hours}-{$minutes}-{$seconds}",
                     'year' => $year,
                     'month' => $month,
                     'day' => $day,
@@ -549,8 +552,8 @@ class ArchiveService
                     'minutes' => $minutes,
                     'seconds' => $seconds,
                     'type' => $matches[7] ?? 'full',
-                    'size' => filesize("$privatePath/$filename"),
-                    'link' => $this->wiki->Href('', "api/archives/$filename"),
+                    'size' => filesize("{$privatePath}/{$filename}"),
+                    'link' => $this->wiki->Href('', "api/archives/{$filename}"),
                 ];
             }
         }
@@ -571,18 +574,16 @@ class ArchiveService
         $privatePath = $this->getPrivateFolder();
         // sanitize $filename
         $filename = basename($filename);
-        if (substr($filename, -4) != '.zip') {
+        if ('.zip' != substr($filename, -4)) {
             return '';
         }
-        $filePath = "$privatePath/$filename";
+        $filePath = "{$privatePath}/{$filename}";
 
         return (file_exists($filePath) && is_file($filePath)) ? $filePath : '';
     }
 
     /**
      * delete archives.
-     *
-     * @param array $filesname
      *
      * @return array $results = ['filename' => bool]
      */
@@ -595,9 +596,9 @@ class ArchiveService
             'main' => true,
         ];
         foreach ($filesnames as $filename) {
-            $results[$filename] = (substr($filename, -4) == '.zip') && file_exists("$privatePath/$filename") && is_file("$privatePath/$filename");
+            $results[$filename] = ('.zip' == substr($filename, -4)) && file_exists("{$privatePath}/{$filename}") && is_file("{$privatePath}/{$filename}");
             if ($results[$filename]) {
-                $results[$filename] = unlink("$privatePath/$filename");
+                $results[$filename] = unlink("{$privatePath}/{$filename}");
             }
             if (!$results[$filename]) {
                 $results['main'] = false;
@@ -633,21 +634,22 @@ class ArchiveService
         $info = $this->getInfoFromFile($privateFolder);
         if (!isset($info[$uid])) {
             return $results;
-        } elseif (!$forceStarted && empty($info[$uid]['pid'])) {
+        }
+        if (!$forceStarted && empty($info[$uid]['pid'])) {
             $this->cleanUID($uid, $privateFolder);
         } else {
             $results['started'] = true;
-            list(
+            [
                 'running' => $running,
                 'finished' => $finished,
                 'stopped' => $stopped,
                 'output' => $output
-            ) = $this->getRunningUIDdata($uid, $info[$uid]);
+            ] = $this->getRunningUIDdata($uid, $info[$uid]);
             $results['running'] = $running;
             $results['finished'] = $finished;
             $results['stopped'] = $stopped;
             if (!$running) {
-                $output = preg_replace("/(^Archive \\\")(.*)(\\\" successfully created !(?:\s*END)?\s*$)/m", '$1---$3', $output);
+                $output = preg_replace('/(^Archive \\")(.*)(\\" successfully created !(?:\\s*END)?\\s*$)/m', '$1---$3', $output);
             }
             $results['output'] = $output;
             if (!$results['running']) {
@@ -668,296 +670,17 @@ class ArchiveService
         }
         $info = $this->getInfoFromFile();
         if (
-            !isset($info[$uid]) ||
-            empty($info[$uid]['input']) ||
-            !is_file($info[$uid]['input'])
+            !isset($info[$uid])
+            || empty($info[$uid]['input'])
+            || !is_file($info[$uid]['input'])
         ) {
             return false;
         }
-        if (@file_put_contents($info[$uid]['input'], 'STOP') === false) {
-            throw new Exception('Cannot write to archive info file. Please check file system access rights');
+        if (false === @file_put_contents($info[$uid]['input'], 'STOP')) {
+            throw new \Exception('Cannot write to archive info file. Please check file system access rights');
         }
 
         return true;
-    }
-
-    /**
-     * check if need to stop archive.
-     */
-    protected function checkIfNeedStop(string $inputFile = ''): bool
-    {
-        if (empty($inputFile) || !is_file($inputFile)) {
-            return false;
-        }
-        $content = @file_get_contents($inputFile);
-
-        if ($content === false) {
-            throw new Exception('Cannot read archive input file. Please check file system access rights');
-        }
-
-        if (empty($content)) {
-            return false;
-        }
-
-        return preg_match('/^STOP.*/', $content);
-    }
-
-    /**
-     * create the zip file.
-     *
-     * @param string|OutputInterface &$output
-     *
-     * @return bool : true on success, false on failure
-     */
-    protected function createZip(
-        string $zipPath,
-        array $foldersToInclude,
-        array $blacklistedRootFolders,
-        &$output,
-        string $sqlContent,
-        bool $onlyDb = false,
-        ?array $hideConfigValuesParams = null,
-        string $inputFile = '',
-        string $outputFile = ''
-    ) {
-        if (!file_exists('index.php') || !file_exists(ConfigurationFileProvider::getConfigFileFromEnv()) || !file_exists('composer.json') || !file_exists('composer.lock')) {
-            throw new Exception('Can only be started from main directory');
-        }
-        $pathToArchive = getcwd();
-
-        $pathToArchive = preg_replace("/(\/|\\\\)$/", '', $pathToArchive);
-        $dirs = [$pathToArchive];
-        $dirnamePathLen = strlen($pathToArchive);
-
-        $whitelistedRootFolders = $this->generateListRootFolders('white', $foldersToInclude);
-
-        // open file
-        $zip = new ZipArchive();
-
-        $vCanceled = false;
-
-        $resource = $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-        if ($resource !== true) {
-            return;
-        }
-
-        // register cancel callback if available
-        if (method_exists($zip, 'registerCancelCallback')) {
-            $zip->registerCancelCallback(function () use ($inputFile, &$vCanceled) {
-                $vNeedStop = $this->checkIfNeedStop($inputFile);
-
-                if ($vNeedStop) {
-                    $vCanceled = true;
-
-                    return -1;
-                } else {
-                    return 0;
-                }
-            });
-        }
-
-        // register progress callback if available
-        if (method_exists($zip, 'registerProgressCallback')) {
-            $zip->registerProgressCallback(0.1, function ($r) use (&$output, $outputFile) {
-                $this->writeOutput($output, 'Zip file creation : ' . strval(round($r * 100, 0)) . ' %', true, $outputFile);
-            });
-        }
-
-        if (!$vCanceled && !$onlyDb) {
-            // add empty cache folder
-            $zip->addEmptyDir('cache');
-
-            while (count($dirs)) {
-                $dir = current($dirs);
-                $dir = preg_replace("/(?:\/|\\\\|([^\/\\\\]))$/", '$1', $dir);
-                $baseDirName = preg_replace('/\\\\/', '/', substr($dir, $dirnamePathLen));
-                $baseDirName = preg_replace("/^\//", '', $baseDirName);
-                if (empty($baseDirName) || (!empty($baseDirName) && $this->shouldIncludeFolder($baseDirName, $whitelistedRootFolders, $blacklistedRootFolders))) {
-                    if (!empty($baseDirName)) {
-                        $this->writeOutput($output, "Adding folder \"$baseDirName\"", true, $outputFile);
-                        $zip->addEmptyDir($baseDirName);
-                    }
-
-                    $dh = opendir($dir);
-                    while (false !== ($file = readdir($dh))) {
-                        if ($file != '.' && $file != '..') {
-                            $localName = $dir . DIRECTORY_SEPARATOR . $file;
-                            $relativeName = (empty($baseDirName) ? '' : "$baseDirName/") . $file;
-                            if (empty($baseDirName) && $file == ConfigurationFileProvider::getConfigFileFromEnv()) {
-                                $zip->addFromString($relativeName, $this->getWakkaConfigSanitized($whitelistedRootFolders, $blacklistedRootFolders, $hideConfigValuesParams));
-                            } elseif (is_file($localName)) {
-                                $zip->addFile($localName, $relativeName);
-                            } elseif (is_dir($localName)) {
-                                if ($this->shouldIncludeFolder($relativeName, $whitelistedRootFolders, $blacklistedRootFolders)) {
-                                    $dirs[] = $dir . DIRECTORY_SEPARATOR . $file;
-                                }
-                                if ($this->checkIfNeedStop($inputFile)) {
-                                    $this->writeOutput($output, '== The archive processus need to be stopped ==', true, $outputFile);
-                                    $vCanceled = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    closedir($dh);
-                }
-
-                if ($vCanceled) {
-                    break;
-                }
-
-                array_shift($dirs);
-            }
-        }
-
-        if (!$vCanceled && !empty($sqlContent)) {
-            $this->writeOutput($output, 'Adding SQL file', true, $outputFile);
-            $zip->addEmptyDir(self::PRIVATE_FOLDER_NAME_IN_ZIP);
-            $zip->addFromString(
-                self::PRIVATE_FOLDER_NAME_IN_ZIP . '/' . self::SQL_FILENAME_IN_PRIVATE_FOLDER_IN_ZIP,
-                $sqlContent
-            );
-            $this->writeOutput($output, 'Adding .htaccess file in folder ' . self::PRIVATE_FOLDER_NAME_IN_ZIP, true, $outputFile);
-
-            $zip->addFromString(
-                self::PRIVATE_FOLDER_NAME_IN_ZIP . '/.htaccess',
-                "DENY FROM ALL\n"
-            );
-
-            $zip->addFromString(
-                self::PRIVATE_FOLDER_NAME_IN_ZIP . '/README.md',
-                self::PRIVATE_FOLDER_README_DEFAULT_CONTENT
-            );
-        }
-
-        $vClosed = false;
-        $vError = false;
-
-        if (!$vCanceled) {
-            $this->writeOutput($output, 'Generating zip file', true, $outputFile);
-
-            $vResult = $zip->close();
-
-            $vClosed = true;
-
-            if ($vResult) {
-                $this->writeOutput($output, 'Archive was created successfully', true, $outputFile);
-
-                return true;
-            } elseif (!$vCanceled) {
-                $this->writeOutput($output, 'There was a problem closing archive', true, $outputFile);
-            }
-        }
-
-        if ($vCanceled) {
-            $this->writeOutput($output, 'Archive creation canceled', true, $outputFile);
-        }
-
-        if (!$vClosed) {
-            $zip->unchangeAll();
-
-            if ($zip->close()) {
-                $this->writeOutput($output, 'Archive was closed successfully', true, $outputFile);
-            } else {
-                $this->writeOutput($output, 'There was a problem closing archive', true, $outputFile);
-            }
-        }
-
-        unlink($zipPath);
-
-        return false;
-    }
-
-    /**
-     * test if folder should be included.
-     */
-    protected function shouldIncludeFolder(
-        string $relativeFolderName,
-        array $whitelistedRootFolders,
-        array $blacklistedRootFolders
-    ): bool {
-        if (
-            in_array($relativeFolderName, $blacklistedRootFolders) ||
-            in_array(basename($relativeFolderName), $blacklistedRootFolders)
-        ) {
-            return false;
-        }
-
-        return count(array_filter($whitelistedRootFolders, function ($folder) use ($relativeFolderName) {
-            return strpos($relativeFolderName, $folder) === 0;
-        })) > 0;
-    }
-
-    private function sanitizeFileList(array $list): array
-    {
-        $outputList = [];
-        foreach ($list as $filePath) {
-            if (is_string($filePath)) {
-                $filePath = trim($filePath);
-                // remove path containing '/../' to be sure to keep in root folder of the wiki
-                // or begining by '/' or 'c:\' to be sure to keep relative to root folder of website
-                if (!empty($filePath) && !preg_match('/^(?:\\/|\\\\)|[A-Za-z]:\\\\|(?:\\/|\\\\|^)\\.\\.(?:\\/|\\\\|$)/', $filePath)) {
-                    $formattedFilePath = preg_replace("/(\/|\\\\)$/", '', $filePath);
-                    if (!in_array($formattedFilePath, $outputList)) {
-                        $outputList[] = $formattedFilePath;
-                    }
-                }
-            }
-        }
-
-        return $outputList;
-    }
-
-    private function getPrivateFolder(): string
-    {
-        $archiveParams = $this->getArchiveParams();
-
-        $folderPath = (
-            empty($archiveParams[self::KEY_FOR_PRIVATE_FOLDER]) ||
-            !is_string($archiveParams[self::KEY_FOR_PRIVATE_FOLDER])
-        )
-            ? self::PRIVATE_FOLDER_NAME_IN_ZIP
-            : $archiveParams[self::KEY_FOR_PRIVATE_FOLDER];
-
-        if ($folderPath != '%TMP') {
-            if (
-                is_dir($folderPath)
-            ) {
-                return preg_replace("/(\/|\\\\)$/", '', $folderPath);
-            } else {
-                throw new Exception(self::PARAMS_KEY_IN_WAKKA . '[' . self::KEY_FOR_PRIVATE_FOLDER . ']' . ' is not a directory.');
-            }
-        } else {
-            $sanitizeWebsiteName = preg_replace(
-                '/-+$/',
-                '',
-                preg_replace(
-                    "/[.\/\\{}\[\]#?&=!;:\\\$<>]/",
-                    '-',
-                    preg_replace(
-                        "/^https?:\/\//",
-                        '',
-                        $this->params->get('base_url')
-                    )
-                )
-            );
-            $tmp = sys_get_temp_dir();
-            $slash = DIRECTORY_SEPARATOR;
-            $dirName = "yeswiki-$sanitizeWebsiteName";
-            $this->createFolder("$tmp{$slash}", $dirName);
-
-            return "$tmp{$slash}$dirName";
-        }
-    }
-
-    private function createFolder(string $basePath, string $path)
-    {
-        if (file_exists($basePath . $path) && !is_dir($basePath . $path)) {
-            throw new Exception("Folder \"$path\" in \"$basePath\" should be a directory !");
-        } elseif (!file_exists($basePath . $path)) {
-            mkdir($basePath . $path);
-        }
     }
 
     public function getArchiveParams(): array
@@ -967,287 +690,6 @@ class ArchiveService
         }
 
         return (empty($archiveParams) || !is_array($archiveParams)) ? [] : $archiveParams;
-    }
-
-    private function canWriteFolder(string $path): bool
-    {
-        return is_dir($path) && is_writable($path);
-    }
-
-    private function localPrivateFolderNotAvailableOnInternet(string $localPath, string $testFileName): bool
-    {
-        $isAbsolutePath = (
-            in_array(substr($localPath, 0, 1), ['/', DIRECTORY_SEPARATOR]) ||
-            (
-                DIRECTORY_SEPARATOR == '\\' &&
-                (
-                    preg_match('/^[A-Za-z]:.*$/', $localPath)
-                )
-            )
-        );
-        $basePath = realpath(getcwd());
-        $realLocalPath = $isAbsolutePath
-            ? realpath($localPath)
-            : realpath($basePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $localPath));
-        $isLocal = (substr($realLocalPath, 0, strlen($basePath)) == $basePath);
-
-        if (!$isLocal) {
-            return true;
-        }
-        if (!file_exists("$localPath/$testFileName")) {
-            throw new Exception("\"$localPath/$testFileName\" must exist for tests !");
-        }
-        $url = preg_replace("/\??$/", '', $this->params->get('base_url'));
-        $url .= str_replace(DIRECTORY_SEPARATOR, '/', "$localPath/$testFileName");
-        $ct = stream_context_set_default([
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ],
-            'http' => [
-                'method' => 'HEAD',
-            ],
-        ]);
-        $headers = @get_headers($url, true, $ct);
-
-        return !$headers || !empty($headers[0]) && !strstr(get_headers($url, true, $ct)[0], '200 OK');
-    }
-
-    /**
-     * write text to the output.
-     *
-     * @param string|OutputInterface &$output
-     */
-    private function writeOutput(&$output, string $text, bool $newline = true, string $outputFile = '')
-    {
-        if (!empty($outputFile) && is_file($outputFile)) {
-            if (@file_put_contents($outputFile, $text . ($newline ? "\n" : ''), FILE_APPEND) === false) {
-                throw new Exception('Cannot write to output file. Please check file system access rights');
-            }
-        }
-        if ($output instanceof OutputInterface) {
-            $output->write($text, $newline);
-        } elseif (is_string($output)) {
-            $output .= $text . ($newline ? "\n" : '');
-        } else {
-            throw new Exception('"$output" should be string or OutputInterface !');
-        }
-    }
-
-    /**
-     * sanitize wakka.config.php before saving it.
-     */
-    private function getWakkaConfigSanitized(array $foldersToInclude, array $foldersToExclude, ?array $hideConfigValuesParams = null): string
-    {
-        // get wakka.config.php content
-        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
-        $config->load();
-        if (
-            !isset($config[self::PARAMS_KEY_IN_WAKKA]) ||
-            !is_array($config[self::PARAMS_KEY_IN_WAKKA])
-        ) {
-            $data = [];
-        } else {
-            $data = $config[self::PARAMS_KEY_IN_WAKKA];
-        }
-        if (!empty($foldersToInclude)) {
-            $data[self::KEY_FOR_FOLDERS_TO_INCLUDE] = $foldersToInclude;
-        }
-        if (!empty($foldersToExclude)) {
-            $data[self::KEY_FOR_FOLDERS_TO_EXCLUDE] = $foldersToExclude;
-        }
-        if (!is_null($hideConfigValuesParams)) {
-            $data[self::KEY_FOR_HIDE_CONFIG_VALUES] = $hideConfigValuesParams;
-        } elseif (!isset($data[self::KEY_FOR_HIDE_CONFIG_VALUES]) || !is_array($data[self::KEY_FOR_HIDE_CONFIG_VALUES])) {
-            $data[self::KEY_FOR_HIDE_CONFIG_VALUES] = self::DEFAULT_PARAMS_TO_ANONYMIZE;
-        }
-        $config[self::PARAMS_KEY_IN_WAKKA] = $data;
-
-        $config = $this->setDefaultValuesRecursive($config[self::PARAMS_KEY_IN_WAKKA][self::KEY_FOR_HIDE_CONFIG_VALUES], $config);
-        // remove current wiki_status
-        unset($config['wiki_status']);
-
-        return $this->configurationService->getContentToWrite($config);
-    }
-
-    private function setDefaultValuesRecursive(array $defaultValues, $values)
-    {
-        foreach ($defaultValues as $key => $value) {
-            if (is_scalar($value)) {
-                if (isset($values[$key])) {
-                    $values[$key] = $value;
-                }
-            } elseif (is_array($value)) {
-                if (isset($values[$key])) {
-                    $values[$key] = $this->setDefaultValuesRecursive($value, $values[$key]);
-                }
-            }
-        }
-
-        return $values;
-    }
-
-    protected function setWikiStatus()
-    {
-        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
-        $config->load();
-        $config['wiki_status'] = 'archiving';
-        $this->configurationService->write($config);
-    }
-
-    protected function unsetWikiStatus()
-    {
-        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
-        $config->load();
-        unset($config['wiki_status']);
-        $this->configurationService->write($config);
-    }
-
-    /**
-     * test db export connection.
-     *
-     * @param string $privatePath
-     */
-    protected function testDb(): bool
-    {
-        try {
-            $results = $this->consoleService->startConsoleSync('archive:exportdb', [
-                '--test',
-            ]);
-            if (empty($results) || !is_array($results)) {
-                return false;
-            }
-            $result = $results[array_key_first($results)];
-
-            return empty($result['stderr']) && !empty($result['stdout']) && preg_match("/^OK\s*$/i", $result['stdout']);
-        } catch (Throwable $th) {
-        }
-
-        return false;
-    }
-
-    /**
-     * extract sql content.
-     *
-     * @return string $sqlContent
-     *
-     * @throws Exception
-     * @throws Throwable
-     */
-    protected function getSQLContent(string $privatePath): string
-    {
-        $resultFile = $privatePath . '/' . self::SQL_FILENAME_IN_PRIVATE_FOLDER_IN_ZIP;
-        try {
-            $errorMessage = '';
-            if ($this->testDb()) {
-                $results = $this->consoleService->startConsoleSync('core:exportdb', [
-                    "--filepath=$resultFile",
-                ]);
-
-                // get content
-                if (file_exists($resultFile)) {
-                    $sqlContent = @file_get_contents($resultFile);
-
-                    if ($sqlContent === false) {
-                        throw new Exception('Cannot read sql content file. Please check file system access rights');
-                    }
-
-                    @unlink($resultFile);
-
-                    if (!empty($sqlContent)) {
-                        return $sqlContent;
-                    }
-                }
-
-                if (!empty($results)) {
-                    $result = $results[array_key_first($results)];
-                    if (!empty($result['stderr'])) {
-                        $errorMessage .= "Error using mysqldump :\n{$result['stderr']}\n";
-                    }
-                }
-            }
-            // backup
-            $results = $this->dbService->getSQLContentBackupMethod();
-            if (empty($results['sql'])) {
-                throw new Exception($errorMessage . (empty($results['error']) ? 'SQL not exported via BackupMethod' : $results['error']));
-            } else {
-                return $results['sql'];
-            }
-        } catch (Throwable $th) {
-            if (file_exists($resultFile)) {
-                unlink($resultFile);
-            }
-            throw $th;
-        }
-    }
-
-    /**
-     * check if there is enought free space before archive (size of files + custom + 300 Mo).
-     *
-     * @throws Exception
-     */
-    protected function assertEnoughtSpace(array $blacklistedRootFolders = [])
-    {
-        if (empty($blacklistedRootFolders)) {
-            $blacklistedRootFolders = self::FOLDERS_TO_EXCLUDE;
-        }
-        $estimateZipSize = 0;
-        if (!in_array('files', $blacklistedRootFolders)) {
-            $estimateZipSize += $this->folderSize('files');
-        }
-        if (!in_array('custom', $blacklistedRootFolders)) {
-            $estimateZipSize += $this->folderSize('custom');
-        }
-        $estimateZipSize += 300 * 1024 * 1024; // 300Mb for the rest of te wiki
-
-        $freeSpace = disk_free_space(realpath(getcwd()));
-        if ($freeSpace < $estimateZipSize) {
-            throw new Exception('Not enough free space for a new archive!');
-        }
-    }
-
-    /**
-     * recursive method.
-     *
-     * @return int $bytes
-     */
-    private function folderSize(string $folderPath): int
-    {
-        $contents = array_filter(scandir($folderPath), function ($path) {
-            return !in_array($path, ['.', '..']);
-        });
-        $bytes = 0;
-        foreach ($contents as $name) {
-            if (is_file("$folderPath/$name")) {
-                $bytes += filesize("$folderPath/$name");
-            } elseif (is_dir("$folderPath/$name")) {
-                $bytes += $this->folderSize("$folderPath/$name");
-            }
-        }
-
-        return $bytes;
-    }
-
-    /**
-     * remove oldest files to keep only 10 files.
-     */
-    private function cleanOldestFiles()
-    {
-        $archivesToDelete = $this->archivesToDelete();
-        if (!empty($archivesToDelete)) {
-            $this->deleteArchives($archivesToDelete);
-        }
-    }
-
-    private function getMaxNbFiles(): int
-    {
-        $archiveParams = $this->getArchiveParams();
-
-        return (empty($archiveParams['max_nb_files']) ||
-            !is_scalar($archiveParams['max_nb_files']) ||
-            intval($archiveParams['max_nb_files']) < 3)
-            ? 10
-            : intval($archiveParams['max_nb_files']);
     }
 
     /**
@@ -1302,20 +744,583 @@ class ArchiveService
         return [];
     }
 
+    /**
+     * check if need to stop archive.
+     */
+    protected function checkIfNeedStop(string $inputFile = ''): bool
+    {
+        if (empty($inputFile) || !is_file($inputFile)) {
+            return false;
+        }
+        $content = @file_get_contents($inputFile);
+
+        if (false === $content) {
+            throw new \Exception('Cannot read archive input file. Please check file system access rights');
+        }
+
+        if (empty($content)) {
+            return false;
+        }
+
+        return preg_match('/^STOP.*/', $content);
+    }
+
+    /**
+     * create the zip file.
+     *
+     * @param OutputInterface|string &$output
+     *
+     * @return bool : true on success, false on failure
+     */
+    protected function createZip(
+        string $zipPath,
+        array $foldersToInclude,
+        array $blacklistedRootFolders,
+        &$output,
+        string $sqlContent,
+        bool $onlyDb = false,
+        ?array $hideConfigValuesParams = null,
+        string $inputFile = '',
+        string $outputFile = ''
+    ) {
+        if (!file_exists('index.php') || !file_exists(ConfigurationFileProvider::getConfigFileFromEnv()) || !file_exists('composer.json') || !file_exists('composer.lock')) {
+            throw new \Exception('Can only be started from main directory');
+        }
+        $pathToArchive = getcwd();
+
+        $pathToArchive = preg_replace('/(\\/|\\\\)$/', '', $pathToArchive);
+        $dirs = [$pathToArchive];
+        $dirnamePathLen = strlen($pathToArchive);
+
+        $whitelistedRootFolders = $this->generateListRootFolders('white', $foldersToInclude);
+
+        // open file
+        $zip = new \ZipArchive();
+
+        $vCanceled = false;
+
+        $resource = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if (true !== $resource) {
+            return;
+        }
+
+        // register cancel callback if available
+        if (method_exists($zip, 'registerCancelCallback')) {
+            $zip->registerCancelCallback(function () use ($inputFile, &$vCanceled) {
+                $vNeedStop = $this->checkIfNeedStop($inputFile);
+
+                if ($vNeedStop) {
+                    $vCanceled = true;
+
+                    return -1;
+                }
+
+                return 0;
+            });
+        }
+
+        // register progress callback if available
+        if (method_exists($zip, 'registerProgressCallback')) {
+            $zip->registerProgressCallback(0.1, function ($r) use (&$output, $outputFile) {
+                $this->writeOutput($output, 'Zip file creation : '.strval(round($r * 100, 0)).' %', true, $outputFile);
+            });
+        }
+
+        if (!$vCanceled && !$onlyDb) {
+            // add empty cache folder
+            $zip->addEmptyDir('cache');
+
+            while (count($dirs)) {
+                $dir = current($dirs);
+                $dir = preg_replace('/(?:\\/|\\\\|([^\\/\\\\]))$/', '$1', $dir);
+                $baseDirName = preg_replace('/\\\/', '/', substr($dir, $dirnamePathLen));
+                $baseDirName = preg_replace('/^\\//', '', $baseDirName);
+                if (empty($baseDirName) || (!empty($baseDirName) && $this->shouldIncludeFolder($baseDirName, $whitelistedRootFolders, $blacklistedRootFolders))) {
+                    if (!empty($baseDirName)) {
+                        $this->writeOutput($output, "Adding folder \"{$baseDirName}\"", true, $outputFile);
+                        $zip->addEmptyDir($baseDirName);
+                    }
+
+                    $dh = opendir($dir);
+                    while (false !== ($file = readdir($dh))) {
+                        if ('.' != $file && '..' != $file) {
+                            $localName = $dir.DIRECTORY_SEPARATOR.$file;
+                            $relativeName = (empty($baseDirName) ? '' : "{$baseDirName}/").$file;
+                            if (empty($baseDirName) && $file == ConfigurationFileProvider::getConfigFileFromEnv()) {
+                                $zip->addFromString($relativeName, $this->getWakkaConfigSanitized($whitelistedRootFolders, $blacklistedRootFolders, $hideConfigValuesParams));
+                            } elseif (is_file($localName)) {
+                                $zip->addFile($localName, $relativeName);
+                            } elseif (is_dir($localName)) {
+                                if ($this->shouldIncludeFolder($relativeName, $whitelistedRootFolders, $blacklistedRootFolders)) {
+                                    $dirs[] = $dir.DIRECTORY_SEPARATOR.$file;
+                                }
+                                if ($this->checkIfNeedStop($inputFile)) {
+                                    $this->writeOutput($output, '== The archive processus need to be stopped ==', true, $outputFile);
+                                    $vCanceled = true;
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    closedir($dh);
+                }
+
+                if ($vCanceled) {
+                    break;
+                }
+
+                array_shift($dirs);
+            }
+        }
+
+        if (!$vCanceled && !empty($sqlContent)) {
+            $this->writeOutput($output, 'Adding SQL file', true, $outputFile);
+            $zip->addEmptyDir(self::PRIVATE_FOLDER_NAME_IN_ZIP);
+            $zip->addFromString(
+                self::PRIVATE_FOLDER_NAME_IN_ZIP.'/'.self::SQL_FILENAME_IN_PRIVATE_FOLDER_IN_ZIP,
+                $sqlContent
+            );
+            $this->writeOutput($output, 'Adding .htaccess file in folder '.self::PRIVATE_FOLDER_NAME_IN_ZIP, true, $outputFile);
+
+            $zip->addFromString(
+                self::PRIVATE_FOLDER_NAME_IN_ZIP.'/.htaccess',
+                "DENY FROM ALL\n"
+            );
+
+            $zip->addFromString(
+                self::PRIVATE_FOLDER_NAME_IN_ZIP.'/README.md',
+                self::PRIVATE_FOLDER_README_DEFAULT_CONTENT
+            );
+        }
+
+        $vClosed = false;
+        $vError = false;
+
+        if (!$vCanceled) {
+            $this->writeOutput($output, 'Generating zip file', true, $outputFile);
+
+            $vResult = $zip->close();
+
+            $vClosed = true;
+
+            if ($vResult) {
+                $this->writeOutput($output, 'Archive was created successfully', true, $outputFile);
+
+                return true;
+            }
+            if (!$vCanceled) {
+                $this->writeOutput($output, 'There was a problem closing archive', true, $outputFile);
+            }
+        }
+
+        if ($vCanceled) {
+            $this->writeOutput($output, 'Archive creation canceled', true, $outputFile);
+        }
+
+        if (!$vClosed) {
+            $zip->unchangeAll();
+
+            if ($zip->close()) {
+                $this->writeOutput($output, 'Archive was closed successfully', true, $outputFile);
+            } else {
+                $this->writeOutput($output, 'There was a problem closing archive', true, $outputFile);
+            }
+        }
+
+        unlink($zipPath);
+
+        return false;
+    }
+
+    /**
+     * test if folder should be included.
+     */
+    protected function shouldIncludeFolder(
+        string $relativeFolderName,
+        array $whitelistedRootFolders,
+        array $blacklistedRootFolders
+    ): bool {
+        if (
+            in_array($relativeFolderName, $blacklistedRootFolders)
+            || in_array(basename($relativeFolderName), $blacklistedRootFolders)
+        ) {
+            return false;
+        }
+
+        return count(array_filter($whitelistedRootFolders, function ($folder) use ($relativeFolderName) {
+            return 0 === strpos($relativeFolderName, $folder);
+        })) > 0;
+    }
+
+    protected function setWikiStatus()
+    {
+        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
+        $config->load();
+        $config['wiki_status'] = 'archiving';
+        $this->configurationService->write($config);
+    }
+
+    protected function unsetWikiStatus()
+    {
+        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
+        $config->load();
+        unset($config['wiki_status']);
+        $this->configurationService->write($config);
+    }
+
+    /**
+     * test db export connection.
+     */
+    protected function testDb(): bool
+    {
+        try {
+            $results = $this->consoleService->startConsoleSync('archive:exportdb', [
+                '--test',
+            ]);
+            if (empty($results) || !is_array($results)) {
+                return false;
+            }
+            $result = $results[array_key_first($results)];
+
+            return empty($result['stderr']) && !empty($result['stdout']) && preg_match('/^OK\\s*$/i', $result['stdout']);
+        } catch (\Throwable $th) {
+        }
+
+        return false;
+    }
+
+    /**
+     * extract sql content.
+     *
+     * @return string $sqlContent
+     *
+     * @throws \Exception
+     * @throws \Throwable
+     */
+    protected function getSQLContent(string $privatePath): string
+    {
+        $resultFile = $privatePath.'/'.self::SQL_FILENAME_IN_PRIVATE_FOLDER_IN_ZIP;
+
+        try {
+            $errorMessage = '';
+            if ($this->testDb()) {
+                $results = $this->consoleService->startConsoleSync('core:exportdb', [
+                    "--filepath={$resultFile}",
+                ]);
+
+                // get content
+                if (file_exists($resultFile)) {
+                    $sqlContent = @file_get_contents($resultFile);
+
+                    if (false === $sqlContent) {
+                        throw new \Exception('Cannot read sql content file. Please check file system access rights');
+                    }
+
+                    @unlink($resultFile);
+
+                    if (!empty($sqlContent)) {
+                        return $sqlContent;
+                    }
+                }
+
+                if (!empty($results)) {
+                    $result = $results[array_key_first($results)];
+                    if (!empty($result['stderr'])) {
+                        $errorMessage .= "Error using mysqldump :\n{$result['stderr']}\n";
+                    }
+                }
+            }
+            // backup
+            $results = $this->dbService->getSQLContentBackupMethod();
+            if (empty($results['sql'])) {
+                throw new \Exception($errorMessage.(empty($results['error']) ? 'SQL not exported via BackupMethod' : $results['error']));
+            }
+
+            return $results['sql'];
+        } catch (\Throwable $th) {
+            if (file_exists($resultFile)) {
+                unlink($resultFile);
+            }
+
+            throw $th;
+        }
+    }
+
+    /**
+     * check if there is enought free space before archive (size of files + custom + 300 Mo).
+     *
+     * @throws \Exception
+     */
+    protected function assertEnoughtSpace(array $blacklistedRootFolders = [])
+    {
+        if (empty($blacklistedRootFolders)) {
+            $blacklistedRootFolders = self::FOLDERS_TO_EXCLUDE;
+        }
+        $estimateZipSize = 0;
+        if (!in_array('files', $blacklistedRootFolders)) {
+            $estimateZipSize += $this->folderSize('files');
+        }
+        if (!in_array('custom', $blacklistedRootFolders)) {
+            $estimateZipSize += $this->folderSize('custom');
+        }
+        $estimateZipSize += 300 * 1024 * 1024; // 300Mb for the rest of te wiki
+
+        $freeSpace = disk_free_space(realpath(getcwd()));
+        if ($freeSpace < $estimateZipSize) {
+            throw new \Exception('Not enough free space for a new archive!');
+        }
+    }
+
+    private function sanitizeFileList(array $list): array
+    {
+        $outputList = [];
+        foreach ($list as $filePath) {
+            if (is_string($filePath)) {
+                $filePath = trim($filePath);
+                // remove path containing '/../' to be sure to keep in root folder of the wiki
+                // or begining by '/' or 'c:\' to be sure to keep relative to root folder of website
+                if (!empty($filePath) && !preg_match('/^(?:\/|\\\)|[A-Za-z]:\\\|(?:\/|\\\|^)\.\.(?:\/|\\\|$)/', $filePath)) {
+                    $formattedFilePath = preg_replace('/(\\/|\\\\)$/', '', $filePath);
+                    if (!in_array($formattedFilePath, $outputList)) {
+                        $outputList[] = $formattedFilePath;
+                    }
+                }
+            }
+        }
+
+        return $outputList;
+    }
+
+    private function getPrivateFolder(): string
+    {
+        $archiveParams = $this->getArchiveParams();
+
+        $folderPath = (
+            empty($archiveParams[self::KEY_FOR_PRIVATE_FOLDER])
+            || !is_string($archiveParams[self::KEY_FOR_PRIVATE_FOLDER])
+        )
+            ? self::PRIVATE_FOLDER_NAME_IN_ZIP
+            : $archiveParams[self::KEY_FOR_PRIVATE_FOLDER];
+
+        if ('%TMP' != $folderPath) {
+            if (
+                is_dir($folderPath)
+            ) {
+                return preg_replace('/(\\/|\\\\)$/', '', $folderPath);
+            }
+
+            throw new \Exception(self::PARAMS_KEY_IN_WAKKA.'['.self::KEY_FOR_PRIVATE_FOLDER.'] is not a directory.');
+        } else {
+            $sanitizeWebsiteName = preg_replace(
+                '/-+$/',
+                '',
+                preg_replace(
+                    '/[.\\/\\{}\\[\\]#?&=!;:\\$<>]/',
+                    '-',
+                    preg_replace(
+                        '/^https?:\\/\\//',
+                        '',
+                        $this->params->get('base_url')
+                    )
+                )
+            );
+            $tmp = sys_get_temp_dir();
+            $slash = DIRECTORY_SEPARATOR;
+            $dirName = "yeswiki-{$sanitizeWebsiteName}";
+            $this->createFolder("{$tmp}{$slash}", $dirName);
+
+            return "{$tmp}{$slash}{$dirName}";
+        }
+    }
+
+    private function createFolder(string $basePath, string $path)
+    {
+        if (file_exists($basePath.$path) && !is_dir($basePath.$path)) {
+            throw new \Exception("Folder \"{$path}\" in \"{$basePath}\" should be a directory !");
+        }
+        if (!file_exists($basePath.$path)) {
+            mkdir($basePath.$path);
+        }
+    }
+
+    private function canWriteFolder(string $path): bool
+    {
+        return is_dir($path) && is_writable($path);
+    }
+
+    private function localPrivateFolderNotAvailableOnInternet(string $localPath, string $testFileName): bool
+    {
+        $isAbsolutePath = (
+            in_array(substr($localPath, 0, 1), ['/', DIRECTORY_SEPARATOR])
+            || (
+                DIRECTORY_SEPARATOR == '\\'
+
+                    && preg_match('/^[A-Za-z]:.*$/', $localPath)
+            )
+        );
+        $basePath = realpath(getcwd());
+        $realLocalPath = $isAbsolutePath
+            ? realpath($localPath)
+            : realpath($basePath.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $localPath));
+        $isLocal = (substr($realLocalPath, 0, strlen($basePath)) == $basePath);
+
+        if (!$isLocal) {
+            return true;
+        }
+        if (!file_exists("{$localPath}/{$testFileName}")) {
+            throw new \Exception("\"{$localPath}/{$testFileName}\" must exist for tests !");
+        }
+        $url = preg_replace('/\\??$/', '', $this->params->get('base_url'));
+        $url .= str_replace(DIRECTORY_SEPARATOR, '/', "{$localPath}/{$testFileName}");
+        $ct = stream_context_set_default([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+            'http' => [
+                'method' => 'HEAD',
+            ],
+        ]);
+        $headers = @get_headers($url, true, $ct);
+
+        return !$headers || !empty($headers[0]) && !strstr(get_headers($url, true, $ct)[0], '200 OK');
+    }
+
+    /**
+     * write text to the output.
+     *
+     * @param OutputInterface|string &$output
+     */
+    private function writeOutput(&$output, string $text, bool $newline = true, string $outputFile = '')
+    {
+        if (!empty($outputFile) && is_file($outputFile)) {
+            if (false === @file_put_contents($outputFile, $text.($newline ? "\n" : ''), FILE_APPEND)) {
+                throw new \Exception('Cannot write to output file. Please check file system access rights');
+            }
+        }
+        if ($output instanceof OutputInterface) {
+            $output->write($text, $newline);
+        } elseif (is_string($output)) {
+            $output .= $text.($newline ? "\n" : '');
+        } else {
+            throw new \Exception('"$output" should be string or OutputInterface !');
+        }
+    }
+
+    /**
+     * sanitize wakka.config.php before saving it.
+     */
+    private function getWakkaConfigSanitized(array $foldersToInclude, array $foldersToExclude, ?array $hideConfigValuesParams = null): string
+    {
+        // get wakka.config.php content
+        $config = $this->configurationService->getConfiguration(ConfigurationFileProvider::getConfigFileFromEnv());
+        $config->load();
+        if (
+            !isset($config[self::PARAMS_KEY_IN_WAKKA])
+            || !is_array($config[self::PARAMS_KEY_IN_WAKKA])
+        ) {
+            $data = [];
+        } else {
+            $data = $config[self::PARAMS_KEY_IN_WAKKA];
+        }
+        if (!empty($foldersToInclude)) {
+            $data[self::KEY_FOR_FOLDERS_TO_INCLUDE] = $foldersToInclude;
+        }
+        if (!empty($foldersToExclude)) {
+            $data[self::KEY_FOR_FOLDERS_TO_EXCLUDE] = $foldersToExclude;
+        }
+        if (!is_null($hideConfigValuesParams)) {
+            $data[self::KEY_FOR_HIDE_CONFIG_VALUES] = $hideConfigValuesParams;
+        } elseif (!isset($data[self::KEY_FOR_HIDE_CONFIG_VALUES]) || !is_array($data[self::KEY_FOR_HIDE_CONFIG_VALUES])) {
+            $data[self::KEY_FOR_HIDE_CONFIG_VALUES] = self::DEFAULT_PARAMS_TO_ANONYMIZE;
+        }
+        $config[self::PARAMS_KEY_IN_WAKKA] = $data;
+
+        $config = $this->setDefaultValuesRecursive($config[self::PARAMS_KEY_IN_WAKKA][self::KEY_FOR_HIDE_CONFIG_VALUES], $config);
+        // remove current wiki_status
+        unset($config['wiki_status']);
+
+        return $this->configurationService->getContentToWrite($config);
+    }
+
+    private function setDefaultValuesRecursive(array $defaultValues, $values)
+    {
+        foreach ($defaultValues as $key => $value) {
+            if (is_scalar($value)) {
+                if (isset($values[$key])) {
+                    $values[$key] = $value;
+                }
+            } elseif (is_array($value)) {
+                if (isset($values[$key])) {
+                    $values[$key] = $this->setDefaultValuesRecursive($value, $values[$key]);
+                }
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * recursive method.
+     *
+     * @return int $bytes
+     */
+    private function folderSize(string $folderPath): int
+    {
+        $contents = array_filter(scandir($folderPath), function ($path) {
+            return !in_array($path, ['.', '..']);
+        });
+        $bytes = 0;
+        foreach ($contents as $name) {
+            if (is_file("{$folderPath}/{$name}")) {
+                $bytes += filesize("{$folderPath}/{$name}");
+            } elseif (is_dir("{$folderPath}/{$name}")) {
+                $bytes += $this->folderSize("{$folderPath}/{$name}");
+            }
+        }
+
+        return $bytes;
+    }
+
+    /**
+     * remove oldest files to keep only 10 files.
+     */
+    private function cleanOldestFiles()
+    {
+        $archivesToDelete = $this->archivesToDelete();
+        if (!empty($archivesToDelete)) {
+            $this->deleteArchives($archivesToDelete);
+        }
+    }
+
+    private function getMaxNbFiles(): int
+    {
+        $archiveParams = $this->getArchiveParams();
+
+        return (empty($archiveParams['max_nb_files'])
+            || !is_scalar($archiveParams['max_nb_files'])
+            || intval($archiveParams['max_nb_files']) < 3)
+            ? 10
+            : intval($archiveParams['max_nb_files']);
+    }
+
     private function getIndexesMoreThanxdays(array $archives, int $days): array
     {
         if ($days < 1) {
             return [];
         }
         $indexes = [];
-        $nowMinusXDays = (new DateTime())->sub(new DateInterval("P{$days}D"));
+        $nowMinusXDays = (new \DateTime())->sub(new \DateInterval("P{$days}D"));
         foreach ($archives as $key => $archive) {
             // check the the last file is aged more than x days
-            $fileDateTime = (new DateTime())
+            $fileDateTime = (new \DateTime())
                 ->setDate($archive['year'], $archive['month'], $archive['day'])
-                ->setTime($archive['hours'], $archive['minutes'], $archive['seconds'], 0);
+                ->setTime($archive['hours'], $archive['minutes'], $archive['seconds'], 0)
+            ;
             if (
-                $fileDateTime->diff($nowMinusXDays)->invert == 0 // current file date is before - x days
+                0 == $fileDateTime->diff($nowMinusXDays)->invert // current file date is before - x days
             ) {
                 $indexes[] = $key;
             }
@@ -1334,15 +1339,15 @@ class ArchiveService
         if (empty($privateFolder)) {
             $privateFolder = $this->getPrivateFolder();
         }
-        if (!file_exists("$privateFolder/info.json")) {
-            if (@file_put_contents("$privateFolder/info.json", '{}') === false) {
-                throw new Exception('Cannot write to archive info file. Please check file system access rights');
+        if (!file_exists("{$privateFolder}/info.json")) {
+            if (false === @file_put_contents("{$privateFolder}/info.json", '{}')) {
+                throw new \Exception('Cannot write to archive info file. Please check file system access rights');
             }
         }
-        $fileContent = @file_get_contents("$privateFolder/info.json");
+        $fileContent = @file_get_contents("{$privateFolder}/info.json");
 
-        if ($fileContent === false) {
-            throw new Exception('Cannot read archive info file. Please check file system access rights');
+        if (false === $fileContent) {
+            throw new \Exception('Cannot read archive info file. Please check file system access rights');
         }
 
         $content = json_decode($fileContent, true);
@@ -1361,15 +1366,15 @@ class ArchiveService
             $privateFolder = $this->getPrivateFolder();
         }
 
-        if (@file_put_contents("$privateFolder/info.json", json_encode($content)) === false) {
-            throw new Exception('Cannot set archive info to file. Please check file system access rights');
+        if (false === @file_put_contents("{$privateFolder}/info.json", json_encode($content))) {
+            throw new \Exception('Cannot set archive info to file. Please check file system access rights');
         }
     }
 
     /**
      * get a unique id for the current PID with input and output files created.
      *
-     * @return array|null ['uid' => string, 'input' => string, 'output' => string]
+     * @return null|array ['uid' => string, 'input' => string, 'output' => string]
      */
     private function getUID(string $privateFolder = ''): ?array
     {
@@ -1383,13 +1388,13 @@ class ArchiveService
         } while (in_array($uid, $usedIDS));
 
         // create files
-        $input = "$privateFolder/input-$uid.log";
-        $output = "$privateFolder/output-$uid.log";
-        if (@file_put_contents($input, '') === false) {
-            throw new Exception('Cannot write to archive input file. Please check file system access rights');
+        $input = "{$privateFolder}/input-{$uid}.log";
+        $output = "{$privateFolder}/output-{$uid}.log";
+        if (false === @file_put_contents($input, '')) {
+            throw new \Exception('Cannot write to archive input file. Please check file system access rights');
         }
-        if (@file_put_contents($output, '') === false) {
-            throw new Exception('Cannot write to archive output file. Please check file system access rights');
+        if (false === @file_put_contents($output, '')) {
+            throw new \Exception('Cannot write to archive output file. Please check file system access rights');
         }
 
         $info[$uid] = [
@@ -1447,15 +1452,15 @@ class ArchiveService
         }
         $output = @file_get_contents($info['output']);
 
-        if ($output === false) {
-            throw new Exception('Cannot read archive output file. Please check file system access rights');
+        if (false === $output) {
+            throw new \Exception('Cannot read archive output file. Please check file system access rights');
         }
 
         $running = !empty(trim($output));
         $finished = !$running
             ? false
-            : (preg_match("/(END|STOP)\s*$/", $output) ? true : false);
-        $stopped = preg_match("/(STOP)\s*$/", $output) ? true : false;
+            : (preg_match('/(END|STOP)\\s*$/', $output) ? true : false);
+        $stopped = preg_match('/(STOP)\\s*$/', $output) ? true : false;
         if ($finished) {
             $running = false;
         }
@@ -1470,7 +1475,7 @@ class ArchiveService
      */
     private function generateListRootFolders(string $type, array $fromParams): array
     {
-        $list = ($type == 'white') ? self::FOLDERS_TO_INCLUDE : self::FOLDERS_TO_EXCLUDE;
+        $list = ('white' == $type) ? self::FOLDERS_TO_INCLUDE : self::FOLDERS_TO_EXCLUDE;
         foreach ($this->sanitizeFileList($fromParams) as $folderName) {
             if (!in_array($folderName, $list)) {
                 $list[] = $folderName;
@@ -1478,10 +1483,10 @@ class ArchiveService
         }
         // merge `foldersToInclude` or `foldersToExclude` from wakka.config.php
         $archiveParams = $this->getArchiveParams();
-        $key = ($type == 'white') ? self::KEY_FOR_FOLDERS_TO_INCLUDE : self::KEY_FOR_FOLDERS_TO_EXCLUDE;
+        $key = ('white' == $type) ? self::KEY_FOR_FOLDERS_TO_INCLUDE : self::KEY_FOR_FOLDERS_TO_EXCLUDE;
         if (
-            !empty($archiveParams[$key]) &&
-            is_array($archiveParams[$key])
+            !empty($archiveParams[$key])
+            && is_array($archiveParams[$key])
         ) {
             foreach ($this->sanitizeFileList($archiveParams[$key]) as $path) {
                 if (!in_array($path, $list)) {

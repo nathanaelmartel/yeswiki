@@ -6,11 +6,9 @@ abstract class PackageExt extends Package
 {
     public const INFOS_FILENAME = 'infos.json';
 
-    protected $infos = null;
-
     public $deleteLink;
 
-    abstract protected function localPath();
+    protected $infos;
 
     public function __construct($release, $address, $desc, $doc, $minimalPhpVersion = null)
     {
@@ -18,7 +16,7 @@ abstract class PackageExt extends Package
         $this->installed = $this->installed();
         $this->localPath = $this->localPath();
         $this->updateAvailable = $this->updateAvailable();
-        $this->deleteLink = '&delete=' . $this->name;
+        $this->deleteLink = '&delete='.$this->name;
     }
 
     public function upgrade()
@@ -41,13 +39,13 @@ abstract class PackageExt extends Package
         $this->deletePackage();
         mkdir($desPath);
 
-        if ($this->extractionPath === null) {
+        if (null === $this->extractionPath) {
             throw new \Exception(_t('AU_PACKAGE_NOT_UNZIPPED'), 1);
         }
 
         // get the first subfolder extracted from the zip (it contains everything)
-        $dirs = array_filter(glob($this->extractionPath . '/*'), 'is_dir');
-        $extractionPath = $dirs[0] . '/';
+        $dirs = array_filter(glob($this->extractionPath.'/*'), 'is_dir');
+        $extractionPath = $dirs[0].'/';
 
         $this->copy(
             $extractionPath,
@@ -61,10 +59,11 @@ abstract class PackageExt extends Package
     {
         $infos = [
             'name' => $this->name,
-            'release' => (string)$this->release,
+            'release' => (string) $this->release,
         ];
         $json = json_encode($infos);
         file_put_contents($this->infosFilePath(), $json);
+
         // TODO Vérifier que l'action a bien été éxécutée.
         return true;
     }
@@ -76,19 +75,21 @@ abstract class PackageExt extends Package
         if (is_dir($desPath)) {
             $vDeleteStatus = $this->delete($desPath);
 
-            if ($vDeleteStatus === true) {
+            if (true === $vDeleteStatus) {
                 return true;
-            } else {
-                return $vDeleteStatus;
             }
+
+            return $vDeleteStatus;
         }
 
         return true;
     }
 
+    abstract protected function localPath();
+
     protected function getInfos()
     {
-        if ($this->infos !== null) {
+        if (null !== $this->infos) {
             return $this->infos;
         }
 
@@ -124,6 +125,6 @@ abstract class PackageExt extends Package
 
     private function infosFilePath()
     {
-        return $this->localPath() . $this::INFOS_FILENAME;
+        return $this->localPath().$this::INFOS_FILENAME;
     }
 }

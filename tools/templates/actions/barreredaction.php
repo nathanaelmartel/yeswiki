@@ -7,7 +7,7 @@ use YesWiki\Core\Service\FavoritesManager;
 use YesWiki\Security\Controller\SecurityController;
 
 $user = $this->services->get(AuthController::class)->getLoggedUser();
-if ((!empty($user) || $this->HasAccess('write')) && $this->method != 'revisions') {
+if ((!empty($user) || $this->HasAccess('write')) && 'revisions' != $this->method) {
     // on récupére la page et ses valeurs associées
     $page = $this->GetParameter('page');
     if (empty($page)) {
@@ -28,7 +28,7 @@ if ((!empty($user) || $this->HasAccess('write')) && $this->method != 'revisions'
     }
 
     // on peut ajouter des classes, la classe par défaut est .footer
-    $options['class'] = ($this->GetParameter('class') ? 'footer ' . $this->GetParameter('class') : 'footer');
+    $options['class'] = ($this->GetParameter('class') ? 'footer '.$this->GetParameter('class') : 'footer');
 
     if ($this->HasAccess('write')) {
         // on ajoute le lien d'édition si l'action est autorisée
@@ -48,16 +48,16 @@ if ((!empty($user) || $this->HasAccess('write')) && $this->method != 'revisions'
             $owner = $this->GetPageOwner($page);
             // message
             if ($this->UserIsOwner($page)) {
-                $options['owner'] = _t('TEMPLATE_OWNER') . ' : ' . _t('TEMPLATE_YOU');
+                $options['owner'] = _t('TEMPLATE_OWNER').' : '._t('TEMPLATE_YOU');
             } elseif ($owner) {
-                $options['owner'] = _t('TEMPLATE_OWNER') . ' : ' . $owner;
+                $options['owner'] = _t('TEMPLATE_OWNER').' : '.$owner;
             } else {
                 $options['owner'] = _t('TEMPLATE_NO_OWNER');
             }
 
             // if current user is owner or admin
             if ($this->UserIsOwner($page) || $this->UserIsAdmin()) {
-                $options['owner'] .= ' - ' . _t('TEMPLATE_PERMISSIONS');
+                $options['owner'] .= ' - '._t('TEMPLATE_PERMISSIONS');
                 if (!$this->services->get(SecurityController::class)->isWikiHibernated()) {
                     $options['linkacls'] = $this->href('acls', $page);
                     $options['linkdeletepage'] = $this->href('deletepage', $page);
@@ -66,14 +66,14 @@ if ((!empty($user) || $this->HasAccess('write')) && $this->method != 'revisions'
                 $hasAccessComment = $aclsService->hasAccess('comment');
                 $options['wikigroups'] = $this->GetGroupsList();
                 if ($this->services->get(ParameterBagInterface::class)->get('comments_activated')) {
-                    if ($hasAccessComment && $hasAccessComment !== 'comments-closed') {
+                    if ($hasAccessComment && 'comments-closed' !== $hasAccessComment) {
                         $options['linkclosecomments'] = $this->href('claim', $page, ['action' => 'closecomments'], false);
                     } else {
                         $options['linkopencomments'] = $this->href('claim', $page, ['action' => 'opencomments'], false);
                     }
                 }
             } elseif (!$owner && $this->GetUser()) {
-                $options['owner'] .= ' - ' . _t('TEMPLATE_CLAIM');
+                $options['owner'] .= ' - '._t('TEMPLATE_CLAIM');
                 if (!$this->services->get(SecurityController::class)->isWikiHibernated()) {
                     $options['linkacls'] = $this->href('claim', $page);
                 }
@@ -91,6 +91,6 @@ if ((!empty($user) || $this->HasAccess('write')) && $this->method != 'revisions'
         $options['isUserFavorite'] = $favoritesManager->isUserFavorite($user['name'], $page);
     }
 
-    echo $this->render("@templates/$template", $options);
-    echo ' <!-- /.footer -->' . "\n";
+    echo $this->render("@templates/{$template}", $options);
+    echo ' <!-- /.footer -->'."\n";
 }

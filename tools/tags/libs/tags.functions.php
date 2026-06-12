@@ -1,4 +1,5 @@
 <?php
+
 /** afficher_image_attach() - genere une image en cache (gestion taille et vignettes) et l'affiche comme il faut.
  * @param   string  nom du fichier image
  * @param   string  label pour l'image
@@ -7,6 +8,12 @@
  * @param   int    hauteur en pixel de la vignette
  * @param   int    largeur en pixel de l'image redimensionnee
  * @param   int    hauteur en pixel de l'image redimensionnee
+ * @param mixed $idfiche
+ * @param mixed $nom_image
+ * @param mixed $label
+ * @param mixed $class
+ * @param mixed $largeur_vignette
+ * @param mixed $hauteur_vignette
  *
  * @return html affichage a l'ecran
  */
@@ -33,7 +40,7 @@ function afficher_image_attach($idfiche, $nom_image, $label, $class, $largeur_vi
     $output = preg_replace('/width=\".*\".*height=\".*\"/U', '', $output);
     preg_match_all('/(\<img.*\/\>)/U', $output, $matches);
 
-    return isset($matches[0][0]) ? $matches[0][0] : false;
+    return $matches[0][0] ?? false;
 }
 
 function sanitizeEntity($string)
@@ -48,7 +55,7 @@ function tokenTruncate($string, $your_desired_width)
 
     $length = 0;
     $last_part = 0;
-    for (; $last_part < $parts_count; $last_part++) {
+    for (; $last_part < $parts_count; ++$last_part) {
         $length += strlen($parts[$last_part]);
         if ($length > $your_desired_width) {
             break;
@@ -60,48 +67,49 @@ function tokenTruncate($string, $your_desired_width)
 
 function get_filtertags_parameters_recursive($nb = 1, $tab = [])
 {
-    $filter = $GLOBALS['wiki']->GetParameter('filter' . $nb);
+    $filter = $GLOBALS['wiki']->GetParameter('filter'.$nb);
 
-    if (empty($filter) && $nb == 1) {
-        return '<div class="alert alert-danger"><strong>' . _t('TAGS_ACTION_FILTERTAGS') . '</strong> : ' . _t('TAGS_NO_FILTERS') . '</div>' . "\n";
-    } elseif (empty($filter)) {
-        return $tab;
-    } else {
-        if (!isset($tab['tags'])) {
-            $tab['tags'] = '';
-        } else {
-            $tab['tags'] .= ',';
-        }
-        $explodelabel = explode(':', $filter);
-
-        // on decoupe le choix pour recuperer le titre
-        if (count($explodelabel) > 2) {
-            return '<div class="alert alert-danger"><strong>' . _t('TAGS_ACTION_FILTERTAGS') . '</strong> : ' . _t('TAGS_ONLY_ONE_DOUBLEPOINT') . '</div>' . "\n";
-        } elseif (count($explodelabel) == 2) {
-            $tab[$nb]['title'] = '<strong>' . $explodelabel[0] . ' : </strong>' . "\n";
-            $tab[$nb]['arraytags'] = explode(',', $explodelabel[1]);
-        } else {
-            $tab[$nb]['title'] = '';
-            $tab[$nb]['arraytags'] = explode(',', $explodelabel[0]);
-        }
-        $toggle = $GLOBALS['wiki']->GetParameter('select' . $nb);
-        if (!empty($toggle) && $toggle == 'checkbox') {
-            $tab[$nb]['toggle'] = $toggle;
-        } else {
-            $tab[$nb]['toggle'] = 'radio';
-        }
-        $class = $GLOBALS['wiki']->GetParameter('class' . $nb);
-        if (!empty($class)) {
-            $tab[$nb]['class'] = $class;
-        } else {
-            $tab[$nb]['class'] = 'filter-inline';
-        }
-        $tab['tags'] .= '"' . implode('","', $tab[$nb]['arraytags']) . '"';
-        $nb++;
-        $tab = get_filtertags_parameters_recursive($nb, $tab);
-
+    if (empty($filter) && 1 == $nb) {
+        return '<div class="alert alert-danger"><strong>'._t('TAGS_ACTION_FILTERTAGS').'</strong> : '._t('TAGS_NO_FILTERS').'</div>'."\n";
+    }
+    if (empty($filter)) {
         return $tab;
     }
+    if (!isset($tab['tags'])) {
+        $tab['tags'] = '';
+    } else {
+        $tab['tags'] .= ',';
+    }
+    $explodelabel = explode(':', $filter);
+
+    // on decoupe le choix pour recuperer le titre
+    if (count($explodelabel) > 2) {
+        return '<div class="alert alert-danger"><strong>'._t('TAGS_ACTION_FILTERTAGS').'</strong> : '._t('TAGS_ONLY_ONE_DOUBLEPOINT').'</div>'."\n";
+    }
+    if (2 == count($explodelabel)) {
+        $tab[$nb]['title'] = '<strong>'.$explodelabel[0].' : </strong>'."\n";
+        $tab[$nb]['arraytags'] = explode(',', $explodelabel[1]);
+    } else {
+        $tab[$nb]['title'] = '';
+        $tab[$nb]['arraytags'] = explode(',', $explodelabel[0]);
+    }
+    $toggle = $GLOBALS['wiki']->GetParameter('select'.$nb);
+    if (!empty($toggle) && 'checkbox' == $toggle) {
+        $tab[$nb]['toggle'] = $toggle;
+    } else {
+        $tab[$nb]['toggle'] = 'radio';
+    }
+    $class = $GLOBALS['wiki']->GetParameter('class'.$nb);
+    if (!empty($class)) {
+        $tab[$nb]['class'] = $class;
+    } else {
+        $tab[$nb]['class'] = 'filter-inline';
+    }
+    $tab['tags'] .= '"'.implode('","', $tab[$nb]['arraytags']).'"';
+    ++$nb;
+    $tab = get_filtertags_parameters_recursive($nb, $tab);
+
+    return $tab;
 }
 
 function array_non_empty($array)
@@ -138,16 +146,16 @@ function get_title_from_body($page)
 {
     // on recupere les bf_titre ou les titres de niveau 1 et de niveau 2, on met la PageWiki sinon
     preg_match_all('/"bf_titre":"(.*)"/U', $page['body'], $titles);
-    if (is_array($titles[1]) && isset($titles[1][0]) && $titles[1][0] != '') {
-        $title = _convert(preg_replace_callback('/\\\\u([a-f0-9]{4})/', 'utf8_special_decode', $titles[1][0]), 'UTF-8');
-    //preg_replace("/\\\\u([a-f0-9]{4})/e", "iconv('UCS-4LE','UTF-8',pack('V', hexdec('U$1')))", $titles[1][0]));
+    if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
+        $title = _convert(preg_replace_callback('/\\\u([a-f0-9]{4})/', 'utf8_special_decode', $titles[1][0]), 'UTF-8');
+    // preg_replace("/\\\\u([a-f0-9]{4})/e", "iconv('UCS-4LE','UTF-8',pack('V', hexdec('U$1')))", $titles[1][0]));
     } else {
-        preg_match_all("/\={6}(.*)\={6}/U", $page['body'], $titles);
-        if (is_array($titles[1]) && isset($titles[1][0]) && $titles[1][0] != '') {
+        preg_match_all('/\\={6}(.*)\\={6}/U', $page['body'], $titles);
+        if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
             $title = $GLOBALS['wiki']->Format(_convert(trim($titles[1][0]), 'ISO-8859-15'));
         } else {
             preg_match_all('/={5}(.*)={5}/U', $page['body'], $titles);
-            if (is_array($titles[1]) && isset($titles[1][0]) && $titles[1][0] != '') {
+            if (is_array($titles[1]) && isset($titles[1][0]) && '' != $titles[1][0]) {
                 $title = $GLOBALS['wiki']->Format(_convert(trim($titles[1][0]), 'ISO-8859-15'));
             } else {
                 $title = $page['tag'];
@@ -166,31 +174,31 @@ function encodingFromUTF8($matches)
 function get_image_from_body($page)
 {
     // on cherche les actions attach avec image, puis les images bazar
-    preg_match_all("/\{\{attach.*file=\".*\.(?i)(jpg|png|gif|bmp).*\}\}/U", $page['body'], $images);
-    if (is_array($images[0]) && isset($images[0][0]) && $images[0][0] != '') {
-        preg_match_all("/.*file=\"(.*\.(?i)(jpg|png|gif|bmp))\".*desc=\"(.*)\".*\}\}/U", $images[0][0], $attachimg);
+    preg_match_all('/\\{\\{attach.*file=".*\\.(?i)(jpg|png|gif|bmp).*\\}\\}/U', $page['body'], $images);
+    if (is_array($images[0]) && isset($images[0][0]) && '' != $images[0][0]) {
+        preg_match_all('/.*file="(.*\\.(?i)(jpg|png|gif|bmp))".*desc="(.*)".*\\}\\}/U', $images[0][0], $attachimg);
         $image = afficher_image_attach($page['tag'], $attachimg[1][0], $attachimg[3][0], 'filtered-image', 300, 225);
     } else {
         preg_match_all('/"imagebf_image":"(.*)"/U', $page['body'], $image);
-        if (is_array($image[1]) && isset($image[1][0]) && $image[1][0] != '') {
+        if (is_array($image[1]) && isset($image[1][0]) && '' != $image[1][0]) {
             $imagefile = mb_convert_encoding(
                 preg_replace_callback(
-                    '/\\\\u([a-f0-9]{4})/',
+                    '/\\\u([a-f0-9]{4})/',
                     'encodingFromUTF8',
                     $image[1][0]
                 ),
                 'ISO-8859-1',
                 'UTF-8'
             );
-            $image = afficher_image('bf_image', 'files/' . $imagefile, 'cache/' . $imagefile, 'filtered-image img-responsive', '', '', 300, 225);
+            $image = afficher_image('bf_image', 'files/'.$imagefile, 'cache/'.$imagefile, 'filtered-image img-responsive', '', '', 300, 225);
         } else {
-            preg_match_all("/\[\[(http.*\.(?i)(jpg|png|gif|bmp)) .*\]\]/U", $page['body'], $image);
-            if (is_array($image[1]) && isset($image[1][0]) && $image[1][0] != '') {
-                $image = $GLOBALS['wiki']->Format('""<img loading="lazy" alt=\'\' class="img-responsive" src="' . trim(str_replace('\\', '', $image[1][0])) . '" />""');
+            preg_match_all('/\\[\\[(http.*\\.(?i)(jpg|png|gif|bmp)) .*\\]\\]/U', $page['body'], $image);
+            if (is_array($image[1]) && isset($image[1][0]) && '' != $image[1][0]) {
+                $image = $GLOBALS['wiki']->Format('""<img loading="lazy" alt=\'\' class="img-responsive" src="'.trim(str_replace('\\', '', $image[1][0])).'" />""');
             } else {
-                preg_match_all("/\<img.*src=\"(.*)\"/U", $page['body'], $image);
-                if (is_array($image[1]) && isset($image[1][0]) && $image[1][0] != '') {
-                    $image = $GLOBALS['wiki']->Format('""<img loading="lazy" alt=\'\' class="img-responsive" src="' . trim($image[1][0]) . '" />""');
+                preg_match_all('/\\<img.*src="(.*)"/U', $page['body'], $image);
+                if (is_array($image[1]) && isset($image[1][0]) && '' != $image[1][0]) {
+                    $image = $GLOBALS['wiki']->Format('""<img loading="lazy" alt=\'\' class="img-responsive" src="'.trim($image[1][0]).'" />""');
                 } else {
                     $image = '';
                 }
@@ -208,11 +216,13 @@ function get_image_from_body($page)
  *   @param  int  nombre d'iteration pour la fonction recursive (1 par defaut)
  *
  *   return  string  chaine de caracteres, en NomWiki unique
+ * @param mixed $nom
+ * @param mixed $occurence
  */
 function generatePageName($nom, $occurence = 1)
 {
     // si la fonction est appelee pour la premiere fois, on nettoie le nom passe en parametre
-    if ($occurence == 1) {
+    if (1 == $occurence) {
         // les noms wiki ne doivent pas depasser les 50 caracteres, on coupe a 48, histoire de pouvoir ajouter un chiffre derriere si nom wiki deja existant
         // plus traitement des accents
         // plus on met des majuscules au debut de chaque mot et on fait sauter les espaces
@@ -231,31 +241,28 @@ function generatePageName($nom, $occurence = 1)
         $var = preg_replace('/[^A-Z]/', '', $nom);
         if (strlen($var) < 2) {
             $last = ucfirst(substr($nom, strlen($nom) - 1));
-            $nom = substr($nom, 0, -1) . $last;
+            $nom = substr($nom, 0, -1).$last;
         }
     } elseif ($occurence > 2) {
         // si on en est a plus de 2 occurences, on supprime le chiffre precedent et on ajoute la nouvelle occurence
         $nb = -1 * strlen(strval($occurence - 1));
-        $nom = substr($nom, 0, $nb) . $occurence;
+        $nom = substr($nom, 0, $nb).$occurence;
     } else {
         // cas ou l'occurence est la deuxieme : on reprend le NomWiki en y ajoutant le chiffre 2
-        $nom = $nom . $occurence;
+        $nom = $nom.$occurence;
     }
 
     // on verifie que la page n'existe pas deja : si c'est le cas on le retourne
     if (!is_array($GLOBALS['wiki']->LoadPage($nom))) {
         return $nom;
-    } else {
-        // sinon, on rappele recursivement la fonction jusqu'a ce que le nom aille bien
-        $occurence++;
-
-        return genere_nom_wiki($nom, $occurence);
     }
+    // sinon, on rappele recursivement la fonction jusqu'a ce que le nom aille bien
+    ++$occurence;
+
+    return genere_nom_wiki($nom, $occurence);
 }
 
-/*
- * filtering an array
- */
+// filtering an array
 function filter_by_value($array, $index, $value)
 {
     if (is_array($array) && count($array) > 0) {

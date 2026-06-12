@@ -27,30 +27,6 @@ class RadioEntryField extends RadioField
         }
     }
 
-    protected function renderStatic($entry)
-    {
-        $value = $this->getValue($entry);
-        if (!$value) {
-            return '';
-        }
-
-        if ($this->isDistantJson) {
-            if (!empty($this->optionsUrls[$value])) {
-                $entryUrl = $this->optionsUrls[$value];
-            } else {
-                $entryUrl = $this->baseUrl . $value;
-            }
-        } else {
-            $entryUrl = $this->services->get(Wiki::class)->Href('', $value);
-        }
-
-        return $this->render('@bazar/fields/select_entry.twig', [
-            'value' => $value,
-            'label' => $this->getOptions()[$value],
-            'entryUrl' => $entryUrl,
-        ]);
-    }
-
     public function getOptions()
     {
         return $this->getEntriesOptions();
@@ -62,5 +38,29 @@ class RadioEntryField extends RadioField
     public function isEnumEntryField(): bool
     {
         return true;
+    }
+
+    protected function renderStatic($entry)
+    {
+        $value = $this->getValue($entry);
+        if (!$value) {
+            return '';
+        }
+
+        if ($this->isDistantJson) {
+            if (!empty($this->optionsUrls[$value])) {
+                $entryUrl = $this->optionsUrls[$value];
+            } else {
+                $entryUrl = $this->baseUrl.$value;
+            }
+        } else {
+            $entryUrl = $this->services->get(Wiki::class)->Href('', $value);
+        }
+
+        return $this->render('@bazar/fields/select_entry.twig', [
+            'value' => $value,
+            'label' => $this->getOptions()[$value],
+            'entryUrl' => $entryUrl,
+        ]);
     }
 }

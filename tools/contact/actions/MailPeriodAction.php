@@ -34,7 +34,7 @@ class MailPeriodAction extends YesWikiAction
                 $group = $periods[$period]['group'];
                 $this->unsubscribUserFromAllGroups($userName, $periods);
                 $this->subscribeUserToGroup($userName, $group);
-                $messages['success'] = _t('CONTACT_SUCCESS_SUBSCRIBE') . $periods[$period]['label'];
+                $messages['success'] = _t('CONTACT_SUCCESS_SUBSCRIBE').$periods[$period]['label'];
             } elseif ($request->query->has('unsubscribe') || $request->request->has('unsubscribe')) {
                 $this->unsubscribUserFromAllGroups($userName, $periods);
                 $messages['info'] = _t('CONTACT_SUCCESS_UNSUBSCRIBE');
@@ -64,12 +64,12 @@ class MailPeriodAction extends YesWikiAction
 
     private function groupName($period): string
     {
-        return "Mail{$this->wiki->getPageTag()}" . ucfirst($period);
+        return "Mail{$this->wiki->getPageTag()}".ucfirst($period);
     }
 
     private function subscribeUserToGroup($userName, $group): void
     {
-        $this->wiki->SetGroupACL($group, $this->wiki->GetGroupACL($group) . "\n" . $userName);
+        $this->wiki->SetGroupACL($group, $this->wiki->GetGroupACL($group)."\n".$userName);
     }
 
     private function unsubscribeUserFromGroup($userName, $group): void

@@ -46,7 +46,7 @@ class TestConsoleServiceCommand extends Command
         $text = $input->getOption('text');
         $wait = abs(intval($input->getOption('wait')));
         // force file to be in cache folder
-        if (empty($file) || empty($text) || is_dir("cache/$file") || empty($wait)) {
+        if (empty($file) || empty($text) || is_dir("cache/{$file}") || empty($wait)) {
             $output->writeln([
                 '',
                 'ERROR : required arguments are missing (file or text or wait).',
@@ -59,14 +59,15 @@ class TestConsoleServiceCommand extends Command
         $childtext = $input->getOption('childtext');
         if (empty($childtext)) {
             sleep($wait);
-            $this->writeToFile("cache/$file", $text);
-            exit();
-        } else {
-            $consoleService = $this->wiki->services->get(ConsoleService::class);
-            $consoleService->startConsoleAsync('core:testconsoleservice', ['-f', $file, '-t', $childtext, '-w', $wait]);
-            $this->writeToFile("cache/$file", $text);
-            exit();
+            $this->writeToFile("cache/{$file}", $text);
+
+            exit;
         }
+        $consoleService = $this->wiki->services->get(ConsoleService::class);
+        $consoleService->startConsoleAsync('core:testconsoleservice', ['-f', $file, '-t', $childtext, '-w', $wait]);
+        $this->writeToFile("cache/{$file}", $text);
+
+        exit;
 
         return Command::SUCCESS;
     }

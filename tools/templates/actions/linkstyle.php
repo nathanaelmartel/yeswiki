@@ -14,43 +14,43 @@ echo $this->LinkCSSFile('styles/yeswiki-base.css');
 
 // presets activated and path ?
 $favoritePreset = $themeManager->getFavoritePreset();
-$presetsActivated = !empty(($themeManager->getTemplates())[$themeManager->getFavoriteTheme()]['presets']) && !empty($favoritePreset);
+$presetsActivated = !empty($themeManager->getTemplates()[$themeManager->getFavoriteTheme()]['presets']) && !empty($favoritePreset);
 if ($presetsActivated) {
     $custom_prefix = ThemeManager::CUSTOM_CSS_PRESETS_PREFIX;
     $presetIsCustom = (substr($favoritePreset, 0, strlen($custom_prefix)) == $custom_prefix);
     if (!$presetIsCustom) {
-        $presetFile = 'themes/' . $themeManager->getFavoriteTheme() . '/presets/' . $favoritePreset;
+        $presetFile = 'themes/'.$themeManager->getFavoriteTheme().'/presets/'.$favoritePreset;
     } else {
-        $presetFile = ThemeManager::CUSTOM_CSS_PRESETS_PATH . '/' . substr($favoritePreset, strlen($custom_prefix));
+        $presetFile = ThemeManager::CUSTOM_CSS_PRESETS_PATH.'/'.substr($favoritePreset, strlen($custom_prefix));
     }
 }
 
 // on regarde dans quel dossier se trouve le theme
-$styleFile = 'themes/' . $themeManager->getFavoriteTheme() . '/styles/' . $favoriteStyle;
-if (file_exists('custom/' . $styleFile)) {
-    $styleFile = 'custom/' . $styleFile;
+$styleFile = 'themes/'.$themeManager->getFavoriteTheme().'/styles/'.$favoriteStyle;
+if (file_exists('custom/'.$styleFile)) {
+    $styleFile = 'custom/'.$styleFile;
 }
-if ($presetsActivated && !$presetIsCustom && file_exists('custom/' . $presetFile)) {
-    $presetFile = 'custom/' . $presetFile;
+if ($presetsActivated && !$presetIsCustom && file_exists('custom/'.$presetFile)) {
+    $presetFile = 'custom/'.$presetFile;
 }
 
 // on ajoute le style css selectionne du theme
-if ($favoriteStyle != 'none') {
-    if (substr($favoriteStyle, -4, 4) == '.css') {
+if ('none' != $favoriteStyle) {
+    if ('.css' == substr($favoriteStyle, -4, 4)) {
         echo $this->LinkCSSFile($styleFile, '', '', 'id="mainstyle"');
     }
 }
 
 // on ajoute le preset css selectionne du theme
-if (($favoriteStyle != 'none')
+if (('none' != $favoriteStyle)
     && $presetsActivated
-    && substr($favoritePreset, -4, 4) == '.css'
+    && '.css' == substr($favoritePreset, -4, 4)
 ) {
     echo $this->LinkCSSFile($presetFile);
 }
 
 // on ajoute les icones de fontawesome
-if (empty($this->config['fontawesome']) || $this->config['fontawesome'] != '0') {
+if (empty($this->config['fontawesome']) || '0' != $this->config['fontawesome']) {
     echo $this->LinkCSSFile('styles/vendor/fontawesome/css/all.min.css');
 }
 
@@ -59,9 +59,9 @@ $othercss = $this->GetParameter('othercss');
 if (!empty($othercss)) {
     $tabcss = explode(',', $othercss);
     foreach ($tabcss as $cssfile) {
-        $style = 'themes/' . $themeManager->getFavoriteTheme() . '/styles/' . $cssfile;
-        if (file_exists('custom/' . $style)) {
-            $style = 'custom/' . $style;
+        $style = 'themes/'.$themeManager->getFavoriteTheme().'/styles/'.$cssfile;
+        if (file_exists('custom/'.$style)) {
+            $style = 'custom/'.$style;
         }
         $this->AddCSSFile($style);
     }
@@ -71,8 +71,8 @@ if (!empty($othercss)) {
 $customCssPath = 'custom/styles';
 $customCssDir = is_dir($customCssPath) ? opendir($customCssPath) : false;
 while ($customCssDir && ($file = readdir($customCssDir)) !== false) {
-    if (substr($file, -4, 4) == '.css') {
-        $this->AddCSSFile($customCssPath . '/' . $file);
+    if ('.css' == substr($file, -4, 4)) {
+        $this->AddCSSFile($customCssPath.'/'.$file);
     }
 }
 
@@ -80,27 +80,27 @@ $favoriteBackgroundImage = $themeManager->getFavoriteBackgroundImage();
 // on ajoute aux css le background personnalise
 if (!empty($favoriteBackgroundImage)) {
     $imgextension = strtolower(substr($favoriteBackgroundImage, -4, 4));
-    if ($imgextension == '.jpg') {
+    if ('.jpg' == $imgextension) {
         $this->AddCSS(<<<CSS
-            body {
-                background-image: url("files/backgrounds/$favoriteBackgroundImage");
-                background-repeat:no-repeat;
-                height:100%;
-                -webkit-background-size:cover;
-                -moz-background-size:cover;
-                -o-background-size:cover;
-                background-size:cover;
-                background-attachment:fixed;
-                background-clip:border-box;
-                background-origin:padding-box;
-                background-position:center center;
-            }
-        CSS);
-    } elseif ($imgextension == '.png') {
+                body {
+                    background-image: url("files/backgrounds/{$favoriteBackgroundImage}");
+                    background-repeat:no-repeat;
+                    height:100%;
+                    -webkit-background-size:cover;
+                    -moz-background-size:cover;
+                    -o-background-size:cover;
+                    background-size:cover;
+                    background-attachment:fixed;
+                    background-clip:border-box;
+                    background-origin:padding-box;
+                    background-position:center center;
+                }
+            CSS);
+    } elseif ('.png' == $imgextension) {
         $this->AddCSS(<<<CSS
-            body {
-                background-image: url("files/backgrounds/$favoriteBackgroundImage");
-            }
-        CSS);
+                body {
+                    background-image: url("files/backgrounds/{$favoriteBackgroundImage}");
+                }
+            CSS);
     }
 }

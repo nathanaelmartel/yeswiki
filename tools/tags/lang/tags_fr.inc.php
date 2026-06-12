@@ -22,7 +22,7 @@ return [
     'TAGS_SEE_ALL_PAGES_WITH_THIS_TAGS' => 'Voir toutes les pages contenant ce mot clé',
     'TAGS_ALERT_PAGE_ALREADY_MODIFIED' => 'ALERTE : Cette page a été modifiée par quelqu\'un d\'autre pendant que vous l\'éditiez.<br />Veuillez copier vos changements et rééditer cette page.',
     'TAGS_ANSWER_THIS_COMMENT' => 'Répondre à ce commentaire',
-    'TAGS_DATE_FORMAT' => "\l\e d.m.Y &\a\g\\r\av\e; H:i:s",
+    'TAGS_DATE_FORMAT' => "\\l\e d.m.Y &\\a\\g\\r\\av\e; H:i:s",
     'TAGS_WRITE_YOUR_COMMENT_HERE' => 'Ecrire votre commentaire ici...',
     'TAGS_ADD_YOUR_COMMENT' => 'Ajouter votre commentaire',
     'TAGS_ACTION_FILTERTAGS' => 'Action {{filtertags ...}}',

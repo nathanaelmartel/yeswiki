@@ -65,14 +65,14 @@ class ReactionsController extends YesWikiController
                     (array_key_exists($id, $defaultImages))
                     ? (
                         file_exists($defaultImages[$id])
-                        ? "$baseUrl/{$defaultImages[$id]}"
+                        ? "{$baseUrl}/{$defaultImages[$id]}"
                         : $defaultImages[$id]
                     )
                     : (
                         (array_key_exists($k, $defaultImages))
                         ? (
                             file_exists($defaultImages[$k])
-                            ? "$baseUrl/{$defaultImages[$k]}"
+                            ? "{$baseUrl}/{$defaultImages[$k]}"
                             : $defaultImages[$k]
                         )
                         : ''
@@ -82,23 +82,23 @@ class ReactionsController extends YesWikiController
                     basename($rawImages[$k]) !== $rawImages[$k]
                     ? '' // error
                     : (
-                        (preg_match('/\\.(gif|jpeg|png|jpg|svg|webp)$/i', $rawImages[$k]))
+                        (preg_match('/\.(gif|jpeg|png|jpg|svg|webp)$/i', $rawImages[$k]))
                         ? (
                             file_exists("custom/images/{$rawImages[$k]}")
-                            ? "$baseUrl/custom/images/{$rawImages[$k]}"
+                            ? "{$baseUrl}/custom/images/{$rawImages[$k]}"
                             : (
                                 file_exists("files/{$rawImages[$k]}")
-                                ? "$baseUrl/files/{$rawImages[$k]}"
+                                ? "{$baseUrl}/files/{$rawImages[$k]}"
                                 : (
                                     file_exists("styles/images/{$rawImages[$k]}")
-                                    ? "$baseUrl/styles/images/{$rawImages[$k]}"
+                                    ? "{$baseUrl}/styles/images/{$rawImages[$k]}"
                                     : '' // error
                                 )
                             )
                         )
                         : (
                             file_exists("styles/images/mikone-{$rawImages[$k]}.svg")
-                            ? "$baseUrl/styles/mikone-{$rawImages[$k]}.svg"
+                            ? "{$baseUrl}/styles/mikone-{$rawImages[$k]}.svg"
                             : $rawImages[$k]
                         )
                     )
@@ -129,9 +129,9 @@ class ReactionsController extends YesWikiController
         $reactions = [];
         $userReactions = [];
         $oldIdsUserReactions = [];
-        $uniqueIds = ["$reactionId|$pageTag"];
+        $uniqueIds = ["{$reactionId}|{$pageTag}"];
         if ($isDefaultReactionFied) {
-            $uniqueIds['oldId'] = "reactionField|$pageTag";
+            $uniqueIds['oldId'] = "reactionField|{$pageTag}";
         }
         foreach ($ids as $k => $id) {
             $reactions[$id] = [
@@ -149,7 +149,7 @@ class ReactionsController extends YesWikiController
                         $reactions[$reaction['id']]['nbReactions'] = $reactions[$reaction['id']]['nbReactions'] + 1;
                         if (!empty($userName) && $reaction['user'] === $userName && !in_array($reaction['id'], $userReactions)) {
                             $userReactions[] = $reaction['id'];
-                            if ($k === 'oldId') {
+                            if ('oldId' === $k) {
                                 $oldIdsUserReactions[] = $reaction['id'];
                             }
                         }

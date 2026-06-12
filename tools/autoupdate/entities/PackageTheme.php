@@ -10,8 +10,8 @@ class PackageTheme extends PackageExt
     {
         return
             dirname(dirname(dirname(__DIR__)))
-            . $this::THEME_PATH
-            . $this->name
-            . '/';
+            .$this::THEME_PATH
+            .$this->name
+            .'/';
     }
 }

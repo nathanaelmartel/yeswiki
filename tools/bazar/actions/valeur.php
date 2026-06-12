@@ -23,34 +23,34 @@ if (!empty($url)) {
     if (!empty($champ)) {
         // on harge dans une variable globale pour le cas ou l'action est appelée plusieurs fois
         if (!isset($GLOBALS['externalpage'][$url])) {
-            $GLOBALS['externalpage'][$url] = @file_get_contents($url . '/html');
+            $GLOBALS['externalpage'][$url] = @file_get_contents($url.'/html');
         }
-        if (!$GLOBALS['externalpage'][$url] === false) {
+        if (false === !$GLOBALS['externalpage'][$url]) {
             // le titre est un cas particulier
-            if ($champ == 'bf_titre') {
+            if ('bf_titre' == $champ) {
                 $regexp = '/<h1 class="BAZ_fiche_titre">(.*)<\/h1>/Uis';
-            } elseif ($champ == 'id_fiche') {
+            } elseif ('id_fiche' == $champ) {
                 // l'id est un cas particulier
                 $urlparsed = parse_url($url);
                 echo preg_replace('/(.*?)wiki=(.*?)/Ui', '$2', $urlparsed['query']);
 
                 return;
-            } elseif (!empty($image) && ($image == 'lien' || $image == '1')) {
+            } elseif (!empty($image) && ('lien' == $image || '1' == $image)) {
                 // cas des images
-                $regexp = '/<a data-id="' . $champ . '".*href="(.*)".*>\s*<img.*<\/a>/Uis';
+                $regexp = '/<a data-id="'.$champ.'".*href="(.*)".*>\s*<img.*<\/a>/Uis';
             } else {
-                $regexp = '/<div.*data-id="' . $champ . '".*>\s*<span class="BAZ_label.*">.*<\/span>\s*<span class="BAZ_texte">\s*(.*)\s*<\/span>\s*<\/div> <!-- \/.BAZ_rubrique -->/Uis';
-                //echo '<br><br>'.htmlspecialchars($regexp);
+                $regexp = '/<div.*data-id="'.$champ.'".*>\s*<span class="BAZ_label.*">.*<\/span>\s*<span class="BAZ_texte">\s*(.*)\s*<\/span>\s*<\/div> <!-- \/.BAZ_rubrique -->/Uis';
+                // echo '<br><br>'.htmlspecialchars($regexp);
             }
             preg_match_all($regexp, $GLOBALS['externalpage'][$url], $matches);
 
             if (isset($matches[1]) && count($matches[1]) > 0) {
-                if (!empty($texte) && $texte != 'lien') {
-                    echo preg_replace('/<a.*href="(.*)".*>.*<\/a>/Ui', '<a href="$1">' . trim($texte) . '</a>', trim(array_shift($matches[1])));
-                } elseif (!empty($texte) && $texte == 'lien') {
+                if (!empty($texte) && 'lien' != $texte) {
+                    echo preg_replace('/<a.*href="(.*)".*>.*<\/a>/Ui', '<a href="$1">'.trim($texte).'</a>', trim(array_shift($matches[1])));
+                } elseif (!empty($texte) && 'lien' == $texte) {
                     echo preg_replace('/<a.*href="(.*)".*>.*<\/a>/Ui', '$1', array_shift($matches[1]));
-                } elseif ($image == '1') {
-                    echo '<img loading="lazy" class="img-responsive" src="' . array_shift($matches[1]) . '" alt="image ' . $champ . '">';
+                } elseif ('1' == $image) {
+                    echo '<img loading="lazy" class="img-responsive" src="'.array_shift($matches[1]).'" alt="image '.$champ.'">';
                 } else {
                     echo trim(array_shift($matches[1]));
                 }
@@ -60,11 +60,11 @@ if (!empty($url)) {
                 }
             }
         } else {
-            echo '<div class="alert alert-danger alert-error"><strong>' . _t('BAZAR_ACTION_VALEUR') . '</strong> : ' . _t('BAZAR_URL_ERROR') . ' : ' . $url . '.</div>' . "\n";
+            echo '<div class="alert alert-danger alert-error"><strong>'._t('BAZAR_ACTION_VALEUR').'</strong> : '._t('BAZAR_URL_ERROR').' : '.$url.'.</div>'."\n";
         }
     } else {
-        echo '<div class="alert alert-danger alert-error"><strong>' . _t('BAZAR_ACTION_VALEUR') . '</strong> : ' . _t('BAZAR_PARAM_CHAMP_REQUIRED') . '.</div>' . "\n";
+        echo '<div class="alert alert-danger alert-error"><strong>'._t('BAZAR_ACTION_VALEUR').'</strong> : '._t('BAZAR_PARAM_CHAMP_REQUIRED').'.</div>'."\n";
     }
 } else {
-    echo '<div class="alert alert-danger alert-error"><strong>' . _t('BAZAR_ACTION_VALEUR') . '</strong> : ' . _t('BAZAR_PARAM_URL_REQUIRED') . '.</div>' . "\n";
+    echo '<div class="alert alert-danger alert-error"><strong>'._t('BAZAR_ACTION_VALEUR').'</strong> : '._t('BAZAR_PARAM_URL_REQUIRED').'.</div>'."\n";
 }

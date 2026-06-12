@@ -22,14 +22,14 @@ class ExternalFileField extends FileField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         return null;
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
     }
 
     protected function renderStatic($entry)
@@ -37,10 +37,10 @@ class ExternalFileField extends FileField
         // copy from parent but with different href
         $value = $this->getValue($entry);
 
-        if (isset($value) && $value != '') {
+        if (isset($value) && '' != $value) {
             return $this->render('@bazar/fields/file.twig', [
                 'value' => $value,
-                'fileUrl' => $entry['external-data']['baseUrl'] . BAZ_CHEMIN_UPLOAD . $value,
+                'fileUrl' => $entry['external-data']['baseUrl'].BAZ_CHEMIN_UPLOAD.$value,
             ]);
         }
 

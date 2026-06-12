@@ -23,40 +23,6 @@ class DbService
         $this->initSqlConnection();
     }
 
-    protected function initSqlConnection()
-    {
-        try {
-            $this->link = @mysqli_connect(
-                $this->params->get('mysql_host'),
-                $this->params->get('mysql_user'),
-                $this->params->get('mysql_password'),
-                $this->params->get('mysql_database'),
-                $this->params->has('mysql_port') ? $this->params->get('mysql_port') : ini_get('mysqli.default_port')
-            );
-            if (!$this->link) {
-                throw new \Exception('Not connected to sql');
-            }
-            if ($this->params->has('db_charset') and $this->params->get('db_charset') === 'utf8mb4') {
-                // necessaire pour les versions de mysql qui ont un autre encodage par defaut
-                mysqli_set_charset($this->link, 'utf8mb4');
-
-                // dans certains cas (ovh), set_charset ne passe pas, il faut faire une requete sql
-                $charset = mysqli_character_set_name($this->link);
-                if ($charset != 'utf8mb4') {
-                    mysqli_query($this->link, 'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
-                }
-            }
-            $this->collation = (mysqli_character_set_name($this->link) === 'utf8mb4')
-                ? 'utf8mb4_unicode_ci'
-                : 'utf8_unicode_ci';
-        } catch (\Throwable $th) {
-            if (in_array(php_sapi_name(), ['cli', 'cli-server', ' phpdbg'], true)) {
-                throw new \Exception(_t('DB_CONNECT_FAIL'));
-            }
-            exit(_t('DB_CONNECT_FAIL'));
-        }
-    }
-
     public function getLink()
     {
         return $this->link;
@@ -82,7 +48,7 @@ class DbService
 
     public function prefixTable($tableName)
     {
-        return ' ' . $this->params->get('table_prefix') . $tableName . ' ';
+        return ' '.$this->params->get('table_prefix').$tableName.' ';
     }
 
     public function escape($string)
@@ -107,10 +73,10 @@ class DbService
 
         try {
             if (!$result = mysqli_query($this->link, $query)) {
-                throw new \Exception('Query failed: ' . $query . ' (' . mysqli_error($this->link) . ')');
+                throw new \Exception('Query failed: '.$query.' ('.mysqli_error($this->link).')');
             }
         } catch (\Exception $e) {
-            $this->addQueryLog('ERROR IN QUERY : ' . $query, $this->getMicroTime() - $start);
+            $this->addQueryLog('ERROR IN QUERY : '.$query, $this->getMicroTime() - $start);
         } finally {
             if ($this->params->get('debug')) {
                 $this->addQueryLog($query, $this->getMicroTime() - $start);
@@ -118,13 +84,6 @@ class DbService
         }
 
         return $result;
-    }
-
-    protected function getMicroTime()
-    {
-        list($usec, $sec) = explode(' ', microtime());
-
-        return (float)$usec + (float)$sec;
     }
 
     /*
@@ -185,7 +144,7 @@ class DbService
         $tz = (!empty($result['timezone']))
             ? $result['timezone']
             : null;
-        if ($tz === 'SYSTEM') {
+        if ('SYSTEM' === $tz) {
             $tz = ini_get('date.timezone') ?? null;
         }
         if (empty($tz)) {
@@ -221,21 +180,22 @@ class DbService
     {
         $sql = '';
         $error = '';
+
         try {
             $tablesPrefix = trim($this->prefixTable(''));
             $tablesPostfix = [];
             // get Tables
             $tables = $this->loadAll('show tables');
             if (!is_array($tables)) {
-                throw new \Exception("Error in '" . __METHOD__ . "' (line " . __LINE__ . ") : 'show tables' sql command did not return an array !");
+                throw new \Exception("Error in '".__METHOD__."' (line ".__LINE__.") : 'show tables' sql command did not return an array !");
             }
 
             foreach ($tables as $tableInfo) {
                 if (!is_array($tableInfo)) {
-                    throw new \Exception("Error in '" . __METHOD__ . "' (line " . __LINE__ . ") : '\$tableInfo' sql command did not return an array !");
+                    throw new \Exception("Error in '".__METHOD__."' (line ".__LINE__.") : '\$tableInfo' sql command did not return an array !");
                 }
                 $tableName = array_values($tableInfo)[0];
-                if (strpos($tableName, $tablesPrefix) === 0) {
+                if (0 === strpos($tableName, $tablesPrefix)) {
                     $tablesPostfix[] = $tableName;
                 }
             }
@@ -244,76 +204,76 @@ class DbService
             $date = (new \DateTime())->format('c');
             $phpVersion = phpversion();
 
-            $sql =
-                <<<SQL
-            -- SQL Dump
-            -- ArchiveService:getSQLBackup Version
-            -- 
-            -- Generated on : $date
-            -- PHP version : $phpVersion
+            $sql
+                = <<<SQL
+                    -- SQL Dump
+                    -- ArchiveService:getSQLBackup Version
+                    -- 
+                    -- Generated on : {$date}
+                    -- PHP version : {$phpVersion}
 
-            SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-            SET AUTOCOMMIT = 0;
-            START TRANSACTION;
+                    SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+                    SET AUTOCOMMIT = 0;
+                    START TRANSACTION;
 
-            /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-            /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-            /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-            /*!40101 SET NAMES utf8mb4 */;
-            /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-            /*!40103 SET TIME_ZONE='+00:00' */;
+                    /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+                    /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+                    /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+                    /*!40101 SET NAMES utf8mb4 */;
+                    /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+                    /*!40103 SET TIME_ZONE='+00:00' */;
             
-            -- --------------------------------------------------------
+                    -- --------------------------------------------------------
 
 
-            SQL;
+                    SQL;
 
             // For each table
             foreach ($tablesPostfix as $tableName) {
                 // DUMP CREATE TABLE
 
                 // HEADER
-                $sql .=
-                    <<<SQL
+                $sql
+                    .= <<<SQL
 
-                -- 
-                -- Structure of table : `$tableName`
-                -- 
+                        -- 
+                        -- Structure of table : `{$tableName}`
+                        -- 
 
-                SQL;
+                        SQL;
                 // END HEADER
 
-                $createTableResult = $this->query('show create table ' . $tableName);
+                $createTableResult = $this->query('show create table '.$tableName);
 
                 while ($creationTable = mysqli_fetch_array($createTableResult)) {
-                    $sql .= $creationTable[1] . ";\n\n";
+                    $sql .= $creationTable[1].";\n\n";
                 }
 
                 // DUMP DATA
 
                 //    HEADER
-                $sql .=
-                    <<<SQL
+                $sql
+                    .= <<<SQL
 
-                -- 
-                -- Data of table : `$tableName`
-                -- 
+                        -- 
+                        -- Data of table : `{$tableName}`
+                        -- 
 
-                SQL;
+                        SQL;
                 // END HEADER
 
-                $rawData = $this->query('select * from ' . $tableName);
+                $rawData = $this->query('select * from '.$tableName);
 
                 $firstRow = true;
                 while ($row = mysqli_fetch_array($rawData)) {
                     if ($firstRow) {
-                        $sql .= "INSERT INTO `$tableName` ";
+                        $sql .= "INSERT INTO `{$tableName}` ";
                         $sql .= '(';
-                        for ($i = 0; $i < mysqli_num_fields($rawData); $i++) {
-                            if ($i != 0) {
+                        for ($i = 0; $i < mysqli_num_fields($rawData); ++$i) {
+                            if (0 != $i) {
                                 $sql .= ', ';
                             }
-                            $sql .= '`' . mysqli_fetch_field_direct($rawData, $i)->name . '`';
+                            $sql .= '`'.mysqli_fetch_field_direct($rawData, $i)->name.'`';
                         }
                         $sql .= ") VALUES\n";
                         $firstRow = false;
@@ -321,51 +281,93 @@ class DbService
                         $sql .= ",\n";
                     }
                     $sql .= '(';
-                    for ($i = 0; $i < mysqli_num_fields($rawData); $i++) {
-                        if ($i != 0) {
+                    for ($i = 0; $i < mysqli_num_fields($rawData); ++$i) {
+                        if (0 != $i) {
                             $sql .= ', ';
                         }
                         $strAdd = '';
                         $field = mysqli_fetch_field_direct($rawData, $i);
                         if (
-                            $field->type == 252 // text or blob cf https://www.php.net/manual/fr/mysqli-result.fetch-field-direct.php
-                            || $field->type == 253 // varchar
-                            || $field->type == 254 // char
-                            || $field->type == 10 // date
-                            || $field->type == 11 // time
-                            || $field->type == 12 // datetime
-                            || $field->type == 13 // year
+                            252 == $field->type // text or blob cf https://www.php.net/manual/fr/mysqli-result.fetch-field-direct.php
+                            || 253 == $field->type // varchar
+                            || 254 == $field->type // char
+                            || 10 == $field->type // date
+                            || 11 == $field->type // time
+                            || 12 == $field->type // datetime
+                            || 13 == $field->type // year
                         ) {
                             $strAdd = "'";
                         }
-                        $sql .= $strAdd . $this->escape($row[$i] ?? '') . $strAdd;
+                        $sql .= $strAdd.$this->escape($row[$i] ?? '').$strAdd;
                     }
                     $sql .= ')';
                 }
                 $sql .= ";\n";
-                $sql .=
-                    <<<SQL
+                $sql
+                    .= <<<'SQL'
 
-                -- --------------------------------------------------------
+                        -- --------------------------------------------------------
 
-                SQL;
+                        SQL;
             }
 
-            $sql .=
-                <<<SQL
+            $sql
+                .= <<<'SQL'
 
-            COMMIT;
+                    COMMIT;
             
-            /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-            /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-            /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-            /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+                    /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+                    /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+                    /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+                    /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
-            SQL;
+                    SQL;
         } catch (\Throwable $th) {
             $error = $th->getMessage();
         }
 
         return compact(['sql', 'error']);
+    }
+
+    protected function initSqlConnection()
+    {
+        try {
+            $this->link = @mysqli_connect(
+                $this->params->get('mysql_host'),
+                $this->params->get('mysql_user'),
+                $this->params->get('mysql_password'),
+                $this->params->get('mysql_database'),
+                $this->params->has('mysql_port') ? $this->params->get('mysql_port') : ini_get('mysqli.default_port')
+            );
+            if (!$this->link) {
+                throw new \Exception('Not connected to sql');
+            }
+            if ($this->params->has('db_charset') and 'utf8mb4' === $this->params->get('db_charset')) {
+                // necessaire pour les versions de mysql qui ont un autre encodage par defaut
+                mysqli_set_charset($this->link, 'utf8mb4');
+
+                // dans certains cas (ovh), set_charset ne passe pas, il faut faire une requete sql
+                $charset = mysqli_character_set_name($this->link);
+                if ('utf8mb4' != $charset) {
+                    mysqli_query($this->link, 'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
+                }
+            }
+            $this->collation = ('utf8mb4' === mysqli_character_set_name($this->link))
+                ? 'utf8mb4_unicode_ci'
+                : 'utf8_unicode_ci';
+        } catch (\Throwable $th) {
+            if (in_array(php_sapi_name(), ['cli', 'cli-server', ' phpdbg'], true)) {
+                throw new \Exception(_t('DB_CONNECT_FAIL'));
+            }
+
+            exit(_t('DB_CONNECT_FAIL'));
+        }
+    }
+
+    protected function getMicroTime()
+    {
+        [$usec, $sec] = explode(' ', microtime());
+
+        return (float) $usec + (float) $sec;
     }
 }

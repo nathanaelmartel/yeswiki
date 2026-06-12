@@ -41,7 +41,7 @@ class BazarListeAction extends YesWikiAction
                         $icon = trim(array_values($tabparam)[0]);
                     }
                 } catch (ParsingMultipleException $th) {
-                    throw new Exception('action bazarliste : le paramètre icon est mal rempli.<br />Il doit être de la forme icon="nomIcone1=valeur1, nomIcone2=valeur2"<br/>(' . $th->getMessage() . ')');
+                    throw new Exception('action bazarliste : le paramètre icon est mal rempli.<br />Il doit être de la forme icon="nomIcone1=valeur1, nomIcone2=valeur2"<br/>('.$th->getMessage().')');
                 }
             } else {
                 $icon = $this->params->get('baz_marker_icon');
@@ -68,7 +68,7 @@ class BazarListeAction extends YesWikiAction
                         $color = trim(array_values($tabparam)[0]);
                     }
                 } catch (ParsingMultipleException $th) {
-                    throw new Exception('action bazarliste : le paramètre color est mal rempli.<br />Il doit être de la forme color="couleur1=valeur1, couleur2=valeur2"<br/>(' . $th->getMessage() . ')');
+                    throw new Exception('action bazarliste : le paramètre color est mal rempli.<br />Il doit être de la forme color="couleur1=valeur1, couleur2=valeur2"<br/>('.$th->getMessage().')');
                 }
             } else {
                 $color = $this->params->get('baz_marker_color');
@@ -88,7 +88,7 @@ class BazarListeAction extends YesWikiAction
             $displayFields = [];
             foreach (explode(',', $arg['displayfields'] ?? '') as $field) {
                 $values = explode('=', $field);
-                if (count($values) == 2) {
+                if (2 == count($values)) {
                     $displayFields[$values[0]] = $values[1];
                 }
             }
@@ -97,7 +97,7 @@ class BazarListeAction extends YesWikiAction
         if (in_array($template, ['list', 'card', 'map-and-table', 'table', 'timeline'])) {
             $dynamic = true;
         }
-        if ($dynamic && $template == 'liste_accordeon') {
+        if ($dynamic && 'liste_accordeon' == $template) {
             $template = 'list';
         }
         if ($dynamic && in_array($template, ['tableau.tpl.html', 'tableau'])) {
@@ -107,13 +107,13 @@ class BazarListeAction extends YesWikiAction
         $searchfields = empty($searchfields) ? ['bf_titre'] : $searchfields;
         // End dynamic
 
-        $agendaMode = (!empty($arg['agenda']) || !empty($arg['datefilter']) || (is_string($template) && substr($template, 0, strlen('agenda')) == 'agenda'));
+        $agendaMode = (!empty($arg['agenda']) || !empty($arg['datefilter']) || (is_string($template) && 'agenda' == substr($template, 0, strlen('agenda'))));
 
         // Only keep "true" and "dynamic" value, so we can still do if params.search in twig
         $search = !isset($arg['search'])
             ? null
             : (
-                $arg['search'] === 'dynamic'
+                'dynamic' === $arg['search']
                 ? $arg['search']
                 : (
                     in_array($arg['search'], ['true', true, '1', 1], true)
@@ -132,15 +132,15 @@ class BazarListeAction extends YesWikiAction
         $vKeywords = $vSearchManager->aggregateKeywords($arg['keywords'] ?? null, $this->getRequest()->get('q'), $this->getRequest()->get('keywords'));
 
         return [
-            ////////////////////
+            // //////////////////
             // USER PARAMETERS
-            //////////////////
+            // ////////////////
 
             // SELECTION DES FICHES
 
             // sélectionner seulement les fiches d'un utilisateur
-            'user' => $arg['user'] ?? ((isset($arg['filteruserasowner']) && $arg['filteruserasowner'] == 'true') ?
-                $this->getService(AuthController::class)->getLoggedUserName() : null),
+            'user' => $arg['user'] ?? ((isset($arg['filteruserasowner']) && 'true' == $arg['filteruserasowner'])
+                ? $this->getService(AuthController::class)->getLoggedUserName() : null),
 
             // identifiant du formulaire (plusieures valeurs possibles, séparées par des virgules)
             'idtypeannonce' => $arg['id'] ?? $arg['idtypeannonce'] ?? $get->get('id') ?? null,
@@ -256,9 +256,9 @@ class BazarListeAction extends YesWikiAction
             // couleur des marqueurs
             'color' => $color,
 
-            //////////////////////
+            // ////////////////////
             // SYSTEM PARAMETERS
-            ////////////////////
+            // //////////////////
 
             // Iframe ?
             'isInIframe' => testUrlInIframe(),
@@ -269,7 +269,7 @@ class BazarListeAction extends YesWikiAction
 
     public function run()
     {
-        $this->debug = ($this->wiki->GetConfigValue('debug') == 'yes');
+        $this->debug = ('yes' == $this->wiki->GetConfigValue('debug'));
 
         // If the template is a map or a calendar, call the dedicated action so that
         // arguments can be properly formatted. The second first condition prevents infinite loops
@@ -278,14 +278,16 @@ class BazarListeAction extends YesWikiAction
             && (!isset($this->arguments['calledBy']) || !in_array($this->arguments['calledBy'], ['BazarCartoAction', 'BazarTableAction']))
         ) {
             return $this->callAction('bazarcarto', $this->arguments);
-        } elseif (
+        }
+        if (
             self::specialActionFromTemplate($this->arguments['template'], 'CALENDRIER_TEMPLATES')
-            && (!isset($this->arguments['calledBy']) || $this->arguments['calledBy'] !== 'CalendrierAction')
+            && (!isset($this->arguments['calledBy']) || 'CalendrierAction' !== $this->arguments['calledBy'])
         ) {
             return $this->callAction('calendrier', $this->arguments);
-        } elseif (
+        }
+        if (
             self::specialActionFromTemplate($this->arguments['template'], 'BAZARTABLE_TEMPLATES')
-            && (!isset($this->arguments['calledBy']) || $this->arguments['calledBy'] !== 'BazarTableAction')
+            && (!isset($this->arguments['calledBy']) || 'BazarTableAction' !== $this->arguments['calledBy'])
         ) {
             // Ceci est bancal : bazarliste action appelle bazartable action qui rappelle une deuxieme bazarliste action.
             // L'objectif est de formater les arguments correctement pour les tables.
@@ -316,52 +318,88 @@ class BazarListeAction extends YesWikiAction
                 'forms' => $vForms,
                 'currentUserName' => empty($currentUser['name']) ? '' : $currentUser['name'],
             ]);
-        } else {
-            $entries = $bazarListService->getEntries($this->arguments, $vForms);
-            $filters = $bazarListService->getFilters($this->arguments, $entries, $vForms, true);
-
-            // To handle multiple bazarlist in a same page, we need a specific ID per bazarlist
-            // We use a global variable to count the number of bazarliste action run on this page
-            if (!isset($GLOBALS['_BAZAR_']['nbbazarliste'])) {
-                $GLOBALS['_BAZAR_']['nbbazarliste'] = 0;
-            }
-            $GLOBALS['_BAZAR_']['nbbazarliste']++;
-            $this->arguments['nbbazarliste'] = $GLOBALS['_BAZAR_']['nbbazarliste'];
-
-            // TODO put in all bazar templates
-
-            $this->wiki->AddJavascriptFile('tools/bazar/presentation/javascripts/bazar.js', true, true);
-
-            return $this->render('@bazar/entries/index.twig', [
-                'listId' => $GLOBALS['_BAZAR_']['nbbazarliste'],
-                'filters' => $filters,
-                'entries' => $entries,
-                'renderedEntries' => $this->renderEntries($entries, $filters, $vForms),
-                'numEntries' => count($entries),
-                'param' => $this->arguments,
-                'params' => $this->arguments,
-                // Search form parameters
-                'keywords' => $this->arguments['keywords'],
-                'pageTag' => $this->wiki->getPageTag(),
-                'forms' => $vForms,
-                //'formId' => $this->arguments['idtypeannonce'][0] ?? null,
-                'selectedID' => $this->arguments['selectedID'] ?? null,
-                'facette' => $this->getRequest()->query->get('facette'),
-            ]);
         }
+        $entries = $bazarListService->getEntries($this->arguments, $vForms);
+        $filters = $bazarListService->getFilters($this->arguments, $entries, $vForms, true);
+
+        // To handle multiple bazarlist in a same page, we need a specific ID per bazarlist
+        // We use a global variable to count the number of bazarliste action run on this page
+        if (!isset($GLOBALS['_BAZAR_']['nbbazarliste'])) {
+            $GLOBALS['_BAZAR_']['nbbazarliste'] = 0;
+        }
+        ++$GLOBALS['_BAZAR_']['nbbazarliste'];
+        $this->arguments['nbbazarliste'] = $GLOBALS['_BAZAR_']['nbbazarliste'];
+
+        // TODO put in all bazar templates
+
+        $this->wiki->AddJavascriptFile('tools/bazar/presentation/javascripts/bazar.js', true, true);
+
+        return $this->render('@bazar/entries/index.twig', [
+            'listId' => $GLOBALS['_BAZAR_']['nbbazarliste'],
+            'filters' => $filters,
+            'entries' => $entries,
+            'renderedEntries' => $this->renderEntries($entries, $filters, $vForms),
+            'numEntries' => count($entries),
+            'param' => $this->arguments,
+            'params' => $this->arguments,
+            // Search form parameters
+            'keywords' => $this->arguments['keywords'],
+            'pageTag' => $this->wiki->getPageTag(),
+            'forms' => $vForms,
+            // 'formId' => $this->arguments['idtypeannonce'][0] ?? null,
+            'selectedID' => $this->arguments['selectedID'] ?? null,
+            'facette' => $this->getRequest()->query->get('facette'),
+        ]);
+    }
+
+    /* Method to test if the current template is associated to a specific bazar actions
+     * @param $templateName string (ex. "map","map.tpl.html","map.twig")
+     * @param $constName string name of the constant array containing the right template names
+     *                          "BAZARCARTO_TEMPLATES" or "CALENDRIER_TEMPLATES"
+     */
+    public static function specialActionFromTemplate(string $templateName, string $constName): bool
+    {
+        switch ($constName) {
+            case 'BAZARCARTO_TEMPLATES':
+                $baseArray = self::BAZARCARTO_TEMPLATES;
+
+                break;
+
+            case 'CALENDRIER_TEMPLATES':
+                $baseArray = self::CALENDRIER_TEMPLATES;
+
+                break;
+
+            case 'BAZARTABLE_TEMPLATES':
+                $baseArray = self::BAZARTABLE_TEMPLATES;
+
+                break;
+
+            default:
+                return false;
+        }
+
+        $templatesnames = [];
+        foreach ($baseArray as $templateBaseName) {
+            $templatesnames[] = $templateBaseName;
+            $templatesnames[] = $templateBaseName.'.tpl.html';
+            $templatesnames[] = $templateBaseName.'.twig';
+        }
+
+        return in_array($templateName, $templatesnames);
     }
 
     private function renderEntries($entries, $filters = [], $pForms = ''): string
     {
-        $showNumEntries = count($entries) === 0 || $this->arguments['shownumentries'];
+        $showNumEntries = 0 === count($entries) || $this->arguments['shownumentries'];
         $templateName = $this->arguments['template'];
-        if (strpos($templateName, '.html') === false && strpos($templateName, '.twig') === false) {
-            $templateName = $templateName . '.tpl.html';
+        if (false === strpos($templateName, '.html') && false === strpos($templateName, '.twig')) {
+            $templateName = $templateName.'.tpl.html';
             $this->arguments['template'] = $templateName;
         }
         $data = [];
         $data['fiches'] = $entries;
-        $data['info_res'] = $showNumEntries ? '<div class="alert alert-info">' . _t('BAZ_IL_Y_A') . ' ' . count($data['fiches']) . ' ' . (count($data['fiches']) <= 1 ? _t('BAZ_FICHE') : _t('BAZ_FICHES')) . '</div>' : '';
+        $data['info_res'] = $showNumEntries ? '<div class="alert alert-info">'._t('BAZ_IL_Y_A').' '.count($data['fiches']).' '.(count($data['fiches']) <= 1 ? _t('BAZ_FICHE') : _t('BAZ_FICHES')).'</div>' : '';
         $data['params'] = $this->arguments;
         $data['pager_links'] = '';
         $data['filters'] = $filters; // in case some template need it, like gogocarto
@@ -389,13 +427,13 @@ class BazarListeAction extends YesWikiAction
                 'closeSession' => false,
             ]);
             $data['fiches'] = $pager->getPageData();
-            $data['pager_links'] = '<div class="bazar_numero text-center"><ul class="pagination">' . $pager->links . '</ul></div>';
+            $data['pager_links'] = '<div class="bazar_numero text-center"><ul class="pagination">'.$pager->links.'</ul></div>';
         }
 
         try {
             return $this->render("@bazar/{$templateName}", $data);
         } catch (TemplateNotFound $e) {
-            return '<div class="alert alert-danger">' . $e->getMessage() . '</div>';
+            return '<div class="alert alert-danger">'.$e->getMessage().'</div>';
         }
     }
 
@@ -406,45 +444,16 @@ class BazarListeAction extends YesWikiAction
                 $d = strtotime('-1 day');
 
                 return date('Y-m-d H:i:s', $d);
+
             case 'week':
                 $d = strtotime('-1 week');
 
                 return date('Y-m-d H:i:s', $d);
+
             case 'month':
                 $d = strtotime('-1 month');
 
                 return date('Y-m-d H:i:s', $d);
         }
-    }
-
-    /* Method to test if the current template is associated to a specific bazar actions
-     * @param $templateName string (ex. "map","map.tpl.html","map.twig")
-     * @param $constName string name of the constant array containing the right template names
-     *                          "BAZARCARTO_TEMPLATES" or "CALENDRIER_TEMPLATES"
-     */
-    public static function specialActionFromTemplate(string $templateName, string $constName): bool
-    {
-        switch ($constName) {
-            case 'BAZARCARTO_TEMPLATES':
-                $baseArray = self::BAZARCARTO_TEMPLATES;
-                break;
-            case 'CALENDRIER_TEMPLATES':
-                $baseArray = self::CALENDRIER_TEMPLATES;
-                break;
-            case 'BAZARTABLE_TEMPLATES':
-                $baseArray = self::BAZARTABLE_TEMPLATES;
-                break;
-            default:
-                return false;
-        }
-
-        $templatesnames = [];
-        foreach ($baseArray as $templateBaseName) {
-            $templatesnames[] = $templateBaseName;
-            $templatesnames[] = $templateBaseName . '.tpl.html';
-            $templatesnames[] = $templateBaseName . '.twig';
-        }
-
-        return in_array($templateName, $templatesnames);
     }
 }

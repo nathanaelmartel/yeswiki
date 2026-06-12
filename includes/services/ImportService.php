@@ -2,7 +2,6 @@
 
 namespace YesWiki\Core\Service;
 
-use Exception;
 use YesWiki\Core\Exception\CurlTimeoutException;
 
 // use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -13,7 +12,7 @@ class ImportService
     // protected $wiki;
     // protected $params;
 
-    public function __construct(/*Wiki $wiki, ParameterBagInterface $params*/)
+    public function __construct(/* Wiki $wiki, ParameterBagInterface $params */)
     {
         // $this->wiki = $wiki;
         // $this->params = $params;
@@ -33,13 +32,13 @@ class ImportService
         if (empty($extraction)) {
             return [];
         }
-        list($baseUrl, $rewriteModeEnabled, $tag) = $extraction;
-        $redirectedRootUrl = $this->retrieveUrlAfterRedirect($baseUrl . '/');
+        [$baseUrl, $rewriteModeEnabled, $tag] = $extraction;
+        $redirectedRootUrl = $this->retrieveUrlAfterRedirect($baseUrl.'/');
         $extraction = $this->extractBaseUrlModeAndTag($redirectedRootUrl);
         if (empty($extraction)) {
             return [];
         }
-        list($baseUrl, $rewriteModeEnabled, $rootPage) = $extraction;
+        [$baseUrl, $rewriteModeEnabled, $rootPage] = $extraction;
 
         return [$baseUrl, $rootPage, $rewriteModeEnabled];
     }
@@ -54,36 +53,36 @@ class ImportService
      */
     private function extractBaseUrlModeAndTag($inputUrl): array
     {
-        if (preg_match('/wiki=(' . WN_CAMEL_CASE_EVOLVED . ')/u', $inputUrl, $matches)) {
+        if (preg_match('/wiki=('.WN_CAMEL_CASE_EVOLVED.')/u', $inputUrl, $matches)) {
             $tag = $matches[1];
-            if (preg_match('/(.*)\/wakka.php\?.*wiki=' . $tag . '/u', $inputUrl, $matches)) {
+            if (preg_match('/(.*)\/wakka.php\?.*wiki='.$tag.'/u', $inputUrl, $matches)) {
                 $rewriteModeEnabled = false;
                 $baseUrl = $matches[1];
-            } elseif (preg_match('/(.*)\/\?.*wiki=' . $tag . '/u', $inputUrl, $matches)) {
+            } elseif (preg_match('/(.*)\/\?.*wiki='.$tag.'/u', $inputUrl, $matches)) {
                 $rewriteModeEnabled = false;
                 $baseUrl = $matches[1];
-            } elseif (preg_match('/(.*)\/[^\/]*wiki=' . $tag . '/u', $inputUrl, $matches)) {
+            } elseif (preg_match('/(.*)\/[^\/]*wiki='.$tag.'/u', $inputUrl, $matches)) {
                 $rewriteModeEnabled = true;
                 $baseUrl = $matches[1];
             }
-        } elseif (preg_match('/(.*)\/wakka.php\?(' . WN_CAMEL_CASE_EVOLVED . ')/u', $inputUrl, $matches)) {
+        } elseif (preg_match('/(.*)\/wakka.php\?('.WN_CAMEL_CASE_EVOLVED.')/u', $inputUrl, $matches)) {
             $rewriteModeEnabled = false;
             $tag = $matches[2];
             $baseUrl = $matches[1];
-        } elseif (preg_match('/(.*)\/\?(' . WN_CAMEL_CASE_EVOLVED . ')/u', $inputUrl, $matches)) {
+        } elseif (preg_match('/(.*)\/\?('.WN_CAMEL_CASE_EVOLVED.')/u', $inputUrl, $matches)) {
             $rewriteModeEnabled = false;
             $tag = $matches[2];
             $baseUrl = $matches[1];
-        } elseif (preg_match('/(https?:\/\/(?:localhost|[0-9]{3}:[0-9]{3}:[0-9]{3}:[0-9]{3}|(?:[^\/]*\.[a-z]{3})).*)\/(' . WN_CAMEL_CASE_EVOLVED . ')(?:\/)?$/u', $inputUrl, $matches)) {
+        } elseif (preg_match('/(https?:\/\/(?:localhost|[0-9]{3}:[0-9]{3}:[0-9]{3}:[0-9]{3}|(?:[^\/]*\.[a-z]{3})).*)\/('.WN_CAMEL_CASE_EVOLVED.')(?:\/)?$/u', $inputUrl, $matches)) {
             $rewriteModeEnabled = true;
             $tag = $matches[2];
             $baseUrl = $matches[1];
         }
         if (empty($baseUrl) || is_null($rewriteModeEnabled) || empty($tag)) {
             return [];
-        } else {
-            return [$baseUrl, $rewriteModeEnabled, $tag];
         }
+
+        return [$baseUrl, $rewriteModeEnabled, $tag];
     }
 
     /**
@@ -124,7 +123,7 @@ class ImportService
      *
      * @return string
      *
-     * @throws Exception
+     * @throws \Exception
      * @throws CurlTimeoutException
      */
     private function getHeaders($url): array
@@ -153,18 +152,18 @@ class ImportService
         if ($error) {
             $errorStr = curl_strerror($error);
             if (in_array($error, [12, 28])) {
-                throw new CurlTimeoutException("Error getting content from $url ($errorStr)");
-            } else {
-                throw new Exception("Error getting content from $url ($errorStr)");
+                throw new CurlTimeoutException("Error getting content from {$url} ({$errorStr})");
             }
+
+            throw new \Exception("Error getting content from {$url} ({$errorStr})");
         }
         $intermediate = empty($content) ? [] : array_filter(array_map('trim', explode("\n", $content)));
         $output = [];
         foreach ($intermediate as $header) {
-            if (strpos($header, ':') === false) {
+            if (false === strpos($header, ':')) {
                 $output[] = $header;
             } else {
-                list($header, $value) = explode(':', $header, 2);
+                [$header, $value] = explode(':', $header, 2);
                 $value = trim($value);
                 if (!isset($output[$header])) {
                     $output[$header] = $value;

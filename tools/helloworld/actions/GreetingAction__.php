@@ -9,6 +9,8 @@ class GreetingAction__ extends YesWikiAction
     /**
      * method to prepare args, optionnal
      * see example in __GreetingAction.
+     *
+     * @param mixed $arg
      */
     public function formatArguments($arg)
     {

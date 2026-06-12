@@ -12,6 +12,9 @@ use YesWiki\Test\Core\YesWikiTestCase;
 
 require_once 'tests/YesWikiTestCase.php';
 
+/**
+ * @internal
+ */
 #[CoversMethod(HelloCommand::class, 'execute')]
 class HelloCommandTest extends YesWikiTestCase
 {

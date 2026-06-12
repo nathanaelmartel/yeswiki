@@ -1,6 +1,5 @@
 <?php
 
-use function Symfony\Component\String\u;
 use YesWiki\Bazar\Exception\ParsingMultipleException;
 use YesWiki\Bazar\Field\DateField;
 use YesWiki\Bazar\Field\EnumField;
@@ -8,6 +7,8 @@ use YesWiki\Bazar\Field\MapField;
 use YesWiki\Bazar\Service\EntryManager;
 use YesWiki\Bazar\Service\FormManager;
 use YesWiki\Bazar\Service\ListManager;
+
+use function Symfony\Component\String\u;
 
 function multiArraySearch($array, $key, $value)
 {
@@ -33,7 +34,7 @@ function baz_forms_and_lists_ids()
     $lists = array_map(function ($list) {
         return $list['title'];
     }, $lists);
-    $requete = 'SELECT bn_id_nature, bn_label_nature FROM ' . $GLOBALS['wiki']->config['table_prefix'] . 'nature';
+    $requete = 'SELECT bn_id_nature, bn_label_nature FROM '.$GLOBALS['wiki']->config['table_prefix'].'nature';
     $result = $GLOBALS['wiki']->LoadAll($requete);
     foreach ($result as $form) {
         $forms[$form['bn_id_nature']] = $form['bn_label_nature'];
@@ -46,7 +47,7 @@ function getHtmlDataAttributes($fiche, $formtab = '')
 {
     $htmldata = '';
     if (is_array($fiche) && isset($fiche['id_typeannonce'])) {
-        $form = isset($formtab[$fiche['id_typeannonce']]) ? $formtab[$fiche['id_typeannonce']] : $GLOBALS['wiki']->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
+        $form = $formtab[$fiche['id_typeannonce']] ?? $GLOBALS['wiki']->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
         foreach ($fiche as $key => $value) {
             if (!empty($value)) {
                 if (
@@ -66,9 +67,9 @@ function getHtmlDataAttributes($fiche, $formtab = '')
                         ]
                     )
                 ) {
-                    $htmldata .=
-                        'data-' . htmlspecialchars($key) . '="' .
-                        htmlspecialchars($value) . '" ';
+                    $htmldata
+                        .= 'data-'.htmlspecialchars($key).'="'
+                        .htmlspecialchars($value).'" ';
                 } else {
                     if (isset($form['prepared'])) {
                         foreach ($form['prepared'] as $field) {
@@ -78,11 +79,11 @@ function getHtmlDataAttributes($fiche, $formtab = '')
                                     $field instanceof MapField
                                     || $field instanceof EnumField
                                     || $field instanceof DateField
-                                    || $field->getName() == 'scope'
+                                    || 'scope' == $field->getName()
                                 ) {
-                                    $htmldata .=
-                                        'data-' . htmlspecialchars($key) . '="' .
-                                        htmlspecialchars(is_array($value) ? '[' . implode(',', $value) . ']' : $value) . '" ';
+                                    $htmldata
+                                        .= 'data-'.htmlspecialchars($key).'="'
+                                        .htmlspecialchars(is_array($value) ? '['.implode(',', $value).']' : $value).'" ';
                                 }
                             }
                         }
@@ -101,14 +102,20 @@ function getHtmlDataAttributes($fiche, $formtab = '')
  * @global string classe CSS du paragraphe (facultatif "field" par défaut)
  * @global string balise HTML du paragraphe (facultatif "field" par défaut)
  *
+ * @param mixed $val
+ * @param mixed $label
+ * @param mixed $class
+ * @param mixed $tag
+ * @param mixed $fiche
+ *
  * @return string HTML
  */
 function show($val, $label = '', $class = 'field', $tag = 'p', $fiche = '')
 {
     if (is_array($fiche)) {
         // on recupere les valeurs plutot que les clés pour les champs checkbox et liste
-        if (substr($val, 0, 10) === 'listeListe' or substr($val, 0, 13) === 'checkboxListe') {
-            $func = (substr($val, 0, 10) === 'listeListe' ? 'liste' : 'checkbox');
+        if ('listeListe' === substr($val, 0, 10) or 'checkboxListe' === substr($val, 0, 13)) {
+            $func = ('listeListe' === substr($val, 0, 10) ? 'liste' : 'checkbox');
             $dummy = '';
             $form = $GLOBALS['wiki']->services->get(FormManager::class)->getOne($fiche['id_typeannonce']);
             $f = multiArraySearch($form, '1', preg_replace('/^(liste|checkbox)/i', '', $val));
@@ -120,7 +127,7 @@ function show($val, $label = '', $class = 'field', $tag = 'p', $fiche = '')
                     $html,
                     $matches
                 );
-                if (isset($matches[1][0]) && $matches[1][0] != '') {
+                if (isset($matches[1][0]) && '' != $matches[1][0]) {
                     $val = $matches[1][0];
                 } else {
                     $val = '';
@@ -135,19 +142,19 @@ function show($val, $label = '', $class = 'field', $tag = 'p', $fiche = '')
                 $val = $found;
             }
         } else {
-            $val = isset($fiche[$val]) ? $fiche[$val] : '';
+            $val = $fiche[$val] ?? '';
         }
     }
     if (!empty($val)) {
-        echo '<' . $tag;
+        echo '<'.$tag;
         if (!empty($class)) {
-            echo ' class="' . $class . '"';
+            echo ' class="'.$class.'"';
         }
-        echo '>' . "\n";
+        echo '>'."\n";
         if (!empty($label)) {
-            echo '<strong>' . $label . '</strong> ' . "\n";
+            echo '<strong>'.$label.'</strong> '."\n";
         }
-        echo $val . '</' . $tag . '>' . "\n";
+        echo $val.'</'.$tag.'>'."\n";
     }
 }
 
@@ -155,15 +162,16 @@ function show($val, $label = '', $class = 'field', $tag = 'p', $fiche = '')
  *   @param  string  chaine de caracteres avec de potentiels accents a enlever
  *
  *   return  string chaine de caracteres, sans accents
+ * @param mixed $str
+ * @param mixed $charset
  */
 function removeAccents($str, $charset = YW_CHARSET)
 {
     $str = htmlentities($str, ENT_NOQUOTES, $charset);
     $str = preg_replace('#&([A-za-z])(?:acute|cedil|caron|circ|grave|orn|ring|slash|th|tilde|uml);#', '\1', $str);
     $str = preg_replace('#&([A-za-z]{2})(?:lig);#', '\1', $str); // pour les ligatures e.g. '&oelig;'
-    $str = preg_replace('#&[^;]+;#', '', $str); // supprime les autres caractères
 
-    return $str;
+    return preg_replace('#&[^;]+;#', '', $str); // supprime les autres caractères
 }
 
 /** genere_nom_wiki()
@@ -175,6 +183,8 @@ function removeAccents($str, $charset = YW_CHARSET)
  *   @param int nombre d'iteration pour la fonction recursive (1 par defaut)
  *
  *   return  string chaine de caracteres, en NomWiki unique
+ * @param mixed $nom
+ * @param mixed $occurence
  */
 function genere_nom_wiki($nom, $occurence = 1)
 {
@@ -197,7 +207,7 @@ function genere_nom_wiki($nom, $occurence = 1)
         $var = preg_replace('/[^A-Z]/', '', $nom);
         if (strlen($var) < 2) {
             $last = ucfirst(substr($nom, strlen($nom) - 1));
-            $nom = substr($nom, 0, -1) . $last;
+            $nom = substr($nom, 0, -1).$last;
         }
 
         $nom = '';
@@ -210,29 +220,29 @@ function genere_nom_wiki($nom, $occurence = 1)
         $var = preg_replace('/[^A-Z]/', '', $nom);
         if (strlen($var) < 2) {
             $last = ucfirst(substr($nom, strlen($nom) - 1));
-            $nom = substr($nom, 0, -1) . $last;
+            $nom = substr($nom, 0, -1).$last;
         }
     } elseif ($occurence > 2) {
         // si on en est a plus de 2 occurences, on supprime le chiffre precedent et on ajoute la nouvelle occurence
         $nb = -1 * strlen(strval($occurence - 1));
-        $nom = substr($nom, 0, $nb) . $occurence;
+        $nom = substr($nom, 0, $nb).$occurence;
     } else {
         // cas ou l'occurence est la deuxieme : on reprend le NomWiki en y ajoutant le chiffre 2
-        $nom = $nom . $occurence;
+        $nom = $nom.$occurence;
     }
 
-    if ($occurence == 0) {
+    if (0 == $occurence) {
         // pour occurence = 0 on ne teste pas l'existance de la page
         return $nom;
-    } elseif (!is_array($GLOBALS['wiki']->LoadPage($nom))) {
+    }
+    if (!is_array($GLOBALS['wiki']->LoadPage($nom))) {
         // on verifie que la page n'existe pas deja : si c'est le cas on le retourne
         return $nom;
-    } else {
-        // sinon, on rappele recursivement la fonction jusqu'a ce que le nom aille bien
-        $occurence++;
-
-        return genere_nom_wiki($nom, $occurence);
     }
+    // sinon, on rappele recursivement la fonction jusqu'a ce que le nom aille bien
+    ++$occurence;
+
+    return genere_nom_wiki($nom, $occurence);
 }
 
 function startsWith($haystack, $needle)
@@ -245,7 +255,7 @@ function startsWith($haystack, $needle)
 function endsWith($haystack, $needle)
 {
     $length = strlen($needle);
-    if ($length == 0) {
+    if (0 == $length) {
         return true;
     }
 
@@ -258,7 +268,7 @@ function getCustomValueForEntry($parameter, $field, $entry, $default)
     if (is_array($parameter) && !empty($field)) {
         if (isset($entry[$field])) {
             // pour les checkbox, on teste les differentes valeurs et on renvoie la premiere qui va bien
-            if (!isset($parameter[$entry[$field]]) && strpos($entry[$field], ',') !== false) {
+            if (!isset($parameter[$entry[$field]]) && false !== strpos($entry[$field], ',')) {
                 $tab = explode(',', $entry[$field]);
                 foreach ($tab as $value) {
                     if (isset($parameter[$value])) {
@@ -269,32 +279,35 @@ function getCustomValueForEntry($parameter, $field, $entry, $default)
 
                 // on n a pas trouve de valeur, on renvoie la valeur par defaut
                 return $default;
-            } else {
-                return isset($parameter[$entry[$field]]) ?
-                    $parameter[$entry[$field]] : $default;
             }
-        } else {
-            // si la valeur n existe pas, on met l icone par defaut
-            return $default;
+
+            return $parameter[$entry[$field]] ?? $default;
         }
-    } else {
-        // si le parametre n'est pas un tableau, il contient la valeur par defaut
+
+        // si la valeur n existe pas, on met l icone par defaut
         return $default;
     }
+
+    // si le parametre n'est pas un tableau, il contient la valeur par defaut
+    return $default;
 }
 
 // tri par ordre desire
 function champCompare($a, $b)
 {
-    if ($GLOBALS['ordre'] == 'desc') {
+    if ('desc' == $GLOBALS['ordre']) {
         return strcoll(mb_strtolower($b[$GLOBALS['champ']]), mb_strtolower($a[$GLOBALS['champ']]));
-    } else {
-        return strcoll(mb_strtolower($a[$GLOBALS['champ']]), mb_strtolower($b[$GLOBALS['champ']]));
     }
+
+    return strcoll(mb_strtolower($a[$GLOBALS['champ']]), mb_strtolower($b[$GLOBALS['champ']]));
 }
 
 /**
  * @deprecated use EntryManager::getMultipleParameters instead
+ *
+ * @param mixed $param
+ * @param mixed $firstseparator
+ * @param mixed $secondseparator
  */
 function getMultipleParameters($param, $firstseparator = ',', $secondseparator = '=')
 {

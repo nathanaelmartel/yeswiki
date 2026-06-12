@@ -1,17 +1,17 @@
 <?php
 
 use YesWiki\Bazar\Service\EntryManager;
-use YesWiki\Bazar\Service\SemanticTransformer;
 use YesWiki\Bazar\Service\FormManager;
+use YesWiki\Bazar\Service\SemanticTransformer;
 
 $entryManager = $this->services->get(EntryManager::class);
 
 if ($entryManager->isEntry($this->GetPageTag()) && $this->HasAccess('read')) {
-    if (isset($_SERVER['HTTP_ACCEPT']) && (strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false || strpos($_SERVER['HTTP_ACCEPT'], 'application/ld+json') !== false)) {
-        $semantic = strpos($_SERVER['HTTP_ACCEPT'], 'application/ld+json') !== false;
+    if (isset($_SERVER['HTTP_ACCEPT']) && (false !== strpos($_SERVER['HTTP_ACCEPT'], 'application/json') || false !== strpos($_SERVER['HTTP_ACCEPT'], 'application/ld+json'))) {
+        $semantic = false !== strpos($_SERVER['HTTP_ACCEPT'], 'application/ld+json');
         $contentType = $semantic ? 'application/ld+json' : 'application/json';
 
-        header("Content-type: $contentType; charset=UTF-8");
+        header("Content-type: {$contentType}; charset=UTF-8");
         header('Access-Control-Allow-Origin: *');
 
         $fiche = $entryManager->getOne($this->GetPageTag());

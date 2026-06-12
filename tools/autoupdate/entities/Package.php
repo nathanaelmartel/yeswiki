@@ -5,17 +5,8 @@ namespace YesWiki\AutoUpdate\Entity;
 abstract class Package extends Files
 {
     public const PREFIX_FILENAME = 'yeswiki_';
-
-    // URL vers le fichier dans le dépôt.
-    protected $address;
-    // Chemin vers le dossier temporaire ou est décompressé le paquet
-    protected $extractionPath = null;
-    // Chemin vers le paquet temporaire téléchargé localement
-    protected $downloadedFile = null;
-    // md5 du paquet temporaire téléchargé localement
-    protected $md5File = null;
     // nom du tool
-    public $name = null;
+    public $name;
     // Version du paquet
     public $release;
     public $localRelease;
@@ -24,14 +15,17 @@ abstract class Package extends Files
     public $updateLink;
     public $description = '';
     public $documentation = '';
+
+    // URL vers le fichier dans le dépôt.
+    protected $address;
+    // Chemin vers le dossier temporaire ou est décompressé le paquet
+    protected $extractionPath;
+    // Chemin vers le paquet temporaire téléchargé localement
+    protected $downloadedFile;
+    // md5 du paquet temporaire téléchargé localement
+    protected $md5File;
     protected $minimalPhpVersion;
-
-    abstract public function upgrade();
-
-    abstract public function upgradeInfos();
-
-    abstract protected function localRelease();
-    //abstract protected function updateAvailable();
+    // abstract protected function updateAvailable();
 
     protected $localPath;
 
@@ -46,6 +40,10 @@ abstract class Package extends Files
         $this->localRelease = $this->localRelease();
         $this->minimalPhpVersion = $minimalPhpVersion;
     }
+
+    abstract public function upgrade();
+
+    abstract public function upgradeInfos();
 
     public function checkACL()
     {
@@ -79,11 +77,11 @@ abstract class Package extends Files
         $vNotGoods = [];
 
         foreach ($file2check as $f) {
-            $path = $this->localPath . DIRECTORY_SEPARATOR . $f;
+            $path = $this->localPath.DIRECTORY_SEPARATOR.$f;
             if (file_exists($path)) {
                 $vNotWritables = $this->isWritable($path);
 
-                if ($vNotWritables !== true) {
+                if (true !== $vNotWritables) {
                     $vNotGoods = array_merge($vNotGoods, is_array($vNotWritables) ? $vNotWritables : [$path]);
                 }
             }
@@ -91,16 +89,14 @@ abstract class Package extends Files
 
         $vLocalPathLength = strlen($this->localPath);
 
-        $vNotGoods = array_map(function ($pPath) use ($vLocalPathLength) {
-            return '.' . substr($pPath, $vLocalPathLength);
+        return array_map(function ($pPath) use ($vLocalPathLength) {
+            return '.'.substr($pPath, $vLocalPathLength);
         }, $vNotGoods);
-
-        return $vNotGoods;
     }
 
     public function checkIntegrity()
     {
-        if ($this->downloadedFile === null) {
+        if (null === $this->downloadedFile) {
             throw new \Exception(_t('AU_PACKAGE_NOT_DOWNLOADED'), 1);
         }
         $md5Repo = $this->getMD5();
@@ -123,7 +119,7 @@ abstract class Package extends Files
 
     public function extract()
     {
-        if ($this->downloadedFile === null) {
+        if (null === $this->downloadedFile) {
             throw new \Exception(_t('AU_PACKAGE_NOT_DOWNLOADED'), 1);
         }
 
@@ -173,7 +169,7 @@ abstract class Package extends Files
      */
     public function getNeededPHPversionFromExtractedFolder(): string
     {
-        $jsonPath = $this->extractionPath . 'composer.json';
+        $jsonPath = $this->extractionPath.'composer.json';
         if (file_exists($jsonPath)) {
             $jsonFile = file_get_contents($jsonPath);
             if (!empty($jsonFile)) {
@@ -186,11 +182,11 @@ abstract class Package extends Files
                     if (preg_match('/^(\^|>=|>)?([0-9]*)(?:\.([0-9\*]*))?(?:\.([0-9\*]*))?/', $rawNeededPHPRevision, $matches)) {
                         $major = $matches[2];
                         $minor = $matches[3] ?? 0;
-                        $minor = ($minor == '*') ? 0 : $minor;
+                        $minor = ('*' == $minor) ? 0 : $minor;
                         $fix = $matches[4] ?? 0;
-                        $fix = ($fix == '*') ? 0 : $fix;
+                        $fix = ('*' == $fix) ? 0 : $fix;
 
-                        return $major . '.' . $minor . '.' . $fix;
+                        return $major.'.'.$minor.'.'.$fix;
                     }
                 }
             }
@@ -201,8 +197,6 @@ abstract class Package extends Files
 
     /**
      * check if current PHP version enough high.
-     *
-     * @param string $neededRevision
      *
      * @return bool
      */
@@ -217,21 +211,14 @@ abstract class Package extends Files
         );
     }
 
-    /****************************************************************************
-     * Méthodes privées
-     **************************************************************************/
+    abstract protected function localRelease();
+
+    // Méthodes privées
     protected function name()
     {
         $namePlusDate = explode('-', basename($this->address, '.zip'), 2)[1];
 
-        return preg_replace('/-' . SEMVER . '$/', '', preg_replace('/-\d*-\d*-\d*-\d*$/', '', $namePlusDate));
-    }
-
-    private function getMD5()
-    {
-        $this->md5File = $this->download($this->address . '.md5');
-
-        return explode(' ', file_get_contents($this->md5File))[0];
+        return preg_replace('/-'.SEMVER.'$/', '', preg_replace('/-\d*-\d*-\d*-\d*$/', '', $namePlusDate));
     }
 
     protected function updateAvailable()
@@ -243,5 +230,12 @@ abstract class Package extends Files
         }
 
         return false;
+    }
+
+    private function getMD5()
+    {
+        $this->md5File = $this->download($this->address.'.md5');
+
+        return explode(' ', file_get_contents($this->md5File))[0];
     }
 }

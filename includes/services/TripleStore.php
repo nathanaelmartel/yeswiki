@@ -2,19 +2,17 @@
 
 namespace YesWiki\Core\Service;
 
-use Throwable;
 use YesWiki\Security\Controller\SecurityController;
 
 class TripleStore
 {
+    public const TYPE_URI = 'http://outils-reseaux.org/_vocabulary/type';
+    public const SOURCE_URL_URI = 'http://outils-reseaux.org/_vocabulary/sourceUrl';
     protected $dbService;
     protected $securityController;
 
     protected $cacheByResource;
     protected array $matchingCache = [];
-
-    public const TYPE_URI = 'http://outils-reseaux.org/_vocabulary/type';
-    public const SOURCE_URL_URI = 'http://outils-reseaux.org/_vocabulary/sourceUrl';
 
     public function __construct(DbService $dbService, SecurityController $securityController)
     {
@@ -89,19 +87,19 @@ class TripleStore
             $val_op = '=';
         }
 
-        $sql = 'SELECT * FROM ' . $this->dbService->prefixTable('triples');
+        $sql = 'SELECT * FROM '.$this->dbService->prefixTable('triples');
         $where = [];
-        if ($resource !== null) {
-            $where[] = ' resource ' . $res_op . ' "' . $this->dbService->escape($resource) . '"';
+        if (null !== $resource) {
+            $where[] = ' resource '.$res_op.' "'.$this->dbService->escape($resource).'"';
         }
-        if ($property !== null) {
-            $where[] = ' property ' . $prop_op . ' "' . $this->dbService->escape($property) . '"';
+        if (null !== $property) {
+            $where[] = ' property '.$prop_op.' "'.$this->dbService->escape($property).'"';
         }
-        if ($value !== null) {
-            $where[] = ' value ' . $val_op . ' "' . $this->dbService->escape($value) . '"';
+        if (null !== $value) {
+            $where[] = ' value '.$val_op.' "'.$this->dbService->escape($value).'"';
         }
         if (count($where) > 0) {
-            $sql .= ' WHERE ' . implode(' AND ', $where);
+            $sql .= ' WHERE '.implode(' AND ', $where);
         }
 
         // Add a local in instance cache
@@ -137,22 +135,23 @@ class TripleStore
      */
     public function getAll($resource, $property, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX): array
     {
-        $res = empty($resource) ? '' : $re_prefix . $resource;
-        $prop = $prop_prefix . $property;
+        $res = empty($resource) ? '' : $re_prefix.$resource;
+        $prop = $prop_prefix.$property;
         if (isset($this->cacheByResource[$res])) {
             // All resource's properties was previously loaded.
             if (isset($this->cacheByResource[$res][$prop])) {
                 return $this->cacheByResource[$res][$prop];
             }
+
             // LoadAll($sql) return an empty array when no result, do the same.
             return [];
         }
         $this->cacheByResource[$res] = [];
-        $sql = 'SELECT * FROM ' . $this->dbService->prefixTable('triples') . ' WHERE ';
+        $sql = 'SELECT * FROM '.$this->dbService->prefixTable('triples').' WHERE ';
         if (empty($res)) { // get everything if no resource given
             $sql .= '1';
         } else {
-            $sql .= 'resource = "' . $this->dbService->escape($res) . '"';
+            $sql .= 'resource = "'.$this->dbService->escape($res).'"';
         }
         foreach ($this->dbService->loadAll($sql) as $triple) {
             if (!isset($this->cacheByResource[$res][$triple['property']])) {
@@ -181,15 +180,15 @@ class TripleStore
      * @param string $prop_prefix
      *                            The prefix to add to $property (defaults to <tt>WIKINI_VOC_PREFIX</tt>)
      *
-     * @return int|null The id of the found triple or null if there is no such triple
+     * @return null|int The id of the found triple or null if there is no such triple
      */
     public function exist($resource, $property, $value, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX): ?int
     {
-        $sql = 'SELECT id FROM ' . $this->dbService->prefixTable('triples') . ' WHERE resource = "' . $this->dbService->escape($re_prefix . $resource) . '" ' . 'AND property = "' . $this->dbService->escape($prop_prefix . $property) . '" ' . 'AND value = "' . $this->dbService->escape($value) . '"';
+        $sql = 'SELECT id FROM '.$this->dbService->prefixTable('triples').' WHERE resource = "'.$this->dbService->escape($re_prefix.$resource).'" AND property = "'.$this->dbService->escape($prop_prefix.$property).'" AND value = "'.$this->dbService->escape($value).'"';
         $triple = $this->dbService->loadSingle($sql);
 
-        return !is_null($triple) ?
-            intval($triple['id'])
+        return !is_null($triple)
+            ? intval($triple['id'])
             : null;
     }
 
@@ -214,7 +213,7 @@ class TripleStore
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        $res = $re_prefix . $resource;
+        $res = $re_prefix.$resource;
 
         if ($this->exist($res, $property, $value, '', $prop_prefix)) {
             return 3;
@@ -226,7 +225,7 @@ class TripleStore
         }
         $this->matchingCache = [];
 
-        $sql = 'INSERT INTO ' . $this->dbService->prefixTable('triples') . ' (resource, property, value)' . 'VALUES ("' . $this->dbService->escape($res) . '", "' . $this->dbService->escape($prop_prefix . $property) . '", "' . $this->dbService->escape($value) . '")';
+        $sql = 'INSERT INTO '.$this->dbService->prefixTable('triples').' (resource, property, value)VALUES ("'.$this->dbService->escape($res).'", "'.$this->dbService->escape($prop_prefix.$property).'", "'.$this->dbService->escape($value).'")';
 
         return $this->dbService->query($sql) ? 0 : 1;
     }
@@ -256,7 +255,7 @@ class TripleStore
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        $res = $re_prefix . $resource;
+        $res = $re_prefix.$resource;
 
         $id = $this->exist($res, $property, $oldvalue, '', $prop_prefix);
         if (!$id) {
@@ -273,7 +272,7 @@ class TripleStore
         }
         $this->matchingCache = [];
 
-        $sql = 'UPDATE ' . $this->dbService->prefixTable('triples') . ' SET value = "' . $this->dbService->escape($newvalue) . '" ' . 'WHERE id = ' . $id;
+        $sql = 'UPDATE '.$this->dbService->prefixTable('triples').' SET value = "'.$this->dbService->escape($newvalue).'" WHERE id = '.$id;
 
         return $this->dbService->query($sql) ? 0 : 1;
     }
@@ -300,17 +299,17 @@ class TripleStore
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        $res = $re_prefix . $resource;
+        $res = $re_prefix.$resource;
 
-        $sql = 'DELETE FROM ' . $this->dbService->prefixTable('triples') . ' WHERE resource = "' . $this->dbService->escape($res) . '" ' . 'AND property = "' . $this->dbService->escape($prop_prefix . $property) . '" ';
-        if ($value !== null) {
-            $valueQuery = 'AND value = "' . $this->dbService->escape($value) . '"';
+        $sql = 'DELETE FROM '.$this->dbService->prefixTable('triples').' WHERE resource = "'.$this->dbService->escape($res).'" AND property = "'.$this->dbService->escape($prop_prefix.$property).'" ';
+        if (null !== $value) {
+            $valueQuery = 'AND value = "'.$this->dbService->escape($value).'"';
             $sql .= $valueQuery;
         } else {
             $valueQuery = '';
         }
-        if ($extraSQL !== null) {
-            $extraSQLQuery = 'AND (' . $extraSQL . ')';
+        if (null !== $extraSQL) {
+            $extraSQLQuery = 'AND ('.$extraSQL.')';
             $sql .= $extraSQLQuery;
         } else {
             $extraSQLQuery = '';
@@ -322,21 +321,21 @@ class TripleStore
         $this->matchingCache = [];
 
         try {
-            if ($this->dbService->query($sql) === false) {
+            if (false === $this->dbService->query($sql)) {
                 return false;
             }
             $sql = <<<SQL
-            SELECT `id` FROM {$this->dbService->prefixTable('triples')} 
-              WHERE `resource` = "{$this->dbService->escape($re_prefix . $resource)}" 
-                AND `property` = "{$this->dbService->escape($prop_prefix . $property)}" 
-                $valueQuery
-                $extraSQLQuery
-                ;
-            SQL;
+                SELECT `id` FROM {$this->dbService->prefixTable('triples')} 
+                  WHERE `resource` = "{$this->dbService->escape($re_prefix.$resource)}" 
+                    AND `property` = "{$this->dbService->escape($prop_prefix.$property)}" 
+                    {$valueQuery}
+                    {$extraSQLQuery}
+                    ;
+                SQL;
             $triple = $this->dbService->loadSingle($sql);
 
             return is_null($triple);
-        } catch (Throwable $th) {
+        } catch (\Throwable $th) {
             return false;
         }
     }

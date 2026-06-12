@@ -38,29 +38,29 @@ if ($resultat) {
             $element[$page['tag']]['image'] = get_image_from_body($page);
             $pagetags = $this->GetAllTriplesValues($page['tag'], 'http://outils-reseaux.org/_vocabulary/tag', '', '');
             foreach ($pagetags as $tag) {
-                $element[$page['tag']]['tagnames'] .= sanitizeEntity($tag['value']) . ' ';
-                $element[$page['tag']]['tagbadges'] .= '<span class="label label-info">' . $tag['value'] . '</span>&nbsp;';
+                $element[$page['tag']]['tagnames'] .= sanitizeEntity($tag['value']).' ';
+                $element[$page['tag']]['tagbadges'] .= '<span class="label label-info">'.$tag['value'].'</span>&nbsp;';
             }
         }
     }
-    $output = $this->render("@tags/$template", ['elements' => $element]);
+    $output = $this->render("@tags/{$template}", ['elements' => $element]);
 } else {
     $nb_total = 0;
 }
 
 $shownumberinfo = $this->GetParameter('shownumberinfo');
-if (!empty($shownumberinfo) && $shownumberinfo == 1) {
-    $info = '<div class="alert alert-info">' . "\n";
+if (!empty($shownumberinfo) && 1 == $shownumberinfo) {
+    $info = '<div class="alert alert-info">'."\n";
     if ($nb_total > 1) {
         $info .= _t('TAGS_TOTAL_NB_PAGES', ['nb_total' => $nb_total]);
-    } elseif ($nb_total == 1) {
+    } elseif (1 == $nb_total) {
         $info .= _t('TAGS_ONE_PAGE_FOUND');
     } else {
         $info .= _t('TAGS_NO_PAGE');
     }
-    $info .= (!empty($tags) ? ' ' . _t('TAGS_WITH_KEYWORD') . ' <span class="label label-info">' . $tags . '</span>' : '') . '.';
-    $info .= $this->Format('{{rss tags="' . $tags . '" class="pull-right"}}') . "\n" . '</div>' . "\n";
-    $output = $info . $output;
+    $info .= (!empty($tags) ? ' '._t('TAGS_WITH_KEYWORD').' <span class="label label-info">'.$tags.'</span>' : '').'.';
+    $info .= $this->Format('{{rss tags="'.$tags.'" class="pull-right"}}')."\n".'</div>'."\n";
+    $output = $info.$output;
 }
 
-echo $output . "\n";
+echo $output."\n";

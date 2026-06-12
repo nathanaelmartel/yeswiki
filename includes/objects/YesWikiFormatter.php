@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core;
 
-abstract class YesWikiFormatter extends YesWikiPerformable
-{
-}
+abstract class YesWikiFormatter extends YesWikiPerformable {}

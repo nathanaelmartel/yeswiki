@@ -6,11 +6,11 @@ use YesWIki\Core\Service\UserManager;
 header('Content-type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Origin: *');
 
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+if ('OPTIONS' == $_SERVER['REQUEST_METHOD']) {
     if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']) && (
-        $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] == 'POST' ||
-        $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] == 'DELETE' ||
-        $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] == 'PUT'
+        'POST' == $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
+        || 'DELETE' == $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
+        || 'PUT' == $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']
     )) {
         header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Allow-Headers: X-Requested-With');
@@ -20,13 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     }
     $this->exit();
 }
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($_POST)) {
+if ('POST' == $_SERVER['REQUEST_METHOD'] && empty($_POST)) {
     $_POST = json_decode(file_get_contents('php://input'), true) ?? [];
 }
 
 $authController = $this->services->get(AuthController::class);
 $userManager = $this->services->get(UserManager::class);
-if (isset($_POST['logout']) && $_POST['logout'] == '1') {
+if (isset($_POST['logout']) && '1' == $_POST['logout']) {
     // cas de la déconnexion
     if ($user = $authController->getLoggedUser()) {
         $authController->logout();
@@ -34,7 +34,7 @@ if (isset($_POST['logout']) && $_POST['logout'] == '1') {
     } else {
         echo json_encode(['error' => _t('LOGIN_NO_CONNECTED_USER')]);
     }
-} elseif (isset($_POST['name']) && $_POST['name'] != '' && $existingUser = $userManager->getOneByName($_POST['name'])) {
+} elseif (isset($_POST['name']) && '' != $_POST['name'] && $existingUser = $userManager->getOneByName($_POST['name'])) {
     // si l'utilisateur existe, on vérifie son mot de passe
     if ($authController->checkPassword($_POST['password'], $existingUser)) {
         $authController->login($existingUser, $_POST['remember']);
@@ -49,7 +49,7 @@ if (isset($_POST['logout']) && $_POST['logout'] == '1') {
     if (isset($_POST['name']) && strstr($_POST['name'], '@')) {
         $_POST['email'] = $_POST['name'];
     }
-    if (isset($_POST['email']) && $_POST['email'] != '' && $existingUser = $userManager->getOneByEmail($_POST['email'])) {
+    if (isset($_POST['email']) && '' != $_POST['email'] && $existingUser = $userManager->getOneByEmail($_POST['email'])) {
         // si le mot de passe est bon, on créée le cookie et on redirige sur la bonne page
         if ($authController->checkPassword($_POST['password'], $existingUser)) {
             $authController->login($existingUser, $_POST['remember']);

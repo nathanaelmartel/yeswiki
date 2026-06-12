@@ -2,9 +2,7 @@
 
 namespace YesWiki;
 
-/*
-Classe de gestion des plugins et des thémes
-*/
+// Classe de gestion des plugins et des thémes
 
 class Plugins
 {
@@ -15,7 +13,7 @@ class Plugins
     public function __construct($location, $type = 'plugin')
     {
         if (is_dir($location)) {
-            $this->location = $location . '/';
+            $this->location = $location.'/';
         } else {
             $this->location = null;
         }
@@ -37,9 +35,9 @@ class Plugins
             ksort($this->p_list);
 
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     public function getPluginsList()
@@ -47,10 +45,10 @@ class Plugins
         return $this->p_list;
     }
 
-    /* Lecture d'un répertoire é la recherche des desc.xml */
+    // Lecture d'un répertoire é la recherche des desc.xml
     public function _readDir()
     {
-        if ($this->location === null) {
+        if (null === $this->location) {
             return false;
         }
 
@@ -60,11 +58,11 @@ class Plugins
 
         // Liste du répertoire des plugins
         while (($entry = $d->read()) !== false) {
-            if ($entry != '.' && $entry != '..'
-                && is_dir($this->location . $entry)
-                && file_exists($this->location . $entry . '/desc.xml')
+            if ('.' != $entry && '..' != $entry
+                && is_dir($this->location.$entry)
+                && file_exists($this->location.$entry.'/desc.xml')
             ) {
-                $res[$entry] = $this->location . $entry . '/desc.xml';
+                $res[$entry] = $this->location.$entry.'/desc.xml';
             }
         }
 
@@ -86,9 +84,9 @@ class Plugins
                     'desc' => $xml['desc'] ?? null,
                     'callbacks' => [],
                 ];
-            } else {
-                return false;
             }
+
+            return false;
         }
 
         return false;

@@ -2,7 +2,6 @@
 
 namespace YesWiki\Bazar\Field;
 
-use attach;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use YesWiki\Bazar\Service\DateService;
@@ -17,31 +16,20 @@ use YesWiki\Security\Controller\SecurityController;
  */
 class FileField extends BazarField
 {
-    protected $readLabel;
     protected const FIELD_MAX_SIZE = 14;
     protected const FIELD_READ_LABEL = 6;
     protected const FIELD_AUTHORIZED_EXTS_LABEL = 7;
+    protected $readLabel;
 
     protected $attach;
     protected $maxSize;
     protected $authorizedExts;
 
-    /**
-     * Check if a value is a URL.
-     */
-    protected function isUrl(?string $value): bool
-    {
-        if (empty($value)) {
-            return false;
-        }
-        return filter_var($value, FILTER_VALIDATE_URL) !== false;
-    }
-
     public function __construct(array $values, ContainerInterface $services)
     {
         parent::__construct($values, $services);
 
-        $this->propertyName = $this->type . $this->name;
+        $this->propertyName = $this->type.$this->name;
         $this->readLabel = empty(trim($values[self::FIELD_READ_LABEL])) ? _t('BAZ_FILEFIELD_FILE') : $values[self::FIELD_READ_LABEL];
         $this->attach = null;
         $exts = $values[self::FIELD_AUTHORIZED_EXTS_LABEL] ?? '';
@@ -52,9 +40,9 @@ class FileField extends BazarField
         $this->authorizedExts = array_filter($exts, function ($ext) {
             return preg_match('/^\.[a-z0-9]{1,4}+$/', $ext);
         });
-        $maxFieldSize = $values[self::FIELD_MAX_SIZE] ?
-            $this->getWiki()->parse_size($values[self::FIELD_MAX_SIZE]) :
-            0;
+        $maxFieldSize = $values[self::FIELD_MAX_SIZE]
+            ? $this->getWiki()->parse_size($values[self::FIELD_MAX_SIZE])
+            : 0;
 
         // take the min size limit, excluding 0 values that mean no limit
         $this->maxSize = min(array_filter(
@@ -62,6 +50,103 @@ class FileField extends BazarField
                 $maxFieldSize,
                 $this->getService(ParameterBagInterface::class)->get('max-upload-size'), ]
         ));
+    }
+
+    // indicates if id_fiche must be set before to format the value
+
+    public function requireIDFiche()
+    {
+        return true;
+    }
+
+    public function formatValuesBeforeSave($entry)
+    {
+        $value = $this->getValue($entry);
+
+        // Check if a URL was submitted
+        $urlPropertyName = $this->propertyName.'_url';
+        $urlValue = $entry[$urlPropertyName] ?? null;
+        if (!empty($urlValue) && $this->isUrl($urlValue)) {
+            return [
+                $this->propertyName => $urlValue,
+                'fields-to-remove' => [$urlPropertyName],
+            ];
+        }
+
+        // Check if the current value is a URL (keep it if no new file uploaded)
+        if ($this->isUrl($value) && empty($_FILES[$this->propertyName]['name'])) {
+            return [$this->propertyName => $value];
+        }
+
+        $params = $this->getService(ParameterBagInterface::class);
+        if (!empty($_FILES[$this->propertyName]['name']) && !empty($entry['id_fiche'])) {
+            $rawFileName = filter_var($_FILES[$this->propertyName]['name'], FILTER_UNSAFE_RAW);
+            $rawFileName = in_array($rawFileName, [false, null], true) ? '' : htmlspecialchars(strip_tags($rawFileName));
+            $sanitizedFilename = $this->sanitizeFilename($rawFileName);
+            $fileName = "{$this->getPropertyName()}_{$sanitizedFilename}";
+            $filePath = $this->getFullFileName($fileName, $entry['id_fiche'], true);
+
+            $pathinfo = pathinfo($filePath);
+            $extension = strtolower($pathinfo['extension']);
+            $extension = preg_replace('/_$/', '', $extension);
+            if ('' != $extension && in_array($extension, array_keys($params->get('authorized-extensions')))) {
+                if (!file_exists($filePath)) {
+                    if ($_FILES[$this->propertyName]['size'] > $this->maxSize) {
+                        throw new \Exception(_t('BAZ_FILEFIELD_TOO_LARGE_FILE', ['fileMaxSize' => $this->maxSize]));
+                    }
+                    move_uploaded_file($_FILES[$this->propertyName]['tmp_name'], $filePath);
+                    chmod($filePath, 0o755);
+                } else {
+                    echo _t('BAZ_FILE_ALREADY_EXISTING').'<br />';
+                }
+            } else {
+                echo _t('BAZ_NOT_AUTHORIZED_FILE').'<br />';
+
+                return [$this->propertyName => ''];
+            }
+
+            return [$this->propertyName => basename($filePath)];
+        }
+        if (!empty($value)) {
+            return [$this->propertyName => file_exists($this->getBasePath().$value) ? $value : ''];
+        }
+
+        return [$this->propertyName => ''];
+    }
+
+    public function getReadLabel(): string
+    {
+        return $this->readLabel;
+    }
+
+    public function getAuthorizedExts(): array
+    {
+        return $this->authorizedExts;
+    }
+
+    // change return of this method to keep compatible with php 7.3 (mixed is not managed)
+    #[\ReturnTypeWillChange]
+    public function jsonSerialize()
+    {
+        return array_merge(
+            parent::jsonSerialize(),
+            [
+                'readLabel' => $this->getReadLabel(),
+                'authorizedExts' => $this->getAuthorizedExts(),
+            ]
+        );
+    }
+
+    /**
+     * Check if a value is a URL.
+     */
+    protected function isUrl(?string $value): bool
+    {
+        if (empty($value)) {
+            return false;
+        }
+
+        return false !== filter_var($value, FILTER_VALIDATE_URL);
     }
 
     protected function renderInput($entry)
@@ -87,7 +172,7 @@ class FileField extends BazarField
                         $this->updateEntryAfterFileDelete($entry);
                     }
                 } else {
-                    $alertMessage = '<div class="alert alert-info">' . _t('BAZ_DROIT_INSUFFISANT') . '</div>' . "\n";
+                    $alertMessage = '<div class="alert alert-info">'._t('BAZ_DROIT_INSUFFISANT').'</div>'."\n";
                 }
             }
         }
@@ -98,17 +183,17 @@ class FileField extends BazarField
             if (!empty($entry) && isset($_GET['delete_file']) && $_GET['delete_file'] === $value) {
                 if ($this->isAllowedToDeleteFile($entry, $value)) {
                     $this->updateEntryAfterFileDelete($entry);
+
                     // Return empty input after deletion
                     return $this->render('@bazar/inputs/file.twig', [
                         'maxSize' => $this->maxSize,
                         'isUrl' => false,
                     ]);
-                } else {
-                    $alertMessage = '<div class="alert alert-info">' . _t('BAZ_DROIT_INSUFFISANT') . '</div>' . "\n";
                 }
+                $alertMessage = '<div class="alert alert-info">'._t('BAZ_DROIT_INSUFFISANT').'</div>'."\n";
             }
 
-            return ($alertMessage ?? '') . $this->render('@bazar/inputs/file.twig', [
+            return ($alertMessage ?? '').$this->render('@bazar/inputs/file.twig', [
                 'value' => $value,
                 'maxSize' => $this->maxSize,
                 'isUrl' => true,
@@ -119,8 +204,8 @@ class FileField extends BazarField
             ]);
         }
 
-        return ($alertMessage ?? '') . $this->render('@bazar/inputs/file.twig', (
-            empty($value) || !file_exists($this->getBasePath() . $value) || $deletedFile
+        return ($alertMessage ?? '').$this->render('@bazar/inputs/file.twig',
+            empty($value) || !file_exists($this->getBasePath().$value) || $deletedFile
             ? [
                 'maxSize' => $this->maxSize,
                 'isUrl' => false,
@@ -130,74 +215,11 @@ class FileField extends BazarField
                 'maxSize' => $this->maxSize,
                 'isUrl' => false,
                 'shortFileName' => $this->getShortFileName($value),
-                'fileUrl' => $this->getBasePath() . $value,
+                'fileUrl' => $this->getBasePath().$value,
                 'deleteUrl' => empty($entry) ? '' : $this->getWiki()->href('edit', $entry['id_fiche'], ['delete_file' => $value], false),
                 'isAllowedToDeleteFile' => empty($entry) ? false : $this->isAllowedToDeleteFile($entry, $value),
             ]
-        ));
-    }
-
-    /*
-    *	indicates if id_fiche must be set before to format the value
-    */
-
-    public function requireIDFiche()
-    {
-        return true;
-    }
-
-    public function formatValuesBeforeSave($entry)
-    {
-        $value = $this->getValue($entry);
-
-        // Check if a URL was submitted
-        $urlPropertyName = $this->propertyName . '_url';
-        $urlValue = $entry[$urlPropertyName] ?? null;
-        if (!empty($urlValue) && $this->isUrl($urlValue)) {
-            return [
-                $this->propertyName => $urlValue,
-                'fields-to-remove' => [$urlPropertyName],
-            ];
-        }
-
-        // Check if the current value is a URL (keep it if no new file uploaded)
-        if ($this->isUrl($value) && empty($_FILES[$this->propertyName]['name'])) {
-            return [$this->propertyName => $value];
-        }
-
-        $params = $this->getService(ParameterBagInterface::class);
-        if (!empty($_FILES[$this->propertyName]['name']) && !empty($entry['id_fiche'])) {
-            $rawFileName = filter_var($_FILES[$this->propertyName]['name'], FILTER_UNSAFE_RAW);
-            $rawFileName = in_array($rawFileName, [false, null], true) ? '' : htmlspecialchars(strip_tags($rawFileName));
-            $sanitizedFilename = $this->sanitizeFilename($rawFileName);
-            $fileName = "{$this->getPropertyName()}_$sanitizedFilename";
-            $filePath = $this->getFullFileName($fileName, $entry['id_fiche'], true);
-
-            $pathinfo = pathinfo($filePath);
-            $extension = strtolower($pathinfo['extension']);
-            $extension = preg_replace('/_$/', '', $extension);
-            if ($extension != '' && in_array($extension, array_keys($params->get('authorized-extensions')))) {
-                if (!file_exists($filePath)) {
-                    if ($_FILES[$this->propertyName]['size'] > $this->maxSize) {
-                        throw new \Exception(_t('BAZ_FILEFIELD_TOO_LARGE_FILE', ['fileMaxSize' => $this->maxSize]));
-                    }
-                    move_uploaded_file($_FILES[$this->propertyName]['tmp_name'], $filePath);
-                    chmod($filePath, 0755);
-                } else {
-                    echo _t('BAZ_FILE_ALREADY_EXISTING') . '<br />';
-                }
-            } else {
-                echo _t('BAZ_NOT_AUTHORIZED_FILE') . '<br />';
-
-                return [$this->propertyName => ''];
-            }
-
-            return [$this->propertyName => basename($filePath)];
-        } elseif (!empty($value)) {
-            return [$this->propertyName => file_exists($this->getBasePath() . $value) ? $value : ''];
-        } else {
-            return [$this->propertyName => ''];
-        }
+        );
     }
 
     protected function renderStatic($entry)
@@ -215,14 +237,14 @@ class FileField extends BazarField
         }
 
         $basePath = $this->getBasePath();
-        if (!empty($value) && file_exists($basePath . $value)) {
+        if (!empty($value) && file_exists($basePath.$value)) {
             $shortFileName = $this->getShortFileName($value);
 
             return $this->render('@bazar/fields/file.twig', [
                 'value' => $value,
                 'fileUrl' => ($shortFileName == $value)
-                    ? $this->getWiki()->getBaseUrl() . '/' . $basePath . $value
-                    : $this->getWiki()->Href('download', $entry['id_fiche'] . '_' . $this->getPropertyName(), ['file' => $value], false),
+                    ? $this->getWiki()->getBaseUrl().'/'.$basePath.$value
+                    : $this->getWiki()->Href('download', $entry['id_fiche'].'_'.$this->getPropertyName(), ['file' => $value], false),
                 'shortFileName' => $shortFileName,
                 'isUrl' => false,
             ]);
@@ -247,7 +269,7 @@ class FileField extends BazarField
      */
     protected function defineFilePrefix(array $entry)
     {
-        return $entry['id_fiche'] . '_' . $this->getPropertyName() . '_';
+        return $entry['id_fiche'].'_'.$this->getPropertyName().'_';
     }
 
     /**
@@ -264,7 +286,7 @@ class FileField extends BazarField
 
         unset($attach);
 
-        $shortFileName = (empty($fileNameInfos['name']))
+        return (empty($fileNameInfos['name']))
             ? $longFileName
             : (
                 (preg_match("/^{$this->getPropertyName()}_(.*)$/m", "{$fileNameInfos['name']}.{$fileNameInfos['ext']}", $match)
@@ -272,31 +294,6 @@ class FileField extends BazarField
                 ? $match[1]
                 : "{$fileNameInfos['name']}.{$fileNameInfos['ext']}"
             );
-
-        return $shortFileName;
-    }
-
-    public function getReadLabel(): string
-    {
-        return $this->readLabel;
-    }
-
-    public function getAuthorizedExts(): array
-    {
-        return $this->authorizedExts;
-    }
-
-    // change return of this method to keep compatible with php 7.3 (mixed is not managed)
-    #[\ReturnTypeWillChange]
-    public function jsonSerialize()
-    {
-        return array_merge(
-            parent::jsonSerialize(),
-            [
-                'readLabel' => $this->getReadLabel(),
-                'authorizedExts' => $this->getAuthorizedExts(),
-            ]
-        );
     }
 
     protected function getFullFileName(string $fileName, string $tag, bool $newName = false): string
@@ -336,10 +333,9 @@ class FileField extends BazarField
     protected function sanitizeFilename(string $filename): string
     {
         $attach = $this->getAttach();
-        // Remove accents and spaces
-        $sanitizedFilename = $attach->sanitizeFilename($filename);
 
-        return $sanitizedFilename;
+        // Remove accents and spaces
+        return $attach->sanitizeFilename($filename);
     }
 
     protected function getBasePath(): string
@@ -347,10 +343,10 @@ class FileField extends BazarField
         $attach = $this->getAttach();
         $basePath = $attach->GetUploadPath();
 
-        return $basePath . (substr($basePath, -1) != '/' ? '/' : '');
+        return $basePath.('/' != substr($basePath, -1) ? '/' : '');
     }
 
-    protected function getAttach(): attach
+    protected function getAttach(): \attach
     {
         if (is_null($this->attach)) {
             if (!class_exists('attach')) {
@@ -359,7 +355,7 @@ class FileField extends BazarField
 
             $wiki = $this->getWiki();
 
-            $this->attach = new attach($wiki);
+            $this->attach = new \attach($wiki);
         }
 
         return $this->attach;

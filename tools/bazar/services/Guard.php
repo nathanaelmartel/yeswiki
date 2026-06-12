@@ -35,7 +35,7 @@ class Guard
     public function isAllowed($action = 'saisie_fiche', $ownerId = ''): bool
     {
         $loggedUserName = $this->authController->getLoggedUserName();
-        $isOwner = $ownerId === $loggedUserName || $ownerId === '';
+        $isOwner = $ownerId === $loggedUserName || '' === $ownerId;
 
         // Admins are allowed all actions
         if ($this->userManager->isInGroup('admins')) {
@@ -45,7 +45,8 @@ class Guard
         switch ($action) {
             case 'supp_fiche':
                 // it should not be possible to delete a file if not connected even if no owner (prevent spam)
-                return $ownerId != '' && $isOwner;
+                return '' != $ownerId && $isOwner;
+
             case 'voir_champ':
                 return $isOwner;
 
@@ -70,7 +71,7 @@ class Guard
      *
      * @param array       $page
      * @param string      $tag
-     * @param string|null $userNameForCheckingACL username used to check ACL, if empty, uses en the connectd user
+     * @param null|string $userNameForCheckingACL username used to check ACL, if empty, uses en the connectd user
      *
      * @return array $page
      */
@@ -100,7 +101,7 @@ class Guard
                             $valeur[$field] = '';
                             // on vide le champ
                         }
-                        //$valeur = array_map(function($value){
+                        // $valeur = array_map(function($value){
                         //     return mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1');
                         // }, $valeur);
                         $page['body'] = json_encode($valeur);
@@ -110,24 +111,6 @@ class Guard
         }
 
         return $page;
-    }
-
-    protected function isPageOwner($page, ?string $userName = null): bool
-    {
-        if (!empty($userName)) {
-            // check if userName is owner
-            return $page['owner'] === $userName;
-        }
-        // check if user is logged in
-        if (!$this->authController->getLoggedUser()) {
-            return false;
-        }
-        // check if user is owner
-        if ($page['owner'] == $this->authController->getLoggedUserName()) {
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -152,5 +135,23 @@ class Guard
         }
 
         return (empty($fieldName) || !isset($entry[$fieldName])) ? '' : $entry[$fieldName];
+    }
+
+    protected function isPageOwner($page, ?string $userName = null): bool
+    {
+        if (!empty($userName)) {
+            // check if userName is owner
+            return $page['owner'] === $userName;
+        }
+        // check if user is logged in
+        if (!$this->authController->getLoggedUser()) {
+            return false;
+        }
+        // check if user is owner
+        if ($page['owner'] == $this->authController->getLoggedUserName()) {
+            return true;
+        }
+
+        return false;
     }
 }

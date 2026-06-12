@@ -12,6 +12,7 @@ use YesWiki\Wiki;
 
 class ListManager
 {
+    public const TRIPLES_LIST_ID = 'liste';
     protected $wiki;
     protected $dbService;
     protected $htmlPurifierService;
@@ -19,8 +20,6 @@ class ListManager
     protected $params;
     protected $securityController;
     protected $tripleStore;
-
-    public const TRIPLES_LIST_ID = 'liste';
 
     protected $cachedLists;
 
@@ -51,7 +50,7 @@ class ListManager
 
     public function getOne($id, $parent = null): ?array
     {
-        if (isset($this->cachedLists[$id]) && $parent === null) { // we cache all information, not just a level
+        if (isset($this->cachedLists[$id]) && null === $parent) { // we cache all information, not just a level
             return $this->cachedLists[$id];
         }
 
@@ -62,16 +61,16 @@ class ListManager
 
         $page = $this->pageManager->getOne($id);
         if (empty($page)) {
-            echo '<div class="alert alert-danger">List id not found: ' . $id . '</div>';
+            echo '<div class="alert alert-danger">List id not found: '.$id.'</div>';
 
             return null;
         }
         $data = $this->loadJson($page['body'], $id);
-        if ($parent != null) {
+        if (null != $parent) {
             $this->cachedLists[$id] = $data;
         }
 
-        if ($parent === 'root') {
+        if ('root' === $parent) {
             $data['nodes'] = array_map(function ($a) {
                 unset($a['children']);
 
@@ -82,14 +81,6 @@ class ListManager
             $data['nodes'] = multiArraySearch($data['nodes'], 'id', $parent)[0]['children'] ?? null;
             $data['parentId'] = $parent;
         }
-
-        return $data;
-    }
-
-    private function loadJson(string $json, $id): array
-    {
-        $data = $this->convertDataStructure(json_decode($json, true));
-        $data['id'] = $id;
 
         return $data;
     }
@@ -129,8 +120,8 @@ class ListManager
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        $id = $id ?? genere_nom_wiki('List ' . $title);
-        $nodes = $nodes ?? [];
+        $id ??= genere_nom_wiki('List '.$title);
+        $nodes ??= [];
         $this->trimRecursiveInPlace($nodes);
         $json = json_encode([
             'title' => $title,
@@ -151,7 +142,7 @@ class ListManager
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        $nodes = $nodes ?? [];
+        $nodes ??= [];
         $this->trimRecursiveInPlace($nodes);
         $json = json_encode([
             'title' => $title,
@@ -168,7 +159,7 @@ class ListManager
         if ($this->securityController->isWikiHibernated()) {
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        if (!isset($id) || $id === '') {
+        if (!isset($id) || '' === $id) {
             throw new \Exception('List ID not specified');
         }
 
@@ -192,6 +183,14 @@ class ListManager
         $val = array_shift($val);
 
         return $val['label'] ?? '';
+    }
+
+    private function loadJson(string $json, $id): array
+    {
+        $data = $this->convertDataStructure(json_decode($json, true));
+        $data['id'] = $id;
+
+        return $data;
     }
 
     private function sanitizeHMTL(array $nodes)

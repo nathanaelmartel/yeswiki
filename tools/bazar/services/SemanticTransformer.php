@@ -25,10 +25,10 @@ class SemanticTransformer
         $json = $this->templateEngine->renderSandboxedFromStringNoEscape($form['bn_sem_template'], $data);
         $semanticData = json_decode($json, true);
 
-        $semanticData['id'] = $this->params->get('base_url') . $data['id_fiche'];
+        $semanticData['id'] = $this->params->get('base_url').$data['id_fiche'];
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception('Semantic template produced invalid JSON: ' . json_last_error_msg());
+        if (JSON_ERROR_NONE !== json_last_error()) {
+            throw new \Exception('Semantic template produced invalid JSON: '.json_last_error_msg());
         }
 
         return $semanticData;
@@ -39,14 +39,14 @@ class SemanticTransformer
         $form = baz_valeurs_formulaire($formId);
 
         if (empty($form['bn_sem_reverse_template'])) {
-            throw new \Exception('No reverse semantic template defined for form ' . $formId);
+            throw new \Exception('No reverse semantic template defined for form '.$formId);
         }
 
         $json = $this->templateEngine->renderSandboxedFromStringNoEscape($form['bn_sem_reverse_template'], $data);
         $fields = json_decode($json, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception('Reverse semantic template produced invalid JSON: ' . json_last_error_msg());
+        if (JSON_ERROR_NONE !== json_last_error()) {
+            throw new \Exception('Reverse semantic template produced invalid JSON: '.json_last_error_msg());
         }
 
         return array_merge([

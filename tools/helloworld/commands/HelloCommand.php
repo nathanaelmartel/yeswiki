@@ -29,9 +29,9 @@ class HelloCommand extends Command
 
             // the full command description shown when running the command with
             // the "--help" option
-            ->setHelp("This command display the message \"Hello !\" with options for uppercase of add a username.\n" .
-                "The argument \"username\" can be used to add a username. Example : \n" .
-                "Command line'./yeswicli helloworld:hello \"John Smith\"' gives \"Hello John Smith !\"")
+            ->setHelp("This command display the message \"Hello !\" with options for uppercase of add a username.\n"
+                ."The argument \"username\" can be used to add a username. Example : \n"
+                ."Command line'./yeswicli helloworld:hello \"John Smith\"' gives \"Hello John Smith !\"")
 
             // add argument for username
             // second parameter could be InputArgument::OPTIONAL <=> null, InputArgument::REQUIRED, InputArgument::IS_ARRAY
@@ -51,8 +51,8 @@ class HelloCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $username = $input->getArgument('username');
-        $username = empty($username) ? '' : "$username ";
-        $outputString = "Hello $username!";
+        $username = empty($username) ? '' : "{$username} ";
+        $outputString = "Hello {$username}!";
         if ($input->getOption('uppercase')) {
             $outputString = strtoupper($outputString);
         }

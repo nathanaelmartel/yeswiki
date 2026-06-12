@@ -1,6 +1,6 @@
 <?php
 
-/******************************************************************************
+/*
  *			DOCUMENTATION
  *******************************************************************************
     RESUME
@@ -80,7 +80,7 @@ Exemple :
 .tableFM TBODY TR { text-align: center;  }
 .tableFMCol1 { background-color: Aqua; }
 .tableFMCol2 { background-color: Yellow; }
- *******************************************************************************/
+ */
 
 if (!class_exists('attach')) {
     include 'tools/attach/libs/attach.lib.php';

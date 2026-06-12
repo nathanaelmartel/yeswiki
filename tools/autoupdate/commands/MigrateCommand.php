@@ -22,7 +22,8 @@ class MigrateCommand extends Command
     {
         $this
             ->setName('migrate')
-            ->setDescription('Run all pending migrations (after an upgrade)');
+            ->setDescription('Run all pending migrations (after an upgrade)')
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -30,7 +31,7 @@ class MigrateCommand extends Command
         $output->writeln('Starting migrations');
 
         $messages = $this->wiki->services->get(MigrationService::class)->run();
-        if (count($messages) == 0) {
+        if (0 == count($messages)) {
             $output->writeln('No migrations to run');
         }
 

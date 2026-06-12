@@ -3,7 +3,6 @@
 namespace YesWiki\Core\Service;
 
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\RouteCollection;
 use YesWiki\Core\Controller\AuthController;
 use YesWiki\Wiki;
@@ -49,11 +48,10 @@ class ApiService
                     $bearerIsConnected
                     || (
                         isset($this->params->get('api_allowed_keys')['public'])
-                        && $this->params->get('api_allowed_keys')['public'] === true
+                        && true === $this->params->get('api_allowed_keys')['public']
                     )
                 )
-            )
-        ;
+            );
     }
 
     /**
@@ -61,11 +59,9 @@ class ApiService
      * */
     private function getAuthorizationHeader()
     {
-        $headers = $this->wiki->request->headers->get('authorization')
+        return $this->wiki->request->headers->get('authorization')
             ? trim($this->wiki->request->headers->get('authorization'))
             : null;
-
-        return $headers;
     }
 
     /**

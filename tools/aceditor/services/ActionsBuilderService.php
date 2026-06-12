@@ -8,7 +8,7 @@ use YesWiki\Wiki;
 
 class ActionsBuilderService
 {
-    protected $data = null;
+    protected $data;
     protected $renderer;
     protected $wiki;
 
@@ -23,7 +23,7 @@ class ActionsBuilderService
     // ---------------------
     public function getData()
     {
-        if ($this->data !== null) {
+        if (null !== $this->data) {
             return $this->data;
         }
 
@@ -37,12 +37,11 @@ class ActionsBuilderService
         $data['action_groups'] = [];
         foreach ($docFiles as $filePath) {
             $filename = pathinfo($filePath)['filename'];
-            if ($filename == 'documentation') {
+            if ('documentation' == $filename) {
                 // find key from filePath between tools and actions
                 $matches = [];
-                if (preg_match('/tools(?:\\/|\\\)([^\/]*)(?:\\/|\\\)actions(?:\\/|\\\)documentation.yaml/', $filePath, $matches)
-                    ||
-                    preg_match('/(custom)(?:\\/|\\\)actions(?:\\/|\\\)documentation.yaml/', $filePath, $matches)
+                if (preg_match('/tools(?:\/|\\\)([^\/]*)(?:\/|\\\)actions(?:\/|\\\)documentation.yaml/', $filePath, $matches)
+                    || preg_match('/(custom)(?:\/|\\\)actions(?:\/|\\\)documentation.yaml/', $filePath, $matches)
                 ) {
                     $key = $matches[1];
                 } else {
@@ -80,12 +79,12 @@ class ActionsBuilderService
         $filtered_files = preg_grep('/^(?!fiche)/', $bazarlisteCustomTemplates);
         foreach ($filtered_files as $file) {
             $name = str_replace(['.tpl.html', '.twig'], '', $file);
-            $translation = _t('AB_' . $name . '_label');
+            $translation = _t('AB_'.$name.'_label');
             // if no translation found, write "Template custom"
-            if ($translation == 'AB_' . $name . '_label') {
-                $translation = _t('ACTION_BUILDER_TEMPLATE_CUSTOM') . ' ' . $name;
+            if ($translation == 'AB_'.$name.'_label') {
+                $translation = _t('ACTION_BUILDER_TEMPLATE_CUSTOM').' '.$name;
             } else {
-                $translation = '_t(AB_' . $name . '_label)';
+                $translation = '_t(AB_'.$name.'_label)';
             }
             if (empty($data['action_groups']['bazarliste']['actions'][$name])) {
                 $data['action_groups']['bazarliste']['actions'][$name] = [
@@ -99,7 +98,7 @@ class ActionsBuilderService
 
         // Handle translations
         array_walk_recursive($data['action_groups'], function (&$item, $key) {
-            if (is_string($item) && preg_match("/_t\((.+)\)/", $item, $trans_key)) {
+            if (is_string($item) && preg_match('/_t\\((.+)\\)/', $item, $trans_key)) {
                 $item = str_replace($trans_key[0], _t($trans_key[1]), $item);
             }
         });
@@ -108,16 +107,16 @@ class ActionsBuilderService
         $extraComponents = [];
         $files = [];
         foreach ($this->wiki->extensions as $pluginName => $pluginPath) {
-            $files = glob("tools/$pluginName/javascripts/components/actions-builder/*.js");
+            $files = glob("tools/{$pluginName}/javascripts/components/actions-builder/*.js");
             foreach ($files as $filePath) {
                 $filename = pathinfo($filePath)['filename'];
-                $extraComponents[$filename] = "../../../$pluginName/javascripts/components/actions-builder/$filename.js";
+                $extraComponents[$filename] = "../../../{$pluginName}/javascripts/components/actions-builder/{$filename}.js";
             }
         }
         $files = glob('custom/javascripts/components/actions-builder/*.js');
         foreach ($files as $filePath) {
             $filename = pathinfo($filePath)['filename'];
-            $extraComponents[$filename] = "../../../../custom/javascripts/components/actions-builder/$filename.js";
+            $extraComponents[$filename] = "../../../../custom/javascripts/components/actions-builder/{$filename}.js";
         }
         if (!empty($extraComponents)) {
             $data['extraComponents'] = $extraComponents;

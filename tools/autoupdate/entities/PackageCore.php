@@ -51,15 +51,15 @@ class PackageCore extends Package
     public function upgrade()
     {
         $desPath = $this->localPath;
-        if ($this->extractionPath === null) {
+        if (null === $this->extractionPath) {
             throw new \Exception(_t('AU_PACKAGE_NOT_UNZIPPED'), 1);
         }
-        if (substr($this->extractionPath, -1) != '/') {
+        if ('/' != substr($this->extractionPath, -1)) {
             $this->extractionPath .= '/';
         }
         // get the first subfolder extracted from the zip (it contains everything)
-        $dirs = array_filter(glob($this->extractionPath . '*'), 'is_dir');
-        $this->extractionPath = $dirs[0] . '/';
+        $dirs = array_filter(glob($this->extractionPath.'*'), 'is_dir');
+        $this->extractionPath = $dirs[0].'/';
 
         // check if PHP update needed
         $neededPHPVersion = $this->getNeededPHPversionFromExtractedFolder();
@@ -80,26 +80,26 @@ class PackageCore extends Package
                 // Ignore les fichiers de la liste
                 if (!in_array($file, self::IGNORED_FILES)) {
                     $this->copy(
-                        $this->extractionPath . '/' . $file,
-                        $desPath . '/' . $file
+                        $this->extractionPath.'/'.$file,
+                        $desPath.'/'.$file
                     );
                 }
             }
             closedir($res);
             foreach (self::FILES_TO_ADD_TO_IGNORED_FOLDERS as $file) {
-                if (is_file($this->extractionPath . '/' . $file) or is_dir($this->extractionPath . '/' . $file)) {
-                    $this->copy($this->extractionPath . '/' . $file, $desPath . '/' . $file);
+                if (is_file($this->extractionPath.'/'.$file) or is_dir($this->extractionPath.'/'.$file)) {
+                    $this->copy($this->extractionPath.'/'.$file, $desPath.'/'.$file);
                 }
             }
             foreach (self::FILES_TO_UPDATE_TO_IGNORED_FOLDERS as $file) {
-                $this->copy($this->extractionPath . '/' . $file, $desPath . '/' . $file);
+                $this->copy($this->extractionPath.'/'.$file, $desPath.'/'.$file);
             }
         }
 
         // check if cache and files directories are present
         foreach (['cache', 'files'] as $dirName) {
-            if (!is_dir($desPath . '/' . $dirName)) {
-                mkdir($desPath . '/' . $dirName);
+            if (!is_dir($desPath.'/'.$dirName)) {
+                mkdir($desPath.'/'.$dirName);
             }
         }
 
@@ -108,14 +108,14 @@ class PackageCore extends Package
 
     public function upgradeDefaultTheme()
     {
-        $src = $this->extractionPath . '/themes/margot';
-        $desPath = $this->localPath . '/themes/margot';
+        $src = $this->extractionPath.'/themes/margot';
+        $desPath = $this->localPath.'/themes/margot';
         $file2ignore = ['.', '..'];
         if ($res = opendir($src)) {
             while (($file = readdir($res)) !== false) {
                 // Ignore les fichiers de la liste
                 if (!in_array($file, $file2ignore)) {
-                    $this->copy($src . '/' . $file, $desPath . '/' . $file);
+                    $this->copy($src.'/'.$file, $desPath.'/'.$file);
                 }
             }
             closedir($res);
@@ -126,14 +126,14 @@ class PackageCore extends Package
 
     public function upgradeTools()
     {
-        $src = $this->extractionPath . '/tools';
-        $desPath = $this->localPath . '/tools';
+        $src = $this->extractionPath.'/tools';
+        $desPath = $this->localPath.'/tools';
         $file2ignore = ['.', '..'];
         if ($res = opendir($src)) {
             while (($file = readdir($res)) !== false) {
                 // Ignore les fichiers de la liste
                 if (!in_array($file, $file2ignore)) {
-                    $this->copy($src . '/' . $file, $desPath . '/' . $file);
+                    $this->copy($src.'/'.$file, $desPath.'/'.$file);
                 }
             }
             closedir($res);
@@ -180,7 +180,7 @@ class PackageCore extends Package
             $version = $configuration['yeswiki_version'];
         }
         $requestedVersion = $GLOBALS['wiki']->getParameter('version');
-        if (isset($requestedVersion) && $requestedVersion != '') {
+        if (isset($requestedVersion) && '' != $requestedVersion) {
             $version = $requestedVersion;
         }
 
@@ -199,9 +199,7 @@ class PackageCore extends Package
         return $result;
     }
 
-    /***************************************************************************
-     * Méthodes privée
-     **************************************************************************/
+    // Méthodes privée
 
     protected function localRelease()
     {
@@ -212,9 +210,8 @@ class PackageCore extends Package
         if (isset($configuration['yeswiki_release'])) {
             $release = $configuration['yeswiki_release'];
         }
-        $release = new Release($release);
 
-        return $release;
+        return new Release($release);
     }
 
     protected function updateAvailable()

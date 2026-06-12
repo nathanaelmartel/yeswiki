@@ -60,7 +60,7 @@ class BazarAction extends YesWikiAction
 
         // YesWiki pages links, like "HomePage" or "HomePage/xml"
         if (!empty($redirecturl)) {
-            $wikiLink = $this->wiki->extractLinkParts((substr($redirecturl, 0, 1) == '?') ? substr($redirecturl, 1) : $redirecturl);
+            $wikiLink = $this->wiki->extractLinkParts(('?' == substr($redirecturl, 0, 1)) ? substr($redirecturl, 1) : $redirecturl);
             if ($wikiLink) {// General URL
                 $tag = $wikiLink['tag'];
                 $method = $wikiLink['method'];
@@ -72,13 +72,13 @@ class BazarAction extends YesWikiAction
         $req = $this->getRequest();
         $reqIdTypeAnnonce = $req->get('id_typeannonce');
         $reqId = $req->get('id');
-        $vIDs = (isset($reqIdTypeAnnonce) && trim($reqIdTypeAnnonce) != ''
+        $vIDs = (isset($reqIdTypeAnnonce) && '' != trim($reqIdTypeAnnonce)
                 ? $reqIdTypeAnnonce
-                : (isset($reqId) && trim($reqId) != ''
+                : (isset($reqId) && '' != trim($reqId)
                     ? $reqId
-                    : (isset($arg['id_typeannonce']) && trim($arg['id_typeannonce']) != ''
+                    : (isset($arg['id_typeannonce']) && '' != trim($arg['id_typeannonce'])
                         ? $arg['id_typeannonce']
-                        : (isset($arg['id']) && trim($arg['id']) != ''
+                        : (isset($arg['id']) && '' != trim($arg['id'])
                         ? $arg['id']
                         : ''))));
 
@@ -104,21 +104,6 @@ class BazarAction extends YesWikiAction
         ];
     }
 
-    /**
-     * check if get is scalar then return it or result of callback.
-     *
-     * @param function $callback
-     *
-     * @return scalar
-     */
-    protected function sanitizedGet(string $key, $callback)
-    {
-        $val = $this->getRequest()->query->get($key);
-        return (isset($val) && is_scalar($val))
-            ? $val
-            : (is_callable($callback) ? $callback() : null);
-    }
-
     public function run()
     {
         $req = $this->getRequest();
@@ -133,7 +118,7 @@ class BazarAction extends YesWikiAction
         $action = $this->arguments[self::VARIABLE_ACTION];
 
         // Display menu, unless we explicitly don't want to see it
-        if ($this->arguments['voirmenu'] !== '0') {
+        if ('0' !== $this->arguments['voirmenu']) {
             echo $this->render('@bazar/menu.twig', [
                 'menuItems' => array_map('trim', explode(',', $this->arguments['voirmenu'])),
                 'view' => $view,
@@ -145,30 +130,38 @@ class BazarAction extends YesWikiAction
                 if ($this->isWikiHibernated()) {
                     return $this->getMessageWhenHibernated();
                 }
+
                 switch ($action) {
                     case self::ACTION_ENTRY_CREATE:
                         return $entryController->create($req->get('id_typeannonce') ?? $req->get('id') ?? $this->arguments['idtypeannonce']['locals'][0], $this->arguments['redirecturl']);
+
                     case self::ACTION_ENTRY_EDIT:
                         return $entryController->update($req->get('id_fiche'));
+
                     case self::ACTION_ENTRY_DELETE:
                         return $entryController->delete($req->get('id_fiche'), true);
+
                     case self::ACTION_PUBLIER:
                         return $entryController->publish($req->get('id_fiche'), true);
+
                     case self::ACTION_PAS_PUBLIER:
                         return $entryController->publish($req->get('id_fiche'), false);
+
                     case self::CHOISIR_TYPE_FICHE:
                         return $entryController->selectForm();
+
                     default:
                         if (!empty($this->arguments['idtypeannonce']['locals'])) {
                             if (count($this->arguments['idtypeannonce']['locals']) > 1) {
                                 return $entryController->selectForm($this->arguments['idtypeannonce']['locals']);
-                            } else {
-                                return $entryController->create($this->arguments['idtypeannonce']['locals'][0], $this->arguments['redirecturl']);
                             }
-                        } else {
-                            return $entryController->selectForm();
+
+                            return $entryController->create($this->arguments['idtypeannonce']['locals'][0], $this->arguments['redirecturl']);
                         }
+
+                        return $entryController->selectForm();
                 }
+
                 // no break
             case self::VOIR_FORMULAIRE:
                 switch ($action) {
@@ -178,18 +171,21 @@ class BazarAction extends YesWikiAction
                         }
 
                         return $formController->create();
+
                     case self::ACTION_FORM_EDIT:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $formController->update($req->query->get('idformulaire'));
+
                     case self::ACTION_FORM_DELETE:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $formController->delete($req->query->get('idformulaire'));
+
                     case self::ACTION_FORM_CONFIRM_DELETE:
                     case self::ACTION_FORM_CONFIRM_EMPTY:
                         if ($this->isWikiHibernated()) {
@@ -197,45 +193,53 @@ class BazarAction extends YesWikiAction
                         }
 
                         return $this->render('@bazar/forms/forms_confirm.twig', [
-                            'type' => ($action == self::ACTION_FORM_CONFIRM_DELETE) ? 'delete' : 'empty',
+                            'type' => (self::ACTION_FORM_CONFIRM_DELETE == $action) ? 'delete' : 'empty',
                         ]);
+
                     case self::ACTION_FORM_EMPTY:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $formController->empty($req->query->get('idformulaire'));
+
                     case self::ACTION_FORM_CLONE:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $formController->clone($req->query->get('idformulaire'));
+
                     default:
                         return $formController->displayAll($req->query->get('msg'));
                 }
+
                 // no break
             case self::VOIR_ABONNEMENTS:
                 switch ($action) {
                     case self::ACTION_ABONNEMENT_LIST:
                         return $formController->manageAbonnements($req->query->get('idformulaire'));
+
                     case self::ACTION_ABONNEMENT_ADD:
-                        if ($req->query->get('type') === 'following') {
+                        if ('following' === $req->query->get('type')) {
                             return $formController->addFollowing($req->query->get('idformulaire'), $req->query->get('actor'));
                         }
+
                         // no break
                     case self::ACTION_ABONNEMENT_REMOVE:
-                        if ($req->query->get('type') === 'followers') {
+                        if ('followers' === $req->query->get('type')) {
                             return $formController->removeFollower($req->query->get('idformulaire'), $req->query->get('actor'));
-                        } else {
-                            return $formController->removeFollowing($req->query->get('idformulaire'), $req->query->get('actor'));
                         }
-                        // no break
+
+                        return $formController->removeFollowing($req->query->get('idformulaire'), $req->query->get('actor'));
+
                     case self::ACTION_ABONNEMENT_SYNC:
                         return $formController->syncActorPosts($req->query->get('idformulaire'), $req->query->get('actor'));
+
                     default:
                         return $formController->displayAll($req->query->get('msg'));
                 }
+
                 // no break
             case self::VOIR_LISTES:
                 switch ($action) {
@@ -245,32 +249,39 @@ class BazarAction extends YesWikiAction
                         }
 
                         return $listController->create();
+
                     case self::ACTION_LIST_EDIT:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $listController->update($req->query->get('idliste'));
+
                     case self::ACTION_LIST_DELETE:
                         if ($this->isWikiHibernated()) {
                             return $this->getMessageWhenHibernated();
                         }
 
                         return $listController->delete($req->query->get('idliste'));
+
                     default:
                         return $listController->displayAll();
                 }
+
                 // no break
             case self::VOIR_IMPORTER:
                 return $this->callAction('bazarimport', $this->arguments);
+
             case self::VOIR_EXPORTER:
                 return $this->callAction('bazarexport', $this->arguments);
+
             case self::VOIR_CONSULTER:
             case self::VOIR_DEFAUT:
             default:
                 switch ($action) {
                     case self::ACTION_ENTRY_VIEW:
                         return $entryController->view($req->get('id_fiche'), $req->get('time', ''));
+
                     case self::MOTEUR_RECHERCHE:
                     default:
                         $this->arguments['search'] = true;
@@ -278,5 +289,21 @@ class BazarAction extends YesWikiAction
                         return $this->callAction('bazarliste', array_merge($this->arguments, ['idtypeannonce' => $this->arguments['idtypeannonce']['locals']]));
                 }
         }
+    }
+
+    /**
+     * check if get is scalar then return it or result of callback.
+     *
+     * @param function $callback
+     *
+     * @return scalar
+     */
+    protected function sanitizedGet(string $key, $callback)
+    {
+        $val = $this->getRequest()->query->get($key);
+
+        return (isset($val) && is_scalar($val))
+            ? $val
+            : (is_callable($callback) ? $callback() : null);
     }
 }

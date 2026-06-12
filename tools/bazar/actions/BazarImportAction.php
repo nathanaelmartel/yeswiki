@@ -29,11 +29,12 @@ class BazarImportAction extends YesWikiAction
         $vServer = $request->get('server') ?? $arg['server'] ?? null;
 
         $post = $request->request;
+
         return [
             'id' => $vIDs,
             'server' => $vServer,
-            'mode' => ($post->has('submit_file') && !empty($_FILES['fileimport']['name'])) ? 'submitfile' :
-                ($post->has('importfiche') ? 'importentries' : 'default'),
+            'mode' => ($post->has('submit_file') && !empty($_FILES['fileimport']['name'])) ? 'submitfile'
+                : ($post->has('importfiche') ? 'importentries' : 'default'),
             'importentries' => $post->get('importfiche'),
             'filesData' => $_FILES['fileimport'] ?? null,
             'bazar-import-option-detect-columns-on-headers' => !$this->formatBoolean($request->query->all() + $request->request->all(), false, 'bazar-import-option-not-detect-columns-on-headers'),
@@ -41,7 +42,7 @@ class BazarImportAction extends YesWikiAction
                 [BAZ_VARIABLE_VOIR => BAZ_VOIR_IMPORTER],
                 $request->query->has('debug') ? ['debug' => 'yes'] : []
             ),
-            'debug' => ($this->wiki->GetConfigValue('debug') == 'yes'),
+            'debug' => ('yes' == $this->wiki->GetConfigValue('debug')),
         ];
     }
 
@@ -64,7 +65,7 @@ class BazarImportAction extends YesWikiAction
         }
 
         $vRefresh = $this->arguments['refresh'] ?? $this->getRequest()->query->get('refresh', 'false');
-        $vRefresh = ($vRefresh == 'true' || $vRefresh == '1') ? true : false;
+        $vRefresh = ('true' == $vRefresh || '1' == $vRefresh) ? true : false;
 
         // get Forms
 
@@ -115,6 +116,7 @@ class BazarImportAction extends YesWikiAction
                 }
 
                 $importedEntries = $this->CSVManager->importEntry($this->arguments['importentries'], $vID['id']);
+
                 break;
 
             case 'default':
@@ -127,6 +129,7 @@ class BazarImportAction extends YesWikiAction
                     // get csv_template
                     $csv_template = $this->CSVManager->getCSVfromFormId($vID['id'], [], ['fakeMode' => true]);
                 }
+
                 break;
         }
 

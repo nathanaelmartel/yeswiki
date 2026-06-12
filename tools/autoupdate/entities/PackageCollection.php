@@ -13,7 +13,7 @@ class PackageCollection extends Collection
         $className = $this->getPackageType($file);
         $package = new $className(
             $release,
-            $address . $file,
+            $address.$file,
             $description,
             $documentation,
             $minimalPhpVersion
@@ -60,21 +60,26 @@ class PackageCollection extends Collection
     private function getPackageType($filename)
     {
         $type = explode('-', $filename)[0];
+
         switch ($type) {
             case 'yeswiki':
                 return $this::CORE_CLASS;
+
                 break;
 
             case 'extension':
                 return $this::TOOL_CLASS;
+
                 break;
 
             case 'theme':
                 return $this::THEME_CLASS;
+
                 break;
 
             default:
                 throw new \Exception(_t('AU_UNKWON_PACKAGE_TYPE'), 1);
+
                 break;
         }
     }

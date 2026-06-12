@@ -43,8 +43,8 @@ class CleanOldCartoGoogle extends YesWikiMigration
     private function extractOldCarto(array $entry): bool
     {
         if (
-            empty($entry) || empty($entry['id_fiche']) || empty($entry['id_typeannonce']) ||
-            strval($entry['id_typeannonce']) != strval(intval($entry['id_typeannonce']))
+            empty($entry) || empty($entry['id_fiche']) || empty($entry['id_typeannonce'])
+            || strval($entry['id_typeannonce']) != strval(intval($entry['id_typeannonce']))
         ) {
             return false;
         }
@@ -86,19 +86,13 @@ class CleanOldCartoGoogle extends YesWikiMigration
     private function updateEntry($data)
     {
         if ($this->securityController->isWikiHibernated()) {
-            throw new \Exception(_t('WIKI_IN_HIBERNATION'));
+            throw new Exception(_t('WIKI_IN_HIBERNATION'));
         }
 
         $this->entryManager->validate(array_merge($data, ['antispam' => 1]));
 
         // on enleve les champs hidden pas necessaires a la fiche
-        unset($data['valider']);
-        unset($data['MAX_FILE_SIZE']);
-        unset($data['antispam']);
-        unset($data['mot_de_passe_wikini']);
-        unset($data['mot_de_passe_repete_wikini']);
-        unset($data['html_data']);
-        unset($data['url']);
+        unset($data['valider'], $data['MAX_FILE_SIZE'], $data['antispam'], $data['mot_de_passe_wikini'], $data['mot_de_passe_repete_wikini'], $data['html_data'], $data['url']);
 
         // on nettoie le champ owner qui n'est pas sauvegardé (champ owner de la page)
         if (isset($data['owner'])) {
@@ -124,14 +118,14 @@ class CleanOldCartoGoogle extends YesWikiMigration
         $this->dbService->query("UPDATE {$this->dbService->prefixTable('pages')} SET `latest` = 'N' WHERE `tag` = '{$this->dbService->escape($data['id_fiche'])}'");
 
         // add new revision
-        $this->dbService->query("INSERT INTO {$this->dbService->prefixTable('pages')} SET " .
-            "`tag` = '{$this->dbService->escape($data['id_fiche'])}', " .
-            "`time` = '{$this->dbService->escape($data['date_maj_fiche'])}', " .
-            "`owner` = '{$this->dbService->escape($owner)}', " .
-            "`user` = '{$this->dbService->escape($user)}', " .
-            "`latest` = 'Y', " .
-            "`body` = '" . $this->dbService->escape(json_encode($data)) . "', " .
-            "`body_r` = ''");
+        $this->dbService->query("INSERT INTO {$this->dbService->prefixTable('pages')} SET "
+            ."`tag` = '{$this->dbService->escape($data['id_fiche'])}', "
+            ."`time` = '{$this->dbService->escape($data['date_maj_fiche'])}', "
+            ."`owner` = '{$this->dbService->escape($owner)}', "
+            ."`user` = '{$this->dbService->escape($user)}', "
+            ."`latest` = 'Y', "
+            ."`body` = '".$this->dbService->escape(json_encode($data))."', "
+            ."`body_r` = ''");
     }
 
     private function getMapFieldValue($field, $entry)

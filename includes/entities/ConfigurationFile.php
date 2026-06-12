@@ -7,15 +7,12 @@ use Countable;
 use Iterator;
 use YesWiki\Core\Service\ConfigurationService;
 
-class ConfigurationFile implements ArrayAccess, Iterator, Countable
+class ConfigurationFile implements \ArrayAccess, \Iterator, \Countable
 {
-    private $_file = '';
     protected $_parameters;
     protected $configurationService;
+    private $_file = '';
 
-    /**
-     * @param $file
-     */
     public function __construct($file, ?ConfigurationService $configurationService = null)
     {
         $this->_file = $file;
@@ -29,15 +26,17 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
 
     public function __get($name)
     {
-        if ($name == '_file') {
+        if ('_file' == $name) {
             return $this->_file;
-        } elseif ($name == '_parameters') {
+        }
+        if ('_parameters' == $name) {
             return $this->_parameters;
         }
         if (isset($this->_parameters[$name])) {
             return $this->_parameters[$name];
         }
-        throw new \Exception("Paramètre inconnu Configuration::$name", 1);
+
+        throw new \Exception("Paramètre inconnu Configuration::{$name}", 1);
     }
 
     public function __isset($name)
@@ -47,7 +46,7 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
 
     public function __set($name, $value)
     {
-        if ($name != '_file') {
+        if ('_file' != $name) {
             $this->_parameters[$name] = $value;
         }
     }
@@ -75,7 +74,7 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
     /**
      * écrit le fichier de configuration.
      *
-     * @param string|null $file
+     * @param null|string $file
      * @param string      $arrayName
      *
      * @return bool
@@ -85,9 +84,7 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
         return $this->configurationService->write($this, $file, $arrayName);
     }
 
-    /***************************************************************************
-     * ArrayAccess
-     **************************************************************************/
+    // ArrayAccess
     #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
@@ -114,12 +111,10 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
     #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
-        return isset($this->_parameters[$offset]) ? $this->_parameters[$offset] : null;
+        return $this->_parameters[$offset] ?? null;
     }
 
-    /***************************************************************************
-     * Iterator
-     **************************************************************************/
+    // Iterator
     #[\ReturnTypeWillChange]
     public function rewind()
     {
@@ -150,9 +145,7 @@ class ConfigurationFile implements ArrayAccess, Iterator, Countable
         return next($this->_parameters);
     }
 
-    /*************************************************************************
-     * Countable
-     ************************************************************************/
+    // Countable
     #[\ReturnTypeWillChange]
     public function count()
     {

@@ -55,10 +55,10 @@ class PageManager
 
     /**
      * @param string      $tag                    name of the page
-     * @param string|null $time                   choose only the page's revision corresponding to time, null = latest revision
+     * @param null|string $time                   choose only the page's revision corresponding to time, null = latest revision
      * @param bool        $cache                  : use cache ?
      * @param bool        $bypassAcls             : do not check acl
-     * @param string|null $userNameForCheckingACL userName used to check ACL, if empty uses the connected user
+     * @param null|string $userNameForCheckingACL userName used to check ACL, if empty uses the connected user
      */
     public function getOne($tag, $time = null, $cache = true, $bypassAcls = false, ?string $userNameForCheckingACL = null): ?array
     {
@@ -109,6 +109,8 @@ class PageManager
      * $this->getCached($tag) === false
      * to check if a page is not in the cache.
      *
+     * @param mixed $tag
+     *
      * @return mixed The cached version of a page:
      *               - the page DB line if the page exists and is in cache
      *               - null if the cache knows that the page does not exists
@@ -129,7 +131,7 @@ class PageManager
      */
     public function cache($page, $pageTag = null)
     {
-        if ($pageTag === null) {
+        if (null === $pageTag) {
             $pageTag = $page['tag'];
         }
         $this->pageCache[$pageTag] = $page;
@@ -142,19 +144,11 @@ class PageManager
         }
     }
 
-    private function unsetCacheOwner($page)
-    {
-        if (!empty($page['tag'])) {
-            unset($this->ownersCache[$page['tag']]);
-        }
-    }
-
     public function getById($id): ?array
     {
-        $page = $this->dbService->loadSingle('select * from' . $this->dbService->prefixTable('pages') . "where id = '" . $this->dbService->escape($id) . "' limit 1");
-        $page = $this->checkEntriesACL([$page], $page['tag'])[0];
+        $page = $this->dbService->loadSingle('select * from'.$this->dbService->prefixTable('pages')."where id = '".$this->dbService->escape($id)."' limit 1");
 
-        return $page;
+        return $this->checkEntriesACL([$page], $page['tag'])[0];
     }
 
     public function getRevisions($pageTag, $limit = 10000)
@@ -187,25 +181,25 @@ class PageManager
 
     public function getLinkingTo($tag)
     {
-        return $this->dbService->loadAll('select from_tag as tag from' . $this->dbService->prefixTable('links') . "where to_tag = '" . $this->dbService->escape($tag) . "' order by tag");
+        return $this->dbService->loadAll('select from_tag as tag from'.$this->dbService->prefixTable('links')."where to_tag = '".$this->dbService->escape($tag)."' order by tag");
     }
 
     public function getRecentlyChanged($limit = 50, $minDate = ''): ?array
     {
         if (!empty($minDate)) {
-            if ($pages = $this->dbService->loadAll('select id, tag, time, user, owner from' . $this->dbService->prefixTable('pages') . "where latest = 'Y' and comment_on = '' and time >= '" . $this->dbService->escape($minDate) . "' order by time desc")) {
-                //foreach ($pages as $page) {
+            if ($pages = $this->dbService->loadAll('select id, tag, time, user, owner from'.$this->dbService->prefixTable('pages')."where latest = 'Y' and comment_on = '' and time >= '".$this->dbService->escape($minDate)."' order by time desc")) {
+                // foreach ($pages as $page) {
                 //    $this->cache($page);
-                //}
+                // }
                 return $pages;
             }
         } else {
-            $limit = (int)$limit;
+            $limit = (int) $limit;
             $limit = ($limit < 1) ? 50 : $limit;
-            if ($pages = $this->dbService->loadAll('select id, tag, time, user, owner from' . $this->dbService->prefixTable('pages') . "where latest = 'Y' and comment_on = '' order by time desc limit $limit")) {
-                //foreach ($pages as $page) {
+            if ($pages = $this->dbService->loadAll('select id, tag, time, user, owner from'.$this->dbService->prefixTable('pages')."where latest = 'Y' and comment_on = '' order by time desc limit {$limit}")) {
+                // foreach ($pages as $page) {
                 //    $this->cache($page);
-                //}
+                // }
                 return $pages;
             }
         }
@@ -216,11 +210,10 @@ class PageManager
     public function getAll(): array
     {
         $pages = $this->dbService->loadAll(<<<SQL
-            SELECT * FROM {$this->dbService->prefixTable('pages')} WHERE LATEST = 'Y' ORDER BY tag
-        SQL);
-        $pages = $this->checkEntriesACL($pages);
+                SELECT * FROM {$this->dbService->prefixTable('pages')} WHERE LATEST = 'Y' ORDER BY tag
+            SQL);
 
-        return $pages;
+        return $this->checkEntriesACL($pages);
     }
 
     /**
@@ -232,13 +225,13 @@ class PageManager
     public function getReadablePageTags(): array
     {
         $sqlRequest = <<<SQL
-            SELECT tag,owner FROM {$this->dbService->prefixTable('pages')} WHERE LATEST = 'Y' ORDER BY tag
-        SQL;
+                SELECT tag,owner FROM {$this->dbService->prefixTable('pages')} WHERE LATEST = 'Y' ORDER BY tag
+            SQL;
 
         // append request to filter on acls during the request
         if (!$this->wiki->UserIsAdmin()) {
             $aclRequest = $this->aclService->updateRequestWithACL();
-            $sqlRequest .= !empty($aclRequest) ? ' AND ' . $aclRequest : '';
+            $sqlRequest .= !empty($aclRequest) ? ' AND '.$aclRequest : '';
         }
         $pages = $this->dbService->loadAll($sqlRequest);
 
@@ -252,10 +245,10 @@ class PageManager
 
     public function getCreateTime($pageTag)
     {
-        $sql = 'SELECT time FROM' . $this->dbService->prefixTable('pages')
-            . ' WHERE tag = "' . $this->dbService->escape($pageTag) . '"'
-            . ' AND comment_on = ""'
-            . ' ORDER BY `time` ASC LIMIT 1';
+        $sql = 'SELECT time FROM'.$this->dbService->prefixTable('pages')
+            .' WHERE tag = "'.$this->dbService->escape($pageTag).'"'
+            .' AND comment_on = ""'
+            .' ORDER BY `time` ASC LIMIT 1';
         $page = $this->dbService->loadSingle($sql);
         if ($page) {
             return $page['time'];
@@ -266,24 +259,24 @@ class PageManager
 
     public function searchFullText($phrase): array
     {
-        return $this->dbService->loadAll('select * from' . $this->dbService->prefixTable('pages') . "where latest = 'Y' and (body LIKE '%" . $this->dbService->escape($phrase) . "%' OR tag LIKE '%" . $this->dbService->escape($phrase) . "%')");
+        return $this->dbService->loadAll('select * from'.$this->dbService->prefixTable('pages')."where latest = 'Y' and (body LIKE '%".$this->dbService->escape($phrase)."%' OR tag LIKE '%".$this->dbService->escape($phrase)."%')");
     }
 
     public function getWanted(): array
     {
-        $r = 'SELECT l.to_tag AS tag, COUNT(l.from_tag) AS count FROM ' . $this->dbService->prefixTable('links') . ' as l LEFT JOIN ' . $this->dbService->prefixTable('pages') . ' as p ON l.to_tag = p.tag WHERE p.tag IS NULL GROUP BY l.to_tag ORDER BY count DESC, tag ASC';
+        $r = 'SELECT l.to_tag AS tag, COUNT(l.from_tag) AS count FROM '.$this->dbService->prefixTable('links').' as l LEFT JOIN '.$this->dbService->prefixTable('pages').' as p ON l.to_tag = p.tag WHERE p.tag IS NULL GROUP BY l.to_tag ORDER BY count DESC, tag ASC';
 
         return $this->dbService->loadAll($r);
     }
 
     public function getOrphaned(): array
     {
-        return $this->dbService->loadAll('select distinct tag from ' . $this->dbService->prefixTable('pages') . 'as p left join ' . $this->dbService->prefixTable('links') . "as l on p.tag = l.to_tag where l.to_tag is NULL and p.comment_on = '' and p.latest = 'Y' order by tag");
+        return $this->dbService->loadAll('select distinct tag from '.$this->dbService->prefixTable('pages').'as p left join '.$this->dbService->prefixTable('links')."as l on p.tag = l.to_tag where l.to_tag is NULL and p.comment_on = '' and p.latest = 'Y' order by tag");
     }
 
     public function isOrphaned($tag): bool
     {
-        return !is_null($this->dbService->loadSingle('select distinct tag from ' . $this->dbService->prefixTable('pages') . 'as p left join ' . $this->dbService->prefixTable('links') . "as l on p.tag = l.to_tag where l.to_tag is NULL and p.latest = 'Y' and tag = '" . $this->dbService->escape($tag) . "'"));
+        return !is_null($this->dbService->loadSingle('select distinct tag from '.$this->dbService->prefixTable('pages').'as p left join '.$this->dbService->prefixTable('links')."as l on p.tag = l.to_tag where l.to_tag is NULL and p.latest = 'Y' and tag = '".$this->dbService->escape($tag)."'"));
     }
 
     public function deleteOrphaned($tag)
@@ -298,8 +291,8 @@ class PageManager
         $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('pages')} WHERE tag='{$this->dbService->escape($tag)}' OR comment_on='{$this->dbService->escape($tag)}'");
         $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('links')} WHERE from_tag='{$this->dbService->escape($tag)}' ");
         $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('acls')} WHERE page_tag='{$this->dbService->escape($tag)}' ");
-        $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('triples')} WHERE `resource`='{$this->dbService->escape($tag)}' and `property`='" . TripleStore::TYPE_URI . "' and `value`='" . EntryManager::TRIPLES_ENTRY_ID . "'");
-        $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('triples')} WHERE `resource`='{$this->dbService->escape($tag)}' and `property`='" . TripleStore::TYPE_URI . "' and `value`='" . EntryManager::TRIPLES_ENTRY_ID . "'");
+        $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('triples')} WHERE `resource`='{$this->dbService->escape($tag)}' and `property`='".TripleStore::TYPE_URI."' and `value`='".EntryManager::TRIPLES_ENTRY_ID."'");
+        $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('triples')} WHERE `resource`='{$this->dbService->escape($tag)}' and `property`='".TripleStore::TYPE_URI."' and `value`='".EntryManager::TRIPLES_ENTRY_ID."'");
         $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('triples')} WHERE `resource`='{$this->dbService->escape($tag)}' and `property`='http://outils-reseaux.org/_vocabulary/metadata'");
         $this->dbService->query("DELETE FROM {$this->dbService->prefixTable('referrers')} WHERE page_tag='{$this->dbService->escape($tag)}' ");
         $this->tagsManager->deleteAll($tag);
@@ -348,13 +341,13 @@ class PageManager
                 $defaultComment = $this->aclService->load($tag, 'comment', true)['list'];
 
                 // create default write acl. store empty write ACL for comments.
-                $this->aclService->save($tag, 'write', ($comment_on ? $user : $defaultWrite));
+                $this->aclService->save($tag, 'write', $comment_on ? $user : $defaultWrite);
 
                 // create default read acl
                 $this->aclService->save($tag, 'read', $defaultRead);
 
                 // create default comment acl.
-                $this->aclService->save($tag, 'comment', ($comment_on ? '' : $defaultComment));
+                $this->aclService->save($tag, 'comment', $comment_on ? '' : $defaultComment);
 
                 // current user is owner; if user is logged in! otherwise, no owner.
                 if ($this->authController->getLoggedUser()) {
@@ -367,7 +360,7 @@ class PageManager
                 $owner = $oldPage['owner'];
 
                 // ...and comment_on, eventualy?
-                if ($comment_on == '') {
+                if ('' == $comment_on) {
                     $comment_on = $oldPage['comment_on'];
                 }
 
@@ -378,16 +371,16 @@ class PageManager
             }
 
             // set all other revisions to old
-            $this->dbService->query('UPDATE' . $this->dbService->prefixTable('pages') . "SET latest = 'N' WHERE tag = '" . $this->dbService->escape($tag) . "'");
+            $this->dbService->query('UPDATE'.$this->dbService->prefixTable('pages')."SET latest = 'N' WHERE tag = '".$this->dbService->escape($tag)."'");
 
             // use forcedDate is present
             $time = 'now()';
             if (!empty($forcedDate)) {
-                $time = '"' . $forcedDate . '"';
+                $time = '"'.$forcedDate.'"';
             }
 
             // add new revision
-            $this->dbService->query('INSERT INTO' . $this->dbService->prefixTable('pages') . "SET tag = '" . $this->dbService->escape($tag) . "', " . ($comment_on ? "comment_on = '" . $this->dbService->escape($comment_on) . "', " : '') . 'time = ' . $time . ', ' . "owner = '" . $this->dbService->escape($owner) . "', " . "user = '" . $this->dbService->escape($user) . "', " . "latest = 'Y', " . "body = '" . $this->dbService->escape(chop($body)) . "', " . "body_r = ''");
+            $this->dbService->query('INSERT INTO'.$this->dbService->prefixTable('pages')."SET tag = '".$this->dbService->escape($tag)."', ".($comment_on ? "comment_on = '".$this->dbService->escape($comment_on)."', " : '').'time = '.$time.', '."owner = '".$this->dbService->escape($owner)."', user = '".$this->dbService->escape($user)."', latest = 'Y', body = '".$this->dbService->escape(chop($body))."', body_r = ''");
 
             unset($this->pageCache[$tag]);
             $this->ownersCache[$tag] = $owner;
@@ -404,9 +397,9 @@ class PageManager
             ]);
 
             return 0;
-        } else {
-            return 1;
         }
+
+        return 1;
     }
 
     public function getOwner($tag = '', $time = '')
@@ -421,9 +414,9 @@ class PageManager
             } else {
                 $timeQuery = $time ? "time = '{$this->dbService->escape($time)}'" : "latest = 'Y'";
                 $page = $this->dbService->loadSingle(
-                    "SELECT `owner` FROM {$this->dbService->prefixTable('pages')} " .
-                        "WHERE tag = '{$this->dbService->escape($tag)}' AND {$timeQuery} " .
-                        'LIMIT 1'
+                    "SELECT `owner` FROM {$this->dbService->prefixTable('pages')} "
+                        ."WHERE tag = '{$this->dbService->escape($tag)}' AND {$timeQuery} "
+                        .'LIMIT 1'
                 );
                 $this->ownersCache[$tag] = $page['owner'] ?? null;
             }
@@ -441,7 +434,7 @@ class PageManager
             return;
         }
 
-        $this->dbService->query('UPDATE ' . $this->dbService->prefixTable('pages') . "SET owner = '" . $this->dbService->escape($user) . "' WHERE tag = '" . $this->dbService->escape($tag) . "' AND latest = 'Y' LIMIT 1");
+        $this->dbService->query('UPDATE '.$this->dbService->prefixTable('pages')."SET owner = '".$this->dbService->escape($user)."' WHERE tag = '".$this->dbService->escape($tag)."' AND latest = 'Y' LIMIT 1");
         $this->ownersCache[$tag] = $user;
     }
 
@@ -485,10 +478,17 @@ class PageManager
         return $this->tripleStore->create($tag, 'http://outils-reseaux.org/_vocabulary/metadata', $metadata, '', '');
     }
 
+    private function unsetCacheOwner($page)
+    {
+        if (!empty($page['tag'])) {
+            unset($this->ownersCache[$page['tag']]);
+        }
+    }
+
     /**
      * use Guard to checkACL for entries.
      *
-     * @param string|null $userNameForCheckingACL if empty uses the connected user
+     * @param null|string $userNameForCheckingACL if empty uses the connected user
      *
      * @return array $pages
      */
@@ -512,20 +512,19 @@ class PageManager
         if (empty($allEntriesTags)) {
             return $pages;
         }
-        $pages = array_map(function ($page) use ($guard, $allEntriesTags, $userNameForCheckingACL) {
-            return (isset($page['tag']) &&
-                in_array($page['tag'], $allEntriesTags)
+
+        return array_map(function ($page) use ($guard, $allEntriesTags, $userNameForCheckingACL) {
+            return (isset($page['tag'])
+                && in_array($page['tag'], $allEntriesTags)
             ) ? $guard->checkAcls($page, $page['tag'], $userNameForCheckingACL)
                 : $page;
         }, $pages);
-
-        return $pages;
     }
 
     private function duplicate($sourceTag, $destinationTag): bool
     {
         $result = false;
-        $this->wiki->LogAdministrativeAction($this->authController->getLoggedUserName(), 'Duplication de la page ""' . $sourceTag . '"" vers la page ""' . $destinationTag . '""');
+        $this->wiki->LogAdministrativeAction($this->authController->getLoggedUserName(), 'Duplication de la page ""'.$sourceTag.'"" vers la page ""'.$destinationTag.'""');
 
         return $result;
     }

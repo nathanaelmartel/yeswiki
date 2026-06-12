@@ -22,34 +22,7 @@ class ExternalCheckboxEntryField extends CheckboxEntryField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
-    {
-        return '';
-    }
-
-    protected function renderStatic($entry)
-    {
-        // copy from parent but with different href
-        $keys = $this->getValues($entry);
-        $values = [];
-        foreach ($keys as $key) {
-            if (in_array($key, array_keys($this->getOptions()))) {
-                $values[$key]['value'] = $this->options[$key];
-                $values[$key]['href'] = $entry['external-data']['baseUrl'] . '?' . $key . '/iframe';
-            }
-        }
-
-        return (count($values) > 0) ? $this->render('@bazar/fields/externalcheckboxentry.twig', [
-            'values' => $values,
-        ]) : '';
-    }
-
-    protected function getFormName()
     {
         return '';
     }
@@ -62,5 +35,32 @@ class ExternalCheckboxEntryField extends CheckboxEntryField
         }
 
         return $this->options;
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
+    }
+
+    protected function renderStatic($entry)
+    {
+        // copy from parent but with different href
+        $keys = $this->getValues($entry);
+        $values = [];
+        foreach ($keys as $key) {
+            if (in_array($key, array_keys($this->getOptions()))) {
+                $values[$key]['value'] = $this->options[$key];
+                $values[$key]['href'] = $entry['external-data']['baseUrl'].'?'.$key.'/iframe';
+            }
+        }
+
+        return (count($values) > 0) ? $this->render('@bazar/fields/externalcheckboxentry.twig', [
+            'values' => $values,
+        ]) : '';
+    }
+
+    protected function getFormName()
+    {
+        return '';
     }
 }

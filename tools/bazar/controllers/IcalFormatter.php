@@ -6,9 +6,6 @@
 
 namespace YesWiki\Bazar\Controller;
 
-use DateInterval;
-use DateTimeImmutable;
-use DateTimeZone;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\Response;
 use YesWiki\Bazar\Field\DateField;
@@ -57,7 +54,7 @@ class IcalFormatter extends YesWikiController
             $formId = null;
         }
         if (empty($filename)) {
-            $filename = (empty($formId)) ? 'calendar' : 'calendar-form-' . $formId;
+            $filename = (empty($formId)) ? 'calendar' : 'calendar-form-'.$formId;
         }
         if (!empty($get['datefilter'])) {
             $entries = $this->entryController->filterEntriesOnDate($entries, $get['datefilter']);
@@ -72,33 +69,31 @@ class IcalFormatter extends YesWikiController
                 $code = Response::HTTP_INTERNAL_SERVER_ERROR;
 
                 return new Response($obContent, $code);
-            } else {
-                $code = Response::HTTP_OK;
-
-                return new Response('', $code);
             }
-        } else {
             $code = Response::HTTP_OK;
-            if (empty($filename)) {
-                $filename = 'calendar';
-            }
-            if (!empty($obContent)) {
-                $comment = $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'X-COMMENT:' . str_replace(["\n", "\r"], ['\\n', '\\r'], $obContent) . "\r\n");
-                $fileData = str_replace("BEGIN:VCALENDAR\r\n", "BEGIN:VCALENDAR\r\n" . $comment, $fileData);
-            }
-            $headers = [
-                'Access-Control-Allow-Origin' => '*',
-                'Access-Control-Allow-Credentials' => 'true',
-                'Access-Control-Allow-Headers' => 'X-Requested-With, Location, Slug, Accept, Content-Type',
-                'Access-Control-Expose-Headers' => 'Location, Slug, Accept, Content-Type',
-                'Access-Control-Allow-Methods' => 'POST, GET, OPTIONS, DELETE, PUT, PATCH',
-                'Access-Control-Max-Age' => '86400',
-                'Content-Type' => 'text/Calendar',
-                'Content-Disposition' => 'inline; filename=' . $filename . '.ics',
-            ];
 
-            return new Response($fileData, $code, $headers);
+            return new Response('', $code);
         }
+        $code = Response::HTTP_OK;
+        if (empty($filename)) {
+            $filename = 'calendar';
+        }
+        if (!empty($obContent)) {
+            $comment = $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'X-COMMENT:'.str_replace(["\n", "\r"], ['\n', '\r'], $obContent)."\r\n");
+            $fileData = str_replace("BEGIN:VCALENDAR\r\n", "BEGIN:VCALENDAR\r\n".$comment, $fileData);
+        }
+        $headers = [
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Allow-Headers' => 'X-Requested-With, Location, Slug, Accept, Content-Type',
+            'Access-Control-Expose-Headers' => 'Location, Slug, Accept, Content-Type',
+            'Access-Control-Allow-Methods' => 'POST, GET, OPTIONS, DELETE, PUT, PATCH',
+            'Access-Control-Max-Age' => '86400',
+            'Content-Type' => 'text/Calendar',
+            'Content-Disposition' => 'inline; filename='.$filename.'.ics',
+        ];
+
+        return new Response($fileData, $code, $headers);
     }
 
     /**
@@ -114,12 +109,12 @@ class IcalFormatter extends YesWikiController
             $ical = $this->getICALData($entry);
             if (empty($ical)) {
                 return [];
-            } else {
-                return [
-                    'entry' => $entry,
-                    'ical' => $ical,
-                ];
             }
+
+            return [
+                'entry' => $entry,
+                'ical' => $ical,
+            ];
         }, $entries), function ($entry) {
             return !empty($entry);
         });
@@ -137,6 +132,32 @@ class IcalFormatter extends YesWikiController
         }
 
         return $fileData;
+    }
+
+    /** test if form is ICAL.
+     */
+    public function isICALForm(?array $form = null): bool
+    {
+        if (empty($form['prepared'] ?? null)) {
+            return false;
+        }
+        $filteredFields = array_values(array_map(function ($field) {
+            return $field->getPropertyName();
+        }, array_filter($form['prepared'], function ($field) {
+            return $field instanceof DateField;
+        })));
+
+        return !empty($filteredFields)
+            && in_array('bf_date_debut_evenement', $filteredFields)
+            && in_array('bf_date_fin_evenement', $filteredFields);
+    }
+
+    /**
+     * check if is all day date.
+     */
+    protected function isAllDay(string $date): bool
+    {
+        return preg_match('/^[1-2][0-9]{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$/', $date);
     }
 
     /**
@@ -157,11 +178,11 @@ class IcalFormatter extends YesWikiController
             }
             // 24 h for end date if all day
             if ($this->isAllDay(strval($entry['bf_date_fin_evenement']))) {
-                $endDate = $endDate->add(new DateInterval('P1D'));
+                $endDate = $endDate->add(new \DateInterval('P1D'));
             }
             if ($startDate->diff($endDate)->invert > 0) {
                 // end date before start date not possible in ical : use start time + 1 hour
-                $endDate = $startDate->add(new DateInterval('PT1H'));
+                $endDate = $startDate->add(new \DateInterval('PT1H'));
             }
 
             return [
@@ -171,14 +192,6 @@ class IcalFormatter extends YesWikiController
         }
 
         return [];
-    }
-
-    /**
-     * check if is all day date.
-     */
-    protected function isAllDay(string $date): bool
-    {
-        return preg_match('/^[1-2][0-9]{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$/', $date);
     }
 
     /**
@@ -192,62 +205,58 @@ class IcalFormatter extends YesWikiController
     {
         $header = "BEGIN:VCALENDAR\r\n";
         $header .= "VERSION:2.0\r\n";
-        $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'PRODID:-//' . $this->params->get('base_url')
-            . '//YesWiki ' . $this->params->get('yeswiki_version')
-            . ' ' . $this->params->get('yeswiki_release') . "//EN\r\n");
+        $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'PRODID:-//'.$this->params->get('base_url')
+            .'//YesWiki '.$this->params->get('yeswiki_version')
+            .' '.$this->params->get('yeswiki_release')."//EN\r\n");
         if (!empty($formId) && intval($formId) == $formId) {
-            $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SOURCE:' . $this->wiki->Href('forms/' . $formId . '/entries/ical', 'api') . "\r\n");
+            $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SOURCE:'.$this->wiki->Href('forms/'.$formId.'/entries/ical', 'api')."\r\n");
         } else {
-            $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SOURCE:' . $this->wiki->Href('entries/ical', 'api') . "\r\n");
+            $header .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SOURCE:'.$this->wiki->Href('entries/ical', 'api')."\r\n");
         }
 
         $footer = "END:VCALENDAR\r\n";
 
-        $fileData = $header . $fileData . $footer;
-
-        return $fileData;
+        return $header.$fileData.$footer;
     }
 
     /**
      * get formatted event.
-     *
-     * @param array &$cache
      */
     private function formatEvent(array $entry, array $icalData, array &$cache): string
     {
         $output = "BEGIN:VEVENT\r\n";
         // TODO use real UID with random hex followed by @base URL
-        $output .= $this->chunck_split_except_last('UID:' . $entry['url'], self::MAX_CHARS_BY_LINE, "\r\n", ' ');
-        $output .= $this->chunck_split_except_last('URL:' . $entry['url'], self::MAX_CHARS_BY_LINE, "\r\n", ' ');
-        $output .= 'DTSTAMP' . $this->formatDate('') . "\r\n";
-        $output .= 'DTSTART' . $this->formatDate($icalData['startDate']) . "\r\n";
-        $output .= 'DTEND' . $this->formatDate($icalData['endDate']) . "\r\n";
-        $output .= 'CREATED' . $this->formatDate($entry['date_creation_fiche']) . "\r\n";
-        $output .= 'DATE-MOD' . $this->formatDate($entry['date_maj_fiche']) . "\r\n";
-        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SUMMARY:' . $entry['bf_titre'] . "\r\n");
-        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'NAME:' . $entry['bf_titre'] . "\r\n");
-        $decription = (!empty($entry['bf_description'])) ?
-            $this->renderAndStripTags($entry['bf_description']) . "\r\n"
+        $output .= $this->chunck_split_except_last('UID:'.$entry['url'], self::MAX_CHARS_BY_LINE, "\r\n", ' ');
+        $output .= $this->chunck_split_except_last('URL:'.$entry['url'], self::MAX_CHARS_BY_LINE, "\r\n", ' ');
+        $output .= 'DTSTAMP'.$this->formatDate('')."\r\n";
+        $output .= 'DTSTART'.$this->formatDate($icalData['startDate'])."\r\n";
+        $output .= 'DTEND'.$this->formatDate($icalData['endDate'])."\r\n";
+        $output .= 'CREATED'.$this->formatDate($entry['date_creation_fiche'])."\r\n";
+        $output .= 'DATE-MOD'.$this->formatDate($entry['date_maj_fiche'])."\r\n";
+        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'SUMMARY:'.$entry['bf_titre']."\r\n");
+        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'NAME:'.$entry['bf_titre']."\r\n");
+        $decription = (!empty($entry['bf_description']))
+            ? $this->renderAndStripTags($entry['bf_description'])."\r\n"
             : '';
-        $decription .= 'Source: ' . $entry['url'];
-        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'DESCRIPTION:' . str_replace(["\r", "\n"], [' ', '\\n'], $decription) . "\r\n");
+        $decription .= 'Source: '.$entry['url'];
+        $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'DESCRIPTION:'.str_replace(["\r", "\n"], [' ', '\n'], $decription)."\r\n");
         $location = '';
-        $location .= (!empty($entry['bf_adresse'])) ? $entry['bf_adresse'] . ' ' : '';
-        $location .= (!empty($entry['bf_code_postal'])) ? $entry['bf_code_postal'] . ' ' : '';
-        $location .= (!empty($entry['bf_ville'])) ? $entry['bf_ville'] . ' ' : '';
+        $location .= (!empty($entry['bf_adresse'])) ? $entry['bf_adresse'].' ' : '';
+        $location .= (!empty($entry['bf_code_postal'])) ? $entry['bf_code_postal'].' ' : '';
+        $location .= (!empty($entry['bf_ville'])) ? $entry['bf_ville'].' ' : '';
         $location = trim($location);
         if (!empty($location)) {
-            $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'LOCATION:' . str_replace(["\r", "\n"], ' ', $location) . "\r\n");
+            $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'LOCATION:'.str_replace(["\r", "\n"], ' ', $location)."\r\n");
         }
         $geo = $this->geoJSONFormatter->getGeoData($entry, $cache);
         if (!empty($geo)) {
-            $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'GEO:' . $geo['latitude'] . ';' . $geo['longitude'] . "\r\n");
+            $output .= $this->splitAtnthChar(self::MAX_CHARS_BY_LINE, 'GEO:'.$geo['latitude'].';'.$geo['longitude']."\r\n");
         }
         if (!empty($entry['imagebf_image'])) {
             $baseUrl = $this->getBaseURL();
-            $url = $baseUrl . 'files/' . $entry['imagebf_image'];
-            $output .= $this->chunck_split_except_last('IMAGE;VALUE=URI;DISPLAY=BADGE:' . $url, self::MAX_CHARS_BY_LINE, "\r\n", ' ');
-            $output .= $this->chunck_split_except_last('ATTACH:' . $url, self::MAX_CHARS_BY_LINE, "\r\n", ' '); // duplicate on attach to be compatible with more calendar client
+            $url = $baseUrl.'files/'.$entry['imagebf_image'];
+            $output .= $this->chunck_split_except_last('IMAGE;VALUE=URI;DISPLAY=BADGE:'.$url, self::MAX_CHARS_BY_LINE, "\r\n", ' ');
+            $output .= $this->chunck_split_except_last('ATTACH:'.$url, self::MAX_CHARS_BY_LINE, "\r\n", ' '); // duplicate on attach to be compatible with more calendar client
         }
         // image https://icalendar.org/New-Properties-for-iCalendar-RFC-7986/5-10-image-property.html
         $output .= "END:VEVENT\r\n";
@@ -262,12 +271,12 @@ class IcalFormatter extends YesWikiController
      */
     private function formatDate(string $date): string
     {
-        $dateObject = empty($date) ? new DateTimeImmutable() : new DateTimeImmutable($date);
-        $dateObject = $dateObject->setTimezone(new DateTimeZone('UTC'));
+        $dateObject = empty($date) ? new \DateTimeImmutable() : new \DateTimeImmutable($date);
+        $dateObject = $dateObject->setTimezone(new \DateTimeZone('UTC'));
         $localFormattedDate = $dateObject->format('Ymd');
         $localFormattedTime = $dateObject->format('His');
 
-        return ':' . $localFormattedDate . 'T' . $localFormattedTime . 'Z';
+        return ':'.$localFormattedDate.'T'.$localFormattedTime.'Z';
     }
 
     /**
@@ -283,16 +292,15 @@ class IcalFormatter extends YesWikiController
         $output = wordwrap($output, $length, "\r\n ", true);
         // prevent errors when cutting between \r\n
         // replace "\r\n \r\n" to prevent empty lines
-        $output = preg_replace('/(?:\\r ?\\r\\n \\n|\\r\\n \\r\\n )/', "\r\n ", $output);
-        // remove last " \r\n" to prevent empty lines
-        $output = preg_replace('/\\r\\n (?:\\r\\n)?$/', "\r\n", $output);
+        $output = preg_replace('/(?:\r ?\r\n \n|\r\n \r\n )/', "\r\n ", $output);
 
-        return $output;
+        // remove last " \r\n" to prevent empty lines
+        return preg_replace('/\r\n (?:\r\n)?$/', "\r\n", $output);
     }
 
     private function chunck_split_except_last(string $input, int $length = 76, string $escape = "\r\n", string $additionnalSeparator = ' ')
     {
-        $output = $this->chunk_split_unicode($input, $length, $escape . $additionnalSeparator);
+        $output = $this->chunk_split_unicode($input, $length, $escape.$additionnalSeparator);
 
         return substr($output, 0, -strlen($additionnalSeparator));
     }
@@ -305,7 +313,7 @@ class IcalFormatter extends YesWikiController
         );
         $str = '';
         foreach ($tmp as $t) {
-            $str .= join('', $t) . $escape;
+            $str .= join('', $t).$escape;
         }
 
         return $str;
@@ -321,29 +329,9 @@ class IcalFormatter extends YesWikiController
         // render description
         $renderedInput = $this->performer->run('wakka', 'formatter', ['text' => $input]);
         $cleanedRendered = strip_tags($renderedInput, '<a>');
+
         // extract links
-        $output = preg_replace('/<a.*href=(?:"|\')([^"\']*)(?:"|\').*>(.*)<\/a>/m', '$2 ($1)', $cleanedRendered);
-
-        return $output;
-    }
-
-    /** test if form is ICAL.
-     * @param array $form
-     */
-    public function isICALForm(?array $form = null): bool
-    {
-        if (empty($form['prepared'] ?? null)) {
-            return false;
-        }
-        $filteredFields = array_values(array_map(function ($field) {
-            return $field->getPropertyName();
-        }, array_filter($form['prepared'], function ($field) {
-            return $field instanceof DateField;
-        })));
-
-        return !empty($filteredFields)
-            && in_array('bf_date_debut_evenement', $filteredFields)
-            && in_array('bf_date_fin_evenement', $filteredFields);
+        return preg_replace('/<a.*href=(?:"|\')([^"\']*)(?:"|\').*>(.*)<\/a>/m', '$2 ($1)', $cleanedRendered);
     }
 
     /** get base Url.
@@ -351,7 +339,7 @@ class IcalFormatter extends YesWikiController
     private function getBaseURL(): string
     {
         $baseUrl = $this->params->get('base_url');
-        if (substr($baseUrl, -1) == '?') {
+        if ('?' == substr($baseUrl, -1)) {
             $baseUrl = substr($baseUrl, 0, -1);
         }
 

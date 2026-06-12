@@ -12,11 +12,6 @@ use YesWiki\Wiki;
  */
 class ReactionsField extends BazarField
 {
-    protected const FIELD_IDS = 2;
-    protected const FIELD_LABELS = 3;
-    protected const FIELD_IMAGES = 4;
-    protected const FIELD_LABEL_REACTION = 6;
-
     public const DEFAULT_REACTIONS = [
         'top-gratitude' => [
             'title_t' => 'BAZ_REACTIONS_DEFAULT_GRATITUDE',
@@ -49,6 +44,10 @@ class ReactionsField extends BazarField
     ];
     public const DEFAULT_OK_KEY = 'oui';
     public const MAX_REACTIONS = 1;
+    protected const FIELD_IDS = 2;
+    protected const FIELD_LABELS = 3;
+    protected const FIELD_IMAGES = 4;
+    protected const FIELD_LABEL_REACTION = 6;
 
     protected $ids;
     protected $labels;
@@ -94,7 +93,7 @@ class ReactionsField extends BazarField
             ? trim($values[self::FIELD_LABELS])
             : '';
 
-        list('labels' => $this->labels, 'ids' => $this->ids) = $this->reactionsController->formatReactionsLabels(
+        ['labels' => $this->labels, 'ids' => $this->ids] = $this->reactionsController->formatReactionsLabels(
             $labels,
             empty($this->ids)
                 ? (
@@ -109,43 +108,6 @@ class ReactionsField extends BazarField
         );
 
         $this->images = isset($values[self::FIELD_IMAGES]) && is_string($values[self::FIELD_IMAGES]) ? trim($values[self::FIELD_IMAGES]) : '';
-    }
-
-    // Render the show view of the field
-    protected function renderStatic($entry)
-    {
-        // the tag of the current entry
-        $currentEntryTag = $this->getCurrentTag($entry);
-
-        if (is_null($currentEntryTag) || $this->getValue($entry) !== self::DEFAULT_OK_KEY) {
-            return '';
-        }
-
-        $user = $this->getService(AuthController::class)->getLoggedUser();
-        $username = empty($user['name']) ? '' : $user['name'];
-
-        $imagesPath = $this->getImagesPath();
-        list('reactions' => $reactionItems, 'userReactions' => $userReactions, 'oldIdsUserReactions' => $oldIdsUserReactions) =
-            $this->reactionsController->getReactionItems(
-                $currentEntryTag,
-                $username,
-                $this->name,
-                $this->ids,
-                $this->labels,
-                $this->getImagesPath(),
-                true
-            );
-
-        return $this->render('@bazar/fields/reactions.twig', [
-            'reactionId' => $this->name,
-            'reactionItems' => $reactionItems,
-            'userName' => $username,
-            'userReaction' => $userReactions,
-            'oldIdsUserReactions' => $oldIdsUserReactions,
-            'maxReaction' => self::MAX_REACTIONS,
-            'pageTag' => $currentEntryTag,
-            'showCommentMessage' => !empty($entry['bf_commentaires']) && $entry['bf_commentaires'] == 'oui',
-        ]);
     }
 
     // lazy loading
@@ -174,20 +136,6 @@ class ReactionsField extends BazarField
         return $this->labels;
     }
 
-    protected function getCurrentTag($entry): ?string
-    {
-        // the tag of the current activity page
-        return !empty($entry['id_fiche']) ? $entry['id_fiche'] : null;
-    }
-
-    protected function renderInput($entry)
-    {
-        return $this->render('@bazar/inputs/select.twig', [
-            'value' => $this->getValue($entry),
-            'options' => $this->options,
-        ]);
-    }
-
     // change return of this method to keep compatible with php 7.3 (mixed is not managed)
     #[\ReturnTypeWillChange]
     public function jsonSerialize()
@@ -200,5 +148,56 @@ class ReactionsField extends BazarField
                 'images' => array_map('basename', $this->getImagesPath()),
             ]
         );
+    }
+
+    // Render the show view of the field
+    protected function renderStatic($entry)
+    {
+        // the tag of the current entry
+        $currentEntryTag = $this->getCurrentTag($entry);
+
+        if (is_null($currentEntryTag) || self::DEFAULT_OK_KEY !== $this->getValue($entry)) {
+            return '';
+        }
+
+        $user = $this->getService(AuthController::class)->getLoggedUser();
+        $username = empty($user['name']) ? '' : $user['name'];
+
+        $imagesPath = $this->getImagesPath();
+        ['reactions' => $reactionItems, 'userReactions' => $userReactions, 'oldIdsUserReactions' => $oldIdsUserReactions]
+            = $this->reactionsController->getReactionItems(
+                $currentEntryTag,
+                $username,
+                $this->name,
+                $this->ids,
+                $this->labels,
+                $this->getImagesPath(),
+                true
+            );
+
+        return $this->render('@bazar/fields/reactions.twig', [
+            'reactionId' => $this->name,
+            'reactionItems' => $reactionItems,
+            'userName' => $username,
+            'userReaction' => $userReactions,
+            'oldIdsUserReactions' => $oldIdsUserReactions,
+            'maxReaction' => self::MAX_REACTIONS,
+            'pageTag' => $currentEntryTag,
+            'showCommentMessage' => !empty($entry['bf_commentaires']) && 'oui' == $entry['bf_commentaires'],
+        ]);
+    }
+
+    protected function getCurrentTag($entry): ?string
+    {
+        // the tag of the current activity page
+        return !empty($entry['id_fiche']) ? $entry['id_fiche'] : null;
+    }
+
+    protected function renderInput($entry)
+    {
+        return $this->render('@bazar/inputs/select.twig', [
+            'value' => $this->getValue($entry),
+            'options' => $this->options,
+        ]);
     }
 }

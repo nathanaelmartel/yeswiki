@@ -26,8 +26,8 @@ use YesWiki\Core\YesWikiController;
 class ApiController extends YesWikiController
 {
     /**
-     * @Route("/api/forms", methods={"GET"},options={"acl":{"public"}})
-     * @Route("/api/forms/", methods={"GET"},options={"acl":{"public"}})
+     * @Route("/api/forms", methods={"GET"}, options={"acl": {"public"}})
+     * @Route("/api/forms/", methods={"GET"}, options={"acl": {"public"}})
      */
     public function getAllForms()
     {
@@ -37,12 +37,14 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/forms/{formId}", methods={"GET"},options={"acl":{"public"}})
-     * @Route("/api/forms/{formId}/", methods={"GET"},options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}", methods={"GET"}, options={"acl": {"public"}})
+     * @Route("/api/forms/{formId}/", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function getForm($formId)
     {
-        if (strpos($formId, 'b64_') === 0) {
+        if (0 === strpos($formId, 'b64_')) {
             $vFormId = base64_decode(urldecode(substr($formId, 4)), true);
         } else {
             $vFormID = $formId;
@@ -58,7 +60,9 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/forms/{formId}/actor", methods={"GET"}, options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}/actor", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function getFormActor($formId)
     {
@@ -70,13 +74,15 @@ class ApiController extends YesWikiController
             $actor = $activityPubService->getActor($form);
 
             return new ApiResponse($actor, Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
     /**
-     * @Route("/api/forms/{formId}/actor/followers", methods={"GET"}, options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}/actor/followers", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function getFormActorFollowers($formId, Request $request)
     {
@@ -88,18 +94,20 @@ class ApiController extends YesWikiController
             $followers = $activityPubService->getFollowers($form);
 
             return new ApiResponse([
-                '@context' => "https://www.w3.org/ns/activitystreams",
+                '@context' => 'https://www.w3.org/ns/activitystreams',
                 'type' => 'Collection',
                 'id' => $activityPubService->getFormCollectionUri($form, 'followers'),
                 'items' => $followers,
             ], Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
-        /**
-     * @Route("/api/forms/{formId}/actor/following", methods={"GET"}, options={"acl":{"public"}})
+    /**
+     * @Route("/api/forms/{formId}/actor/following", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function getFormActorFollowing($formId, Request $request)
     {
@@ -111,18 +119,20 @@ class ApiController extends YesWikiController
             $following = $activityPubService->getFollowing($form);
 
             return new ApiResponse([
-                '@context' => "https://www.w3.org/ns/activitystreams",
+                '@context' => 'https://www.w3.org/ns/activitystreams',
                 'type' => 'Collection',
                 'id' => $activityPubService->getFormCollectionUri($form, 'following'),
                 'items' => $following,
             ], Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
     /**
-     * @Route("/api/forms/{formId}/actor/inbox", methods={"POST"}, options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}/actor/inbox", methods={"POST"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function postFormActorInbox($formId, Request $request)
     {
@@ -138,13 +148,15 @@ class ApiController extends YesWikiController
             $activityPubService->processActivity($activity, $form);
 
             return new ApiResponse(null, Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
     /**
-     * @Route("/api/forms/{formId}/actor/outbox", methods={"GET"}, options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}/actor/outbox", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed $formId
      */
     public function getFormActorOutbox($formId, Request $request)
     {
@@ -159,11 +171,11 @@ class ApiController extends YesWikiController
                 'ordre' => 'asc',
                 'queries' => '',
                 // TODO Handle pagination
-                // 'nb' => 100 
+                // 'nb' => 100
             ]);
 
             return new ApiResponse([
-                '@context' => "https://www.w3.org/ns/activitystreams",
+                '@context' => 'https://www.w3.org/ns/activitystreams',
                 'type' => 'OrderedCollection',
                 'id' => $activityPubService->getFormCollectionUri($form, 'following'),
                 'totalItems' => count($entries),
@@ -171,6 +183,7 @@ class ApiController extends YesWikiController
                     $object = $this->getService(SemanticTransformer::class)->convertToSemanticData($form, $entry);
                     unset($object['@context']);
                     $published = new \DateTime($entry['date_creation_fiche']);
+
                     return [
                         'type' => 'Create',
                         'actor' => $activityPubService->getFormActorUri($form),
@@ -182,13 +195,13 @@ class ApiController extends YesWikiController
             ], Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
 
             return new ApiResponse(null, Response::HTTP_OK, ['Content-Type' => 'application/activity+json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
     /**
-     * @Route("/api/webfinger", methods={"GET"}, options={"acl":{"public"}})
+     * @Route("/api/webfinger", methods={"GET"}, options={"acl": {"public"}})
      */
     public function getWebfinger(Request $request)
     {
@@ -206,17 +219,21 @@ class ApiController extends YesWikiController
             $actor = $webfingerService->formatLocalActor($handle, $actorUri);
 
             return new ApiResponse($actor, Response::HTTP_OK, ['Content-Type' => 'application/json']);
-        } else {
-            throw new NotFoundHttpException();
         }
+
+        throw new NotFoundHttpException();
     }
 
     /**
-     * @Route("/api/forms/{formId}/entries/{output}/{selectedEntries}", methods={"GET"},options={"acl":{"public"}})
+     * @Route("/api/forms/{formId}/entries/{output}/{selectedEntries}", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param mixed      $formId
+     * @param null|mixed $output
+     * @param null|mixed $selectedEntries
      */
     public function getAllFormEntries($formId, $output = null, $selectedEntries = null)
     {
-        if (!is_array($formId) && strpos($formId, 'b64_') === 0) {
+        if (!is_array($formId) && 0 === strpos($formId, 'b64_')) {
             $vFormID = base64_decode(urldecode(substr($formId, 4)), true);
         } else {
             $vFormID = $formId;
@@ -241,7 +258,7 @@ class ApiController extends YesWikiController
         $vNb = intval($get->get('nbitem') ?? $get->get('nb') ?? null);
         $vMinDate = urldecode($get->get('dateMin') ?? $get->get('minDate') ?? $get->get('period') ?? '');
 
-        if ($output == 'csv') { // Search is done in the CSV Manager
+        if ('csv' == $output) { // Search is done in the CSV Manager
             $csvManager = $this->getService(CSVManager::class);
             $csvManager->sendCsvOrZip($vFormID, [
                 'queries' => $vQuery,
@@ -271,16 +288,16 @@ class ApiController extends YesWikiController
             ]);
 
             $acceptHeader = $this->getRequest()->headers->get('accept', '');
-            if ($output == 'json-ld' || strpos($acceptHeader, 'application/ld+json') !== false) {
+            if ('json-ld' == $output || false !== strpos($acceptHeader, 'application/ld+json')) {
                 return $this->getAllSemanticEntries($formId, $entries);
             } // add entries in html format if asked
-            elseif ($output == 'html') {
+            if ('html' == $output) {
                 foreach ($entries as $id => $entry) {
                     $entries[$id]['html_output'] = $this->getService(EntryController::class)->view($entry, '', 0);
                 }
-            } elseif ($output == 'geojson') {
+            } elseif ('geojson' == $output) {
                 $entries = $this->getService(GeoJSONFormatter::class)->formatToGeoJSON($entries);
-            } elseif ($output == 'ical') {
+            } elseif ('ical' == $output) {
                 return $this->getService(IcalFormatter::class)->apiResponse($entries, $formId, $get->all());
             } elseif ($get->has('fields')) {
                 $fields = explode(',', $get->get('fields'));
@@ -307,7 +324,10 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/entries/{output}/{selectedEntries}", methods={"GET"}, options={"acl":{"public"}})
+     * @Route("/api/entries/{output}/{selectedEntries}", methods={"GET"}, options={"acl": {"public"}})
+     *
+     * @param null|mixed $output
+     * @param null|mixed $selectedEntries
      */
     public function getAllEntries($output = null, $selectedEntries = null)
     {
@@ -318,7 +338,7 @@ class ApiController extends YesWikiController
             if ($this->getService(AclService::class)->hasAccess('read', $entryId)) {
                 $html = $this->getService(EntryController::class)->view($entryId, '', 1);
                 $isInIframe = $get->get('isInIframe');
-                if ($isInIframe && $isInIframe == 'iframe') {
+                if ($isInIframe && 'iframe' == $isInIframe) {
                     $html = replaceLinksWithIframe($html);
                 }
             } else {
@@ -335,21 +355,6 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * helper to check if EntryView fast access.
-     *
-     * @param string|null $output
-     * @param string|null $selectedEntries
-     * @param array|null  $get
-     * @param bool
-     */
-    private function isEntryViewFastAccess($output, $selectedEntries, $get): bool
-    {
-        return $output == 'html'
-            && !empty($selectedEntries) && is_string($selectedEntries) && count(explode(',', $selectedEntries)) == 1
-            && !empty($get['fields']) && $get['fields'] == 'html_output';
-    }
-
-    /**
      * helper to check if EntryView fast access for Bazar/Service/Guard.
      *
      * @param bool
@@ -358,7 +363,7 @@ class ApiController extends YesWikiController
     {
         $queryAll = $this->getRequest()->query->all();
         $route = array_key_first($queryAll);
-        if (substr($route, strlen('api/entries/html'), 1) == '/') {
+        if ('/' == substr($route, strlen('api/entries/html'), 1)) {
             $output = substr($route, strlen('api/entries/'), strlen('html'));
             $selectedEntries = substr($route, strlen('api/entries/html/'));
         } else {
@@ -386,7 +391,7 @@ class ApiController extends YesWikiController
         return new ApiResponse(
             [
                 '@context' => $context,
-                '@id' => $this->wiki->Href('fiche/' . $formId, 'api'),
+                '@id' => $this->wiki->Href('fiche/'.$formId, 'api'),
                 '@type' => ['ldp:Container', 'ldp:BasicContainer'],
                 'dcterms:title' => $form['bn_label_nature'],
                 'ldp:contains' => $resources,
@@ -398,6 +403,8 @@ class ApiController extends YesWikiController
 
     /**
      * @Route("/api/entry/url/{sourceUrl}")
+     *
+     * @param mixed $sourceUrl
      */
     public function getEntryUrl($sourceUrl)
     {
@@ -420,12 +427,14 @@ class ApiController extends YesWikiController
     /**
      * Create or update an entry.
      *
-     * @Route("/api/entries/{formId}", methods={"POST"}, options={"acl":{"+"}})
+     * @Route("/api/entries/{formId}", methods={"POST"}, options={"acl": {"+"}})
+     *
+     * @param mixed $formId
      */
     public function createEntry($formId)
     {
         $request = $this->getRequest();
-        if (strpos($request->headers->get('content-type', ''), 'application/ld+json') !== false) {
+        if (false !== strpos($request->headers->get('content-type', ''), 'application/ld+json')) {
             $this->createSemanticEntry($formId);
         }
 
@@ -449,7 +458,9 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/entries/{formId}/json-ld", methods={"POST"}, options={"acl":{"+"}})
+     * @Route("/api/entries/{formId}/json-ld", methods={"POST"}, options={"acl": {"+"}})
+     *
+     * @param mixed $formId
      */
     public function createSemanticEntry($formId)
     {
@@ -463,30 +474,30 @@ class ApiController extends YesWikiController
 
         return new Response('', Response::HTTP_CREATED, [
             'Link: <http://www.w3.org/ns/ldp#Resource>; rel="type"',
-            'Location: ' . $this->wiki->Href('', $entry['id_fiche']),
+            'Location: '.$this->wiki->Href('', $entry['id_fiche']),
         ]);
     }
 
     /**
-     * @Route("/api/entries/bazarlist", methods={"GET"}, options={"acl":{"public"}},priority=2)
+     * @Route("/api/entries/bazarlist", methods={"GET"}, options={"acl": {"public"}}, priority=2)
      */
     public function getBazarListData()
     {
         $vBazarListService = $this->getService(BazarListService::class);
 
-        /* ------------------------------------ */
-        /*             Format Params            */
-        /* ------------------------------------ */
+        // ------------------------------------
+        // Format Params
+        // ------------------------------------
 
         $queryAll = $this->getRequest()->query->all();
         $formattedGet = array_map(function ($value) {
-            return ($value === 'true') ? true : (($value === 'false') ? false : $value);
+            return ('true' === $value) ? true : (('false' === $value) ? false : $value);
         }, $queryAll);
 
         $get = $this->getRequest()->query;
         $searchfields = $get->get('searchfields');
         $searchfields = is_string($searchfields) ? explode(',', urldecode($searchfields)) : $searchfields;
-        $searchfields = $searchfields == null ? [] : $searchfields;
+        $searchfields = null == $searchfields ? [] : $searchfields;
 
         $vKeywords = $get->has('keywords') ? urldecode($get->get('keywords')) : '';
 
@@ -494,9 +505,9 @@ class ApiController extends YesWikiController
         $formattedGet['searchfields'] = $searchfields;
         $formattedGet['idtypeannonce'] = $get->get('idtypeannonce') ?? $get->get('id') ?? null;
 
-        /* ------------------------------------ */
-        /*               Get Data               */
-        /* ------------------------------------ */
+        // ------------------------------------
+        // Get Data
+        // ------------------------------------
         // All forms
         $refreshVal = $get->get('refresh');
         $forms = $vBazarListService->getForms($formattedGet + ['refresh' => isset($refreshVal) ? in_array($refreshVal, [1, true, '1', 'true'], true) : false]);
@@ -507,9 +518,9 @@ class ApiController extends YesWikiController
         // Filters
         $filters = $vBazarListService->getFilters($formattedGet, $entries, $forms);
 
-        /* ------------------------------------ */
-        /*            Transform Data            */
-        /* ------------------------------------ */
+        // ------------------------------------
+        // Transform Data
+        // ------------------------------------
 
         // Associated Forms
         $formIds = array_unique(array_map(function ($entry) {
@@ -560,11 +571,11 @@ class ApiController extends YesWikiController
             foreach ($fieldList as $fieldName) {
                 // when the field is a TextareaField with the SYNTAX_WIKI syntax, transform the field value into HTML
                 $field = $this->getService(FormManager::class)->findFieldFromNameOrPropertyName($fieldName, $entry['id_typeannonce']);
-                if ($field && $field->getType() == 'textelong' && $field->getSyntax() == TextareaField::SYNTAX_WIKI) {
+                if ($field && 'textelong' == $field->getType() && TextareaField::SYNTAX_WIKI == $field->getSyntax()) {
                     $entry[$fieldName] = $this->wiki->Format($entry[$fieldName]);
                 }
                 // handle specific fields like comments, reactions
-                if (!isset($entry[$fieldName]) || (is_string($entry[$fieldName]) && trim($entry[$fieldName]) == '')) {
+                if (!isset($entry[$fieldName]) || (is_string($entry[$fieldName]) && '' == trim($entry[$fieldName]))) {
                     $entry[$fieldName] = $entryFieldsService->get($fieldName);
                 }
                 $result[] = $entry[$fieldName] ?? null;
@@ -591,134 +602,149 @@ class ApiController extends YesWikiController
      */
     public function getDocumentation()
     {
-        $output = '<h2>Bazar</h2>' . "\n";
+        $output = '<h2>Bazar</h2>'."\n";
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms').'</code></b><br />
         Retourne la liste de tous les formulaires Bazar.
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}').'</code></b><br />
         Retourne les informations sur le formulaire <code>formId</code>.
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', '{pageTag}') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', '{pageTag}').'</code></b><br />
         Si le header <code>Accept</code> est <code>application/json</code>, retourne la fiche au format JSON.<br />
         Si le header <code>Accept</code> est <code>application/ld+json</code>, retourne la fiche au format JSON-LD.<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>PUT ' . $this->wiki->href('', '{pageTag}') . '</code></b><br />
+        <b><code>PUT '.$this->wiki->href('', '{pageTag}').'</code></b><br />
         Si le header <code>Content-Type</code> est <code>application/json</code>, modifie la fiche selon le JSON fourni.<br />
         Si le header <code>Content-Type</code> est <code>application/ld+json</code>, modifie la fiche selon le JSON-LD fourni.<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>DELETE ' . $this->wiki->href('', '{pageTag}') . '</code></b><br />
+        <b><code>DELETE '.$this->wiki->href('', '{pageTag}').'</code></b><br />
         Supprime la fiche Bazar.
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries').'</code></b><br />
         Obtenir la liste des fiches de tous les formulaires Bazar.<br />
         Si le header <code>Accept</code> est <code>application/ld+json</code>, le JSON retourné sera au format sémantique (container LDP)
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code><br />
         Si le header <code>Accept</code> est <code>application/ld+json</code>, le JSON retourné sera au format sémantique (container LDP)
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries/json-ld') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries/json-ld').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code> au format sémantique (container LDP)<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries/html') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries/html').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code> au format json, avec la représentation html de la fiche dans le champ <code>html_output</code><br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries/geojson') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries/geojson').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code> au format geojson<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries/ical') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries/ical').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code> au format ical<br />
         Il est possible de filtrer sur les dates en ajoutant à l\'url <code>&datefilter=>-6M</code> (exemple pour les dates plus récentes que 6 mois)<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/forms/{formId}/entries&fields=bf_titre') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/forms/{formId}/entries&fields=bf_titre').'</code></b><br />
         Obtenir la liste de toutes les fiches du formulaire <code>formId</code> en ne gardant que les titres (il est possible de spécifier d\autres champs en séparant leur nom par des \',\')<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>POST ' . $this->wiki->href('', 'api/entries/{formId}') . '</code></b><br />
+        <b><code>POST '.$this->wiki->href('', 'api/entries/{formId}').'</code></b><br />
         Créer une nouvelle fiche en utilisant le formulaire <code>formId</code><br />
         Si le header <code>Content-Type</code> est <code>application/ld+json</code>, un JSON sémantique est attendu.
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries/html') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries/html').'</code></b><br />
         Obtenir la liste de toutes les fiches au format json, avec la représentation html de la fiche dans le champ <code>html_output</code><br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries/bazarlist') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries/bazarlist').'</code></b><br />
         Obtenir les données nécessaires à bazarliste dynamic au format json<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>POST ' . $this->wiki->href('', 'api/entries/{formId}/json-ld') . '</code></b><br />
+        <b><code>POST '.$this->wiki->href('', 'api/entries/{formId}/json-ld').'</code></b><br />
         Créer une nouvelle fiche de type <code>formId</code> au format sémantique<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries/geojson') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries/geojson').'</code></b><br />
         Obtenir la liste de toutes les fiches au format geojson<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries/ical') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries/ical').'</code></b><br />
         Obtenir la liste de toutes les fiches au format ical<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entries/{output}&fields=bf_titre') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entries/{output}&fields=bf_titre').'</code></b><br />
         Obtenir la liste de toutes les fiches au format spécifié en ne gardant que les titres (il est possible de spécifier d\'autres champs en séparant leur nom par des \',\' ex: <code>&field=bf_titre,url</code>)<br />
         </p>';
 
         $output .= '
         <p>
-        <b><code>GET ' . $this->wiki->href('', 'api/entry/url/{sourceUrl}') . '</code></b><br />
+        <b><code>GET '.$this->wiki->href('', 'api/entry/url/{sourceUrl}').'</code></b><br />
         Retourne l\'URL de la page Wiki synchronisée avec <code>sourceUrl</code><br />
         </p>';
 
         return $output;
+    }
+
+    /**
+     * helper to check if EntryView fast access.
+     *
+     * @param null|string $output
+     * @param null|string $selectedEntries
+     * @param null|array  $get
+     * @param bool
+     */
+    private function isEntryViewFastAccess($output, $selectedEntries, $get): bool
+    {
+        return 'html' == $output
+            && !empty($selectedEntries) && is_string($selectedEntries) && 1 == count(explode(',', $selectedEntries))
+            && !empty($get['fields']) && 'html_output' == $get['fields'];
     }
 }

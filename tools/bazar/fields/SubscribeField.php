@@ -9,16 +9,15 @@ use Psr\Container\ContainerInterface;
  */
 class SubscribeField extends BazarField
 {
-    protected $mailerEmail;
-    protected $emailField;
-    protected $mailerTool;
+    public const MAILER_EZMLM = 'ezmlm'; // OVH
+    public const MAILER_SYMPA = 'sympa'; // Framaliste
 
     protected const FIELD_MAILER_EMAIL = 1;
     protected const FIELD_EMAIL_FIELD = 3;
     protected const FIELD_MAILER_TOOL = 4;
-
-    public const MAILER_EZMLM = 'ezmlm'; // OVH
-    public const MAILER_SYMPA = 'sympa'; // Framaliste
+    protected $mailerEmail;
+    protected $emailField;
+    protected $mailerTool;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -34,14 +33,6 @@ class SubscribeField extends BazarField
         $this->default = null;
     }
 
-    protected function renderInput($entry)
-    {
-        return $this->render('@bazar/inputs/subscribe.twig', [
-            'value' => $this->getValue($entry),
-            'subscribeEmail' => $this->getSubscribeEmail($entry),
-        ]);
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         $value = $this->getValue($entry);
@@ -55,12 +46,13 @@ class SubscribeField extends BazarField
         }
 
         // TODO improve import detection
-        if (isset($GLOBALS['_BAZAR_']['provenance']) && $GLOBALS['_BAZAR_']['provenance'] == 'import') {
+        if (isset($GLOBALS['_BAZAR_']['provenance']) && 'import' == $GLOBALS['_BAZAR_']['provenance']) {
             if ($value === $subscribeEmail) {
                 send_mail($entry[$this->emailField], $entry['bf_titre'], $subscribeEmail, 'subscribe', 'subscribe', 'subscribe');
 
                 return [$this->propertyName => $value];
-            } elseif ($value === $unsubscribeEmail) {
+            }
+            if ($value === $unsubscribeEmail) {
                 // Don't send emails when mass unsubscribing
                 return [$this->propertyName => $value];
             }
@@ -70,12 +62,19 @@ class SubscribeField extends BazarField
                 send_mail($entry[$this->emailField], $entry['bf_titre'], $subscribeEmail, 'subscribe', 'subscribe', 'subscribe');
 
                 return [$this->propertyName => $subscribeEmail];
-            } else {
-                send_mail($entry[$this->emailField], $entry['bf_titre'], $unsubscribeEmail, 'unsubscribe', 'unsubscribe', 'unsubscribe');
-
-                return [$this->propertyName => $unsubscribeEmail];
             }
+            send_mail($entry[$this->emailField], $entry['bf_titre'], $unsubscribeEmail, 'unsubscribe', 'unsubscribe', 'unsubscribe');
+
+            return [$this->propertyName => $unsubscribeEmail];
         }
+    }
+
+    protected function renderInput($entry)
+    {
+        return $this->render('@bazar/inputs/subscribe.twig', [
+            'value' => $this->getValue($entry),
+            'subscribeEmail' => $this->getSubscribeEmail($entry),
+        ]);
     }
 
     protected function renderStatic($entry)
@@ -88,9 +87,9 @@ class SubscribeField extends BazarField
         // list@provider.com -> list-subscribe@provider.com
         $subscribeEmail = str_replace('@', '-subscribe@', $this->mailerEmail);
         // If the mailing list tool is ezmlm, reformat the email address
-        if (isset($entry[$this->emailField]) && $this->mailerTool == self::MAILER_EZMLM) {
+        if (isset($entry[$this->emailField]) && self::MAILER_EZMLM == $this->mailerTool) {
             // list@provider.com -> list-subscribe-user=gmail.com@provider.com
-            $subscribeEmail = str_replace('@', '-' . str_replace('@', '=', $entry[$this->emailField]) . '@', $subscribeEmail);
+            $subscribeEmail = str_replace('@', '-'.str_replace('@', '=', $entry[$this->emailField]).'@', $subscribeEmail);
         }
 
         return $subscribeEmail;
@@ -101,9 +100,9 @@ class SubscribeField extends BazarField
         // list@provider.com -> list-unsubscribe@provider.com
         $unsubscribeEmail = str_replace('@', '-unsubscribe@', $this->mailerEmail);
         // If the mailing list tool is ezmlm, reformat the email address
-        if (isset($entry[$this->emailField]) && $this->mailerTool == self::MAILER_EZMLM) {
+        if (isset($entry[$this->emailField]) && self::MAILER_EZMLM == $this->mailerTool) {
             // list@provider.com -> list-unsubscribe-user=gmail.com@provider.com
-            $unsubscribeEmail = str_replace('@', '-' . str_replace('@', '=', $entry[$this->emailField]) . '@', $unsubscribeEmail);
+            $unsubscribeEmail = str_replace('@', '-'.str_replace('@', '=', $entry[$this->emailField]).'@', $unsubscribeEmail);
         }
 
         return $unsubscribeEmail;

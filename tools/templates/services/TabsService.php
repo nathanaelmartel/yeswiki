@@ -2,7 +2,6 @@
 
 namespace YesWiki\Templates\Service;
 
-use URLify;
 use YesWiki\Bazar\Field\TabsField;
 
 class TabsService
@@ -77,31 +76,6 @@ class TabsService
         );
     }
 
-    private function setTitles(array $titles, string $mode, string $btnClass, bool $bottom_nav, bool $counter_on_bottom_nav, int $selectedtab)
-    {
-        $this->saveInStackIfNeeded($mode);
-        $this->data[$mode]['titles'] = $titles;
-        $this->data[$mode]['counter'] = 1;
-        $this->data[$mode]['btnClass'] = $btnClass;
-        $this->data[$mode]['bottom_nav'] = $bottom_nav;
-        $this->data[$mode]['counter_on_bottom_nav'] = $counter_on_bottom_nav;
-        $this->data[$mode]['prefixCounter'] = $this->getNewPrefix();
-        $this->data[$mode]['selectedtab'] = ($selectedtab > 0 && $selectedtab <= count($titles)) ? $selectedtab : 1;
-        $this->data[$mode]['isClosed'] = false;
-        $this->data[$mode]['tabOpened'] = false;
-        $this->data[$mode]['slugs'] = array_map(function ($id) use ($titles, $mode) {
-            $title = $titles[$id];
-            $slug = URLify::slug($title);
-            if (in_array($slug, $this->usedSlugs)) {
-                return "{$slug}_{$this->data[$mode]['prefixCounter']}_" . ($id + 1);
-            } else {
-                $this->usedSlugs[] = $slug;
-
-                return $slug;
-            }
-        }, array_keys($titles));
-    }
-
     public function getFormData(bool $increment = true)
     {
         return $this->getData('form', $increment);
@@ -120,57 +94,6 @@ class TabsService
     public function getSlugs(string $mode): array
     {
         return $this->data[$mode]['slugs'];
-    }
-
-    private function saveInStackIfNeeded(string $mode)
-    {
-        if ($this->data[$mode]['counter'] !== false) {
-            // init stack for this mode
-            if (!isset($this->stack[$mode])) {
-                $this->stack[$mode] = [];
-            }
-            $this->stack[$mode][] = $this->data[$mode];
-            $this->data[$mode]['counter'] = false;
-        }
-    }
-
-    private function retrieveFromStackIfNeeded(string $mode)
-    {
-        if (!empty($this->stack[$mode])) {
-            $this->data[$mode] = array_pop($this->stack[$mode]);
-        }
-    }
-
-    private function getNewPrefix(): int
-    {
-        $newPrefix = $this->nextPrefix;
-        $this->nextPrefix = $this->nextPrefix + 1;
-
-        return $newPrefix;
-    }
-
-    private function getData(string $mode, bool $increment = true)
-    {
-        $data = $this->data[$mode];
-        $data['isLast'] = false;
-        // update internal counter
-        if ($data['counter'] !== false) {
-            if ($increment) {
-                $this->data[$mode]['tabOpened'] = false;
-                // end not already reached
-                if ($data['counter'] < count($data['titles'])) {
-                    // do not increase counter if TabChange specified is last
-                    $this->data[$mode]['counter'] = $data['counter'] + 1;
-                } else {
-                    $this->data[$mode]['counter'] = false; // to indicate end is reached
-                    $data['isLast'] = true;
-                }
-            }
-        } else {
-            $data['titles'] = []; // to be sure titles are not used
-        }
-
-        return $data;
     }
 
     public function openTab(string $mode)
@@ -215,8 +138,83 @@ class TabsService
             $this->nextPrefix = $this->states[$index]['nextPrefix'];
 
             return true;
-        } else {
-            return false;
         }
+
+        return false;
+    }
+
+    private function setTitles(array $titles, string $mode, string $btnClass, bool $bottom_nav, bool $counter_on_bottom_nav, int $selectedtab)
+    {
+        $this->saveInStackIfNeeded($mode);
+        $this->data[$mode]['titles'] = $titles;
+        $this->data[$mode]['counter'] = 1;
+        $this->data[$mode]['btnClass'] = $btnClass;
+        $this->data[$mode]['bottom_nav'] = $bottom_nav;
+        $this->data[$mode]['counter_on_bottom_nav'] = $counter_on_bottom_nav;
+        $this->data[$mode]['prefixCounter'] = $this->getNewPrefix();
+        $this->data[$mode]['selectedtab'] = ($selectedtab > 0 && $selectedtab <= count($titles)) ? $selectedtab : 1;
+        $this->data[$mode]['isClosed'] = false;
+        $this->data[$mode]['tabOpened'] = false;
+        $this->data[$mode]['slugs'] = array_map(function ($id) use ($titles, $mode) {
+            $title = $titles[$id];
+            $slug = \URLify::slug($title);
+            if (in_array($slug, $this->usedSlugs)) {
+                return "{$slug}_{$this->data[$mode]['prefixCounter']}_".($id + 1);
+            }
+            $this->usedSlugs[] = $slug;
+
+            return $slug;
+        }, array_keys($titles));
+    }
+
+    private function saveInStackIfNeeded(string $mode)
+    {
+        if (false !== $this->data[$mode]['counter']) {
+            // init stack for this mode
+            if (!isset($this->stack[$mode])) {
+                $this->stack[$mode] = [];
+            }
+            $this->stack[$mode][] = $this->data[$mode];
+            $this->data[$mode]['counter'] = false;
+        }
+    }
+
+    private function retrieveFromStackIfNeeded(string $mode)
+    {
+        if (!empty($this->stack[$mode])) {
+            $this->data[$mode] = array_pop($this->stack[$mode]);
+        }
+    }
+
+    private function getNewPrefix(): int
+    {
+        $newPrefix = $this->nextPrefix;
+        $this->nextPrefix = $this->nextPrefix + 1;
+
+        return $newPrefix;
+    }
+
+    private function getData(string $mode, bool $increment = true)
+    {
+        $data = $this->data[$mode];
+        $data['isLast'] = false;
+        // update internal counter
+        if (false !== $data['counter']) {
+            if ($increment) {
+                $this->data[$mode]['tabOpened'] = false;
+                // end not already reached
+                if ($data['counter'] < count($data['titles'])) {
+                    // do not increase counter if TabChange specified is last
+                    $this->data[$mode]['counter'] = $data['counter'] + 1;
+                } else {
+                    $this->data[$mode]['counter'] = false; // to indicate end is reached
+                    $data['isLast'] = true;
+                }
+            }
+        } else {
+            $data['titles'] = []; // to be sure titles are not used
+        }
+
+        return $data;
     }
 }

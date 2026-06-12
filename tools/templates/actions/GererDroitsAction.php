@@ -35,8 +35,8 @@ class GererDroitsAction extends YesWikiAction
         $this->groupController = $this->getService(GroupController::class);
 
         $request = $this->getRequest();
-        list('success' => $success, 'error' => $error) = $this->manageChangeRights($request->request->all());
-        list('filter' => $filter, 'search' => $search) = $this->getFilterAndSearch($request->query->all(), $request->request->all());
+        ['success' => $success, 'error' => $error] = $this->manageChangeRights($request->request->all());
+        ['filter' => $filter, 'search' => $search] = $this->getFilterAndSearch($request->query->all(), $request->request->all());
 
         // récupération de tous les formulaires
         $forms = $this->getService(FormManager::class)->getAll();
@@ -45,20 +45,20 @@ class GererDroitsAction extends YesWikiAction
         $pagesTableName = trim($this->dbService->prefixTable('pages'));
         $aclsTableName = trim($this->dbService->prefixTable('acls'));
         $liste_pages = $this->wiki->Query(<<<SQL
-    SELECT tag, 
-    (SELECT list
-     FROM $aclsTableName
-     WHERE privilege ="read" AND $pagesTableName.tag=$aclsTableName.page_tag) AS acl_read,
-    (SELECT list
-     FROM $aclsTableName
-     WHERE privilege ="write" AND $pagesTableName.tag=$aclsTableName.page_tag) AS acl_write,
-    (SELECT list
-     FROM $aclsTableName
-     WHERE privilege ="comment" AND $pagesTableName.tag=$aclsTableName.page_tag) AS acl_comment
-    FROM $pagesTableName
-        WHERE latest='Y' $search
-            ORDER BY $pagesTableName.tag ASC
-    SQL);
+            SELECT tag, 
+            (SELECT list
+             FROM {$aclsTableName}
+             WHERE privilege ="read" AND {$pagesTableName}.tag={$aclsTableName}.page_tag) AS acl_read,
+            (SELECT list
+             FROM {$aclsTableName}
+             WHERE privilege ="write" AND {$pagesTableName}.tag={$aclsTableName}.page_tag) AS acl_write,
+            (SELECT list
+             FROM {$aclsTableName}
+             WHERE privilege ="comment" AND {$pagesTableName}.tag={$aclsTableName}.page_tag) AS acl_comment
+            FROM {$pagesTableName}
+                WHERE latest='Y' {$search}
+                    ORDER BY {$pagesTableName}.tag ASC
+            SQL);
         $pageEtDroits = [];
         while ($pages = mysqli_fetch_array($liste_pages)) {
             $pageEtDroits[] = $this->utils->recupDroits($pages);
@@ -95,7 +95,7 @@ class GererDroitsAction extends YesWikiAction
             if (!isset($post['selectpage'])) {
                 $error = _t('ACLS_NO_SELECTED_PAGE');
             } elseif (
-                $post['typemaj'] !== 'default'
+                'default' !== $post['typemaj']
                 && empty($post['newlire'])
                 && empty($post['newecrire'])
                 && empty($post['newcomment'])
@@ -106,10 +106,10 @@ class GererDroitsAction extends YesWikiAction
                 $error = _t('ACLS_NO_SELECTED_RIGHTS');
             } elseif (is_array($post['selectpage'])) {
                 foreach (array_filter($post['selectpage'], 'is_string') as $page_cochee) {
-                    if ($post['typemaj'] === 'default') {
+                    if ('default' === $post['typemaj']) {
                         $this->wiki->DeleteAcl($page_cochee);
                     } else {
-                        $appendAcl = ($post['typemaj'] === 'ajouter');
+                        $appendAcl = ('ajouter' === $post['typemaj']);
                         if (!empty($post['newlire_advanced'])) {
                             $this->wiki->SaveAcl($page_cochee, 'read', $post['newlire_advanced'], $appendAcl);
                         } elseif (!empty($post['newlire'])) {
@@ -146,40 +146,40 @@ class GererDroitsAction extends YesWikiAction
         $search = '';
         if (!empty($filter)) {
             $filter = strval($filter);
-            if ($filter === 'pages') {
+            if ('pages' === $filter) {
                 $search = <<<SQL
-              AND tag NOT IN (
-              SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')}
-              WHERE value = "fiche_bazar"
-            )
-            SQL;
-            } elseif ($filter === 'specialpages') {
-                $search = <<<SQL
-               AND tag IN ("BazaR","GererSite","GererDroits","GererThemes","GererMisesAJour","GererUtilisateurs",
-                "GererDroitsActions","GererDroitsHandlers","TableauDeBord",
-                "PageTitre","PageMenuHaut","PageRapideHaut","PageHeader","PageFooter","PageCSS","PageMenu",
-                "PageColonneDroite","MotDePassePerdu","ParametresUtilisateur","GererConfig","ActuYeswiki","LookWiki")
-              SQL;
+                      AND tag NOT IN (
+                      SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')}
+                      WHERE value = "fiche_bazar"
+                    )
+                    SQL;
+            } elseif ('specialpages' === $filter) {
+                $search = <<<'SQL'
+                     AND tag IN ("BazaR","GererSite","GererDroits","GererThemes","GererMisesAJour","GererUtilisateurs",
+                      "GererDroitsActions","GererDroitsHandlers","TableauDeBord",
+                      "PageTitre","PageMenuHaut","PageRapideHaut","PageHeader","PageFooter","PageCSS","PageMenu",
+                      "PageColonneDroite","MotDePassePerdu","ParametresUtilisateur","GererConfig","ActuYeswiki","LookWiki")
+                    SQL;
             } elseif ($filter === strval(intval($filter))) {
                 $requete_pages_wiki_bazar_fiches = <<<SQL
-              SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')}
-              WHERE value = "fiche_bazar" AND property = "http://outils-reseaux.org/_vocabulary/type" 
-              ORDER BY resource ASC
-            SQL;
+                      SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')}
+                      WHERE value = "fiche_bazar" AND property = "http://outils-reseaux.org/_vocabulary/type" 
+                      ORDER BY resource ASC
+                    SQL;
 
                 $search = <<<SQL
-              AND body LIKE '%"id_typeannonce":"{$this->dbService->escape($filter)}"%'
-              AND tag IN ($requete_pages_wiki_bazar_fiches)
-            SQL;
-            } elseif ($filter === 'lists') {
+                      AND body LIKE '%"id_typeannonce":"{$this->dbService->escape($filter)}"%'
+                      AND tag IN ({$requete_pages_wiki_bazar_fiches})
+                    SQL;
+            } elseif ('lists' === $filter) {
                 $requete_pages_wiki_listes = <<<SQL
-                SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')} 
-                WHERE value = "liste" AND property = "http://outils-reseaux.org/_vocabulary/type" 
-                ORDER BY resource ASC
-              SQL;
+                      SELECT DISTINCT resource FROM {$this->dbService->prefixTable('triples')} 
+                      WHERE value = "liste" AND property = "http://outils-reseaux.org/_vocabulary/type" 
+                      ORDER BY resource ASC
+                    SQL;
                 $search = <<<SQL
-                AND tag IN ($requete_pages_wiki_listes)
-              SQL;
+                      AND tag IN ({$requete_pages_wiki_listes})
+                    SQL;
             } else {
                 $filter = '';
             }
@@ -199,7 +199,7 @@ class GererDroitsAction extends YesWikiAction
             $list = '';
         } else {
             $list = implode(',', array_filter(explode(',', $list), function ($el) {
-                return !empty($el) && !empty(trim($el)) && trim($el) != '*';
+                return !empty($el) && !empty(trim($el)) && '*' != trim($el);
             }));
         }
 

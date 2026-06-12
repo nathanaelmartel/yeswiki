@@ -6,6 +6,4 @@ namespace YesWiki\AutoUpdate\Entity;
 
 use YesWiki\Core\Entity\ConfigurationFile;
 
-class Configuration extends ConfigurationFile
-{
-}
+class Configuration extends ConfigurationFile {}

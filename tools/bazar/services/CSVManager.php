@@ -32,61 +32,9 @@ class CSVManager
         $this->entryManager = $entryManager;
         $this->formManager = $formManager;
         $this->wiki = $wiki;
-        $this->debug = ($this->wiki->GetConfigValue('debug') == 'yes');
+        $this->debug = ('yes' == $this->wiki->GetConfigValue('debug'));
         $this->importdone = false;
         $this->errormsg = [];
-    }
-
-    /**
-     * get headers from a form.
-     *
-     * @param array $form form from which headers shoudl be extracted
-     *
-     * @return array ['propertyName1' => ['field' => field, 'fullHeader' => 'jjjjk'],
-     *               'propertyName2' => ['field' => field, 'fullHeader' => 'jjjjk']]
-     *               null if error
-     */
-    private function getHeaders(array $form): ?array
-    {
-        $headers = [];
-        foreach ($form['prepared'] as $field) {
-            $propName = $field->getPropertyName();
-            if (!empty($propName)) {
-                if ($field instanceof UserField) {
-                    // TODO save userField data on one field
-                    $fullHeader1 = 'NomWiki';
-                    $fullHeader2 = 'Mot de passe';
-                    if ($field->isRequired()) {
-                        $fullHeader1 .= ' *';
-                        $fullHeader2 .= ' *';
-                    }
-
-                    $headers['nomwiki'] = [
-                        'field' => $field,
-                        'fullHeader' => $fullHeader1,
-                    ];
-                    $headers['mot_de_passe_wikini'] = [
-                        'field' => $field,
-                        'fullHeader' => $fullHeader2,
-                    ];
-                } else {
-                    // *** standard case ****
-                    $fullHeader = $field->getLabel();
-                    if (!empty($fullHeader)) {
-                        if ($field->isRequired()) {
-                            $fullHeader .= ' *';
-                        }
-
-                        $headers[$propName] = [
-                            'field' => $field,
-                            'fullHeader' => $fullHeader,
-                        ];
-                    }
-                }
-            }
-        }
-
-        return $headers;
     }
 
     /**
@@ -98,7 +46,7 @@ class CSVManager
     {
         if (!empty($data)) {
             // output up to 50MB is kept in memory, if it becomes bigger it will automatically be written to a temporary file
-            $csvResource = fopen('php://temp/maxmemory:' . (50 * 1024 * 1024), 'r+');
+            $csvResource = fopen('php://temp/maxmemory:'.(50 * 1024 * 1024), 'r+');
 
             foreach ($data as $line) {
                 // output the column headings
@@ -119,7 +67,6 @@ class CSVManager
     /**
      * get CSV of all entries from form.
      *
-     * @param $pFormId : the form ID for SearchManager::search
      * @param <array> $pParams : parameters for SearchManager::search
      *	        	[
      *					"query" => <string>|<array> the query
@@ -130,8 +77,9 @@ class CSVManager
      * 				"fakeMode" => <bool> to create a template (default false),
      *				"keysInsteadOfValues" => <bool> export keys instead of values (default false)
      *			]
+     * @param mixed $pFormID
      *
-     * @return array|null csv; null is empty or error
+     * @return null|array csv; null is empty or error
      */
     public function getCSVfromFormId(
         $pFormID,
@@ -193,7 +141,7 @@ class CSVManager
             }
         } else {
             // emulate an 4 empty lines
-            for ($i = 1; $i < 4; $i++) {
+            for ($i = 1; $i < 4; ++$i) {
                 $csv_line = $this->getTemplateCSVLine($headers, $i);
                 if ($csv_line) {
                     $csv_raw[] = $csv_line;
@@ -205,12 +153,266 @@ class CSVManager
     }
 
     /**
+     * importEntry.
+     *
+     * @return null|array $createdEntries
+     */
+    public function importEntry(array $importedEntries, string $formId): ?array
+    {
+        if (!$this->importdone) {
+            // Pour les traitements particulier lors de l import
+            $GLOBALS['_BAZAR_']['provenance'] = 'import';
+            $createdEntries = [];
+            foreach ($importedEntries as $entry) {
+                $entry = unserialize(base64_decode($entry), ['allowed_classes' => false]);
+                $entry = array_map('strval', $entry);
+
+                $entry['antispam'] = 1;
+                if (isset($entry['id_fiche'])) {
+                    // to prevent errors when several entries with same bf_titre
+                    unset($entry['id_fiche']);
+                }
+                $entry = $this->entryManager->create($formId, $entry);
+
+                if ($entry) {
+                    $createdEntries[] = $entry;
+                }
+            }
+            $this->importdone = true;
+
+            return $createdEntries;
+        }
+
+        return null;
+    }
+
+    /**
+     * extract CSV from csv file.
+     *
+     * @param mixed      $pFormId
+     * @param mixed      $filesData
+     * @param null|mixed $pForm
+     *
+     * @return null|array [['entry' => $extractedData,'errormsg' => ['error1','error2']],...]
+     */
+    public function extractCSVfromCSVFile($pFormId, $filesData, bool $detectColumnsOnHeaders = true, $pForm = null)
+    {
+        $vBazarListService = $this->wiki->services->get(BazarListService::class);
+
+        $vID = $vBazarListService->getTheID($pFormId);
+
+        if (!empty($vID) && null != $pForm) {
+            // get headers
+            $headers = $this->getHeaders($pForm);
+
+            // import file
+            if (!empty($filesData) && (0 == $filesData['error'])) {
+                // Check if the file is csv
+                $filename = basename($filesData['name']);
+                $ext = substr($filename, strrpos($filename, '.') + 1);
+                if ('csv' == $ext) {
+                    if (($handle = fopen($filesData['tmp_name'], 'r')) !== false) {
+                        if (($firstLine = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+                            if ($columnIndexesForPropertyNames
+                                = $this->getColumnIndexesForPropertyNames($firstLine, $headers, $detectColumnsOnHeaders)
+                            ) {
+                                // next lines
+                                $extracted = [];
+                                while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) { // init errors
+                                    $this->errormsg = [];
+                                    $extractedData = $this->getEntryFromCSVLine($data, $headers, $columnIndexesForPropertyNames, $vID['id']);
+                                    $extracted[] = [
+                                        'entry' => $extractedData,
+                                        'errormsg' => $this->errormsg,
+                                    ];
+                                }
+                            }
+                        }
+                        fclose($handle);
+
+                        return $extracted ?? null;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * convert CSV raw to string to display in <pre>.
+     *
+     * @return string $csvToDisplay
+     */
+    public function arrayToCSVToDisplay(?array $data): ?string
+    {
+        // format file
+        $csv = $this->arrayToCSV($data) ?? '';
+
+        // replace '<' and '> by html entities to prevent error in <pre> displaying
+        $csvToDisplay = str_replace('<', htmlentities('<'), $csv);
+
+        return str_replace('>', htmlentities('>'), $csvToDisplay);
+    }
+
+    public function buildExportFilename($pFormID)
+    {
+        $vFilename = 'export-fiche-';
+
+        if (is_array($pFormID)) {
+            $vFilename .= $pFormID['key'];
+        } else {
+            $vFilename .= $pFormID;
+        }
+
+        $vFilename .= '.csv';
+
+        return $vFilename;
+    }
+
+    /**
+     * send CSV file or archive.
+     *
+     * @params $pFormIDs : forms ids
+     * @params <array> $pParams for search. ex : [ "query" => ..., "keywords" => ..., "champ" => ..., "ordre" => ... ]
+     *
+     * @param mixed $pFormIDs
+     *
+     * @return string $csvToDisplay
+     */
+    public function sendCsvOrZip($pFormIDs, array $pParams, string $zipFileName = 'yeswiki-csv-exports.zip')
+    {
+        $vBazarListService = $this->wiki->services->get(BazarListService::class);
+
+        $vFormIDs = $vBazarListService->getIDs($pFormIDs);
+
+        $csvFiles = [];
+
+        foreach ($vFormIDs['locals'] as $vFormID) {
+            $vFilename = $this->buildExportFilename($vFormID);
+
+            $csvFiles[$vFilename] = $this->arrayToCSV(
+                $this->getCSVfromFormId(['locals' => [$vFormID], 'externals' => []], $pParams)
+            );
+        }
+
+        foreach ($vFormIDs['externals'] as $vFormID) {
+            $vFilename = $this->buildExportFilename($this->wiki->services->get(ExternalBazarService::class)->getExternalFormIDKey($vFormID));
+
+            $csvFiles[$vFilename] = $this->arrayToCSV(
+                $this->getCSVfromFormId(['locals' => [], 'externals' => [$vFormID]], $pParams)
+            );
+        }
+
+        $fileCount = count($csvFiles);
+
+        if (0 === $fileCount) {
+            exit('Error: No file data was provided.');
+        }
+
+        if (1 === $fileCount) {
+            $fileName = key($csvFiles);
+            $csvContent = reset($csvFiles);
+
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="'.$fileName.'"');
+            header('Content-Length: '.strlen($csvContent));
+            header('Connection: close');
+
+            echo $csvContent;
+
+            exit;
+        }
+
+        if ($fileCount > 1) {
+            if (!class_exists('ZipArchive')) {
+                exit('Error: The ZipArchive PHP extension is not installed or enabled.');
+            }
+
+            $zip = new \ZipArchive();
+            $tempZipFile = tempnam(sys_get_temp_dir(), 'zip');
+
+            if (true !== $zip->open($tempZipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE)) {
+                exit('Error: Cannot create ZIP archive.');
+            }
+
+            foreach ($csvFiles as $filename => $csvString) {
+                $zip->addFromString($filename, $csvString);
+            }
+
+            $zip->close();
+
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="'.$zipFileName.'"');
+            header('Content-Length: '.filesize($tempZipFile));
+            header('Connection: close');
+
+            readfile($tempZipFile);
+            unlink($tempZipFile);
+
+            exit;
+        }
+    }
+
+    /**
+     * get headers from a form.
+     *
+     * @param array $form form from which headers shoudl be extracted
+     *
+     * @return array ['propertyName1' => ['field' => field, 'fullHeader' => 'jjjjk'],
+     *               'propertyName2' => ['field' => field, 'fullHeader' => 'jjjjk']]
+     *               null if error
+     */
+    private function getHeaders(array $form): ?array
+    {
+        $headers = [];
+        foreach ($form['prepared'] as $field) {
+            $propName = $field->getPropertyName();
+            if (!empty($propName)) {
+                if ($field instanceof UserField) {
+                    // TODO save userField data on one field
+                    $fullHeader1 = 'NomWiki';
+                    $fullHeader2 = 'Mot de passe';
+                    if ($field->isRequired()) {
+                        $fullHeader1 .= ' *';
+                        $fullHeader2 .= ' *';
+                    }
+
+                    $headers['nomwiki'] = [
+                        'field' => $field,
+                        'fullHeader' => $fullHeader1,
+                    ];
+                    $headers['mot_de_passe_wikini'] = [
+                        'field' => $field,
+                        'fullHeader' => $fullHeader2,
+                    ];
+                } else {
+                    // *** standard case ****
+                    $fullHeader = $field->getLabel();
+                    if (!empty($fullHeader)) {
+                        if ($field->isRequired()) {
+                            $fullHeader .= ' *';
+                        }
+
+                        $headers[$propName] = [
+                            'field' => $field,
+                            'fullHeader' => $fullHeader,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $headers;
+    }
+
+    /**
      * getCSVLineFromEntry.
      *
      * @param array $headers             from $this->getHeaders
      * @param bool  $keysInsteadOfValues to export keys insteadof values
      *
-     * @return array|null $entry in csv or null if error
+     * @return null|array $entry in csv or null if error
      */
     private function getCSVLineFromEntry(array $entry, array $headers, bool $keysInsteadOfValues = false): ?array
     {
@@ -224,12 +426,12 @@ class CSVManager
             $value = $entry[$propertyName] ?? null;
 
             if ($value) {
-                if ($propertyName == 'mot_de_passe_wikini') {
+                if ('mot_de_passe_wikini' == $propertyName) {
                     // secure password
                     $value = md5($value);
                 } elseif (($header['field'] instanceof ImageField) || ($header['field'] instanceof FileField)) {
                     // ajoute l'URL de base aux images et fichiers
-                    $value = $this->wiki->getBaseUrl() . '/' . BAZ_CHEMIN_UPLOAD . $value;
+                    $value = $this->wiki->getBaseUrl().'/'.BAZ_CHEMIN_UPLOAD.$value;
                 } elseif (
                     $header['field'] instanceof EnumField
                     && !($header['field'] instanceof TagsField)
@@ -283,21 +485,21 @@ class CSVManager
         // prevent errors when entries are saved with array in values for entry
         // (bug from old doryphore version but it is better not to block export)
         if (is_array($value)) {
-            $reasonMessage = 'an array : ' . json_encode($value)
-                . ', which has been exported to string (not maintained). ';
+            $reasonMessage = 'an array : '.json_encode($value)
+                .', which has been exported to string (not maintained). ';
             $value = implode(',', array_values($value));
         }
 
         if (!is_string($value)) {
-            $reasonMessage = 'this : ' . json_encode($value)
-                . ', which was replaced by null. ';
+            $reasonMessage = 'this : '.json_encode($value)
+                .', which was replaced by null. ';
             $value = null;
         }
         if ($this->debug && !empty($reasonMessage)) {
-            trigger_error('Error when exporting \'' . $field->getPropertyName() . '\''
-                . ' from entry \'' . ($entry['id_fiche'] ?? '<no id_fiche>') . '\'.' .
-                ' Waiting a string, giving ' . $reasonMessage
-                . 'You should edit and save this entry to prevent error.');
+            trigger_error('Error when exporting \''.$field->getPropertyName().'\''
+                .' from entry \''.($entry['id_fiche'] ?? '<no id_fiche>').'\'.'
+                .' Waiting a string, giving '.$reasonMessage
+                .'You should edit and save this entry to prevent error.');
         }
 
         if (!empty($value)) {
@@ -322,7 +524,7 @@ class CSVManager
      *
      * @param array $headers from $this->getHeaders
      *
-     * @return array|null $entry in csv or null if error
+     * @return null|array $entry in csv or null if error
      */
     private function getTemplateCSVLine(array $headers, int $lineNumber): ?array
     {
@@ -341,111 +543,28 @@ class CSVManager
                         }, range(0, $nb - 1)),
                     ]));
                 } else {
-                    $line[] = 'ligne ' . $lineNumber . ' - champ ' . $columnNumber;
+                    $line[] = 'ligne '.$lineNumber.' - champ '.$columnNumber;
                 }
             } elseif ($header['field'] instanceof TagsField) {
-                $line[] = '"' . implode(',', array_map(function ($index) use ($lineNumber, $columnNumber) {
-                    return 'ligne ' . $lineNumber . ' - champ ' . $columnNumber . ' - tag ' . $index;
-                }, [1, 2, 3])) . '"';
+                $line[] = '"'.implode(',', array_map(function ($index) use ($lineNumber, $columnNumber) {
+                    return 'ligne '.$lineNumber.' - champ '.$columnNumber.' - tag '.$index;
+                }, [1, 2, 3])).'"';
             } elseif ($header['field'] instanceof EnumField) {
                 $options = $header['field']->getOptions();
                 $index = rand(1, count($options)) - 1;
                 $line[] = trim($this->arrayToCSV([ // emulate CSV
-                    [ //emulate a line
-                        'ligne ' . $lineNumber . ' - champ ' . $columnNumber .
-                            (empty($options) ? '' : ' - ex: ' . $options[array_keys($options)[$index]]),
+                    [ // emulate a line
+                        'ligne '.$lineNumber.' - champ '.$columnNumber
+                            .(empty($options) ? '' : ' - ex: '.$options[array_keys($options)[$index]]),
                     ],
                 ]));
             } else {
-                $line[] = 'ligne ' . $lineNumber . ' - champ ' . $columnNumber;
+                $line[] = 'ligne '.$lineNumber.' - champ '.$columnNumber;
             }
-            $columnNumber++;
+            ++$columnNumber;
         }
 
         return $line;
-    }
-
-    /**
-     * importEntry.
-     *
-     * @return array|null $createdEntries
-     */
-    public function importEntry(array $importedEntries, string $formId): ?array
-    {
-        if (!$this->importdone) {
-            // Pour les traitements particulier lors de l import
-            $GLOBALS['_BAZAR_']['provenance'] = 'import';
-            $createdEntries = [];
-            foreach ($importedEntries as $entry) {
-                $entry = unserialize(base64_decode($entry), ['allowed_classes' => false]);
-                $entry = array_map('strval', $entry);
-
-                $entry['antispam'] = 1;
-                if (isset($entry['id_fiche'])) {
-                    // to prevent errors when several entries with same bf_titre
-                    unset($entry['id_fiche']);
-                }
-                $entry = $this->entryManager->create($formId, $entry);
-
-                if ($entry) {
-                    $createdEntries[] = $entry;
-                }
-            }
-            $this->importdone = true;
-
-            return $createdEntries;
-        }
-
-        return null;
-    }
-
-    /**
-     * extract CSV from csv file.
-     *
-     * @return array|null [['entry' => $extractedData,'errormsg' => ['error1','error2']],...]
-     */
-    public function extractCSVfromCSVFile($pFormId, $filesData, bool $detectColumnsOnHeaders = true, $pForm = null)
-    {
-        $vBazarListService = $this->wiki->services->get(BazarListService::class);
-
-        $vID = $vBazarListService->getTheID($pFormId);
-
-        if (!empty($vID) && $pForm != null) {
-            // get headers
-            $headers = $this->getHeaders($pForm);
-
-            // import file
-            if (!empty($filesData) && ($filesData['error'] == 0)) {
-                //Check if the file is csv
-                $filename = basename($filesData['name']);
-                $ext = substr($filename, strrpos($filename, '.') + 1);
-                if ($ext == 'csv') {
-                    if (($handle = fopen($filesData['tmp_name'], 'r')) !== false) {
-                        if (($firstLine = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
-                            if ($columnIndexesForPropertyNames =
-                                $this->getColumnIndexesForPropertyNames($firstLine, $headers, $detectColumnsOnHeaders)
-                            ) {
-                                // next lines
-                                $extracted = [];
-                                while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) { // init errors
-                                    $this->errormsg = [];
-                                    $extractedData = $this->getEntryFromCSVLine($data, $headers, $columnIndexesForPropertyNames, $vID['id']);
-                                    $extracted[] = [
-                                        'entry' => $extractedData,
-                                        'errormsg' => $this->errormsg,
-                                    ];
-                                }
-                            }
-                        }
-                        fclose($handle);
-
-                        return $extracted ?? null;
-                    }
-                }
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -454,7 +573,7 @@ class CSVManager
      * @param array $firstLine of the CSV from fgetcsv
      * @param array $headers   from getHeaders
      *
-     * @return array|null [$propertyName => $index, ...], null if error
+     * @return null|array [$propertyName => $index, ...], null if error
      */
     private function getColumnIndexesForPropertyNames(array $firstLine, array $headers, bool $detectColumnsOnHeaders = false): ?array
     {
@@ -463,7 +582,7 @@ class CSVManager
             $firstLineIndexed = [];
             foreach ($firstLine as $key => $val) {
                 // usefull to preserve index with splice because not possible with numeric keys
-                $firstLineIndexed['key_' . $key] = $val;
+                $firstLineIndexed['key_'.$key] = $val;
             }
             $data = [
                 'columnIndexes' => [],
@@ -486,7 +605,7 @@ class CSVManager
                 if (isset($firstLine[$index])) {
                     $columnIndexes[$propertyName] = $index;
                 }
-                $index++;
+                ++$index;
             }
         }
 
@@ -495,8 +614,6 @@ class CSVManager
 
     /**
      * splice array from key.
-     *
-     * @param array &$line
      */
     private function array_splice_from_key(array &$line, string $key)
     {
@@ -511,10 +628,10 @@ class CSVManager
     {
         foreach (['datetime_create', 'datetime_latest'] as $value) {
             $first_found_key = array_search($value, $data['firstLine'], true);
-            if ($first_found_key !== false) {
+            if (false !== $first_found_key) {
                 $this->array_splice_from_key($data['firstLine'], $first_found_key);
                 // update columnindexes
-                $data['columnIndexes'][$value] = (int)substr($first_found_key, strlen('key_'));
+                $data['columnIndexes'][$value] = (int) substr($first_found_key, strlen('key_'));
             }
         }
 
@@ -537,19 +654,21 @@ class CSVManager
 
     /**
      * get column indexes on condition.
+     *
+     * @param mixed $condition
      */
     private function detectHeaders(array $data, $condition): array
     {
         $foundPropertyNames = [];
         foreach ($data['headers'] as $propertyName => $header) {
             $first_found_key = array_search($condition($propertyName, $header), $data['firstLine'], true);
-            if ($first_found_key !== false) {
+            if (false !== $first_found_key) {
                 // remove from firstLine
                 $this->array_splice_from_key($data['firstLine'], $first_found_key);
                 // to remove already found headers
                 $foundPropertyNames[] = $propertyName;
                 // update columnindexes
-                $data['columnIndexes'][$propertyName] = (int)substr($first_found_key, strlen('key_'));
+                $data['columnIndexes'][$propertyName] = (int) substr($first_found_key, strlen('key_'));
             }
         }
         // filter headers
@@ -586,7 +705,7 @@ class CSVManager
     private function detectHeadersOnLabelsWithStar(array $data): array
     {
         return $this->detectHeaders($data, function ($propertyName, $header) {
-            return $header['field']->getLabel() . ' *';
+            return $header['field']->getLabel().' *';
         });
     }
 
@@ -607,13 +726,13 @@ class CSVManager
     {
         // not found indexes
         $notFoundIndexes = array_map(function ($key) {
-            return (int)substr($key, strlen('key_'));
+            return (int) substr($key, strlen('key_'));
         }, array_keys($data['firstLine']));
         // detect modified fields after one detected
         foreach ($notFoundIndexes as $index) {
             $propertyNameForPreviousIndex = array_search($index - 1, $data['columnIndexes'], true);
-            if ($index == 0 || $propertyNameForPreviousIndex !== false) {
-                if ($index == 0 || $propertyNameForPreviousIndex == 'datetime_latest') {
+            if (0 == $index || false !== $propertyNameForPreviousIndex) {
+                if (0 == $index || 'datetime_latest' == $propertyNameForPreviousIndex) {
                     $keyIndexForPreviousPropertyName = -1;
                 } else {
                     $keyIndexForPreviousPropertyName = array_search($propertyNameForPreviousIndex, $data['originalHeadersKeys'], true);
@@ -621,7 +740,7 @@ class CSVManager
                 $waitedPropertyName = $data['originalHeadersKeys'][$keyIndexForPreviousPropertyName + 1] ?? null;
                 if (in_array($waitedPropertyName, array_keys($data['headers']))) {
                     // remove from firstLine
-                    $this->array_splice_from_key($data['firstLine'], 'key_' . $index);
+                    $this->array_splice_from_key($data['firstLine'], 'key_'.$index);
                     // update columnindexes
                     $data['columnIndexes'][$waitedPropertyName] = $index;
                     // remove already found headers
@@ -640,7 +759,7 @@ class CSVManager
      * @param array $headers                       from getHeaders
      * @param array $columnIndexesForPropertyNames from getcolumnIndexesForPropertyNames
      *
-     * @return array|null entry
+     * @return null|array entry
      */
     private function getEntryFromCSVLine(array $data, array $headers, array $columnIndexesForPropertyNames, string $formId): ?array
     {
@@ -695,7 +814,7 @@ class CSVManager
                 $entry['statut_fiche'] = $this->wiki->config['BAZ_ETAT_VALIDATION'];
             }
         } else {
-            $this->errormsg[] = 'Empty $entry[\'bf_titre\'] in ' . get_class($this) . ', line ' . __LINE__;
+            $this->errormsg[] = 'Empty $entry[\'bf_titre\'] in '.get_class($this).', line '.__LINE__;
 
             return null;
         }
@@ -784,12 +903,13 @@ class CSVManager
             if (isset($flippedOptions[$option])) {
                 // search if $option is a correct value then take assoiacted index
                 return $flippedOptions[$option];
-            } elseif (isset($options[$option])) {
-                //search if $option is an index
-                return $option;
-            } else {
-                return null;
             }
+            if (isset($options[$option])) {
+                // search if $option is an index
+                return $option;
+            }
+
+            return null;
         }, $values);
 
         return implode(',', $indexes);
@@ -808,12 +928,12 @@ class CSVManager
         $imageorig = trim($value);
         $nomimage = renameUrlToSanitizedFilename($imageorig);
         // test si c'est url vers l'image
-        $fileCopied = copyUrlToLocalFile($imageorig, BAZ_CHEMIN_UPLOAD . $nomimage);
+        $fileCopied = copyUrlToLocalFile($imageorig, BAZ_CHEMIN_UPLOAD.$nomimage);
         if ($fileCopied) {
             $value = $nomimage;
-        } elseif (file_exists(BAZ_CHEMIN_UPLOAD . $imageorig)) {
+        } elseif (file_exists(BAZ_CHEMIN_UPLOAD.$imageorig)) {
             if (preg_match('/(gif|jpeg|png|jpg)$/i', $nomimage)) {
-                //on enleve les accents sur les noms de fichiers, et les espaces
+                // on enleve les accents sur les noms de fichiers, et les espaces
                 $nomimage = preg_replace(
                     '/&([a-z])[a-z]+;/i',
                     '$1',
@@ -821,24 +941,24 @@ class CSVManager
                 );
                 $nomimage = str_replace(' ', '_', $nomimage);
                 $value = $nomimage;
-                $chemin_destination = BAZ_CHEMIN_UPLOAD . $nomimage;
+                $chemin_destination = BAZ_CHEMIN_UPLOAD.$nomimage;
 
-                //verification de la presence de ce fichier
+                // verification de la presence de ce fichier
                 if (!file_exists($chemin_destination)) {
                     rename(
-                        BAZ_CHEMIN_UPLOAD .
-                            $imageorig,
+                        BAZ_CHEMIN_UPLOAD
+                            .$imageorig,
                         $chemin_destination
                     );
-                    chmod($chemin_destination, 0755);
+                    chmod($chemin_destination, 0o755);
                 }
             } else {
                 $this->errormsg[] = _t('BAZ_BAD_IMAGE_FILE_EXTENSION');
             }
         } else {
-            $this->errormsg[] =
-                _t('BAZ_IMAGE_FILE_NOT_FOUND') .
-                ' : ' . $imageorig;
+            $this->errormsg[]
+                = _t('BAZ_IMAGE_FILE_NOT_FOUND')
+                .' : '.$imageorig;
         }
 
         return $value;
@@ -858,136 +978,24 @@ class CSVManager
         $fileUrl = trim($value);
         $file = renameUrlToSanitizedFilename($fileUrl);
         // test si c'est url vers l'image
-        $fileCopied = copyUrlToLocalFile($fileUrl, BAZ_CHEMIN_UPLOAD . $file);
+        $fileCopied = copyUrlToLocalFile($fileUrl, BAZ_CHEMIN_UPLOAD.$file);
         if ($fileCopied) {
             $value = $file;
-        } elseif (file_exists(BAZ_CHEMIN_UPLOAD . $fileUrl)) {
+        } elseif (file_exists(BAZ_CHEMIN_UPLOAD.$fileUrl)) {
             $value = $file;
-            $chemin_destination = BAZ_CHEMIN_UPLOAD . $file;
-            //verification de la presence de ce fichier
+            $chemin_destination = BAZ_CHEMIN_UPLOAD.$file;
+            // verification de la presence de ce fichier
             if (!file_exists($chemin_destination)) {
                 rename(
-                    BAZ_CHEMIN_UPLOAD . $fileUrl,
+                    BAZ_CHEMIN_UPLOAD.$fileUrl,
                     $chemin_destination
                 );
-                chmod($chemin_destination, 0755);
+                chmod($chemin_destination, 0o755);
             }
         } else {
-            $this->errormsg[] = _t('BAZ_FILE_NOT_FOUND') . ' : ' . $fileUrl;
+            $this->errormsg[] = _t('BAZ_FILE_NOT_FOUND').' : '.$fileUrl;
         }
 
         return $value;
-    }
-
-    /**
-     * convert CSV raw to string to display in <pre>.
-     *
-     * @return string $csvToDisplay
-     */
-    public function arrayToCSVToDisplay(?array $data): ?string
-    {
-        // format file
-        $csv = $this->arrayToCSV($data) ?? '';
-
-        // replace '<' and '> by html entities to prevent error in <pre> displaying
-        $csvToDisplay = str_replace('<', htmlentities('<'), $csv);
-        $csvToDisplay = str_replace('>', htmlentities('>'), $csvToDisplay);
-
-        return $csvToDisplay;
-    }
-
-    public function buildExportFilename($pFormID)
-    {
-        $vFilename = 'export-fiche-';
-
-        if (is_array($pFormID)) {
-            $vFilename .= $pFormID['key'];
-        } else {
-            $vFilename .= $pFormID;
-        }
-
-        $vFilename .= '.csv';
-
-        return $vFilename;
-    }
-
-    /**
-     * send CSV file or archive.
-     *
-     * @params $pFormIDs : forms ids
-     * @params <array> $pParams for search. ex : [ "query" => ..., "keywords" => ..., "champ" => ..., "ordre" => ... ]
-     *
-     * @return string $csvToDisplay
-     */
-    public function sendCsvOrZip($pFormIDs, array $pParams, string $zipFileName = 'yeswiki-csv-exports.zip')
-    {
-        $vBazarListService = $this->wiki->services->get(BazarListService::class);
-
-        $vFormIDs = $vBazarListService->getIDs($pFormIDs);
-
-        $csvFiles = [];
-
-        foreach ($vFormIDs['locals'] as $vFormID) {
-            $vFilename = $this->buildExportFilename($vFormID);
-
-            $csvFiles[$vFilename] = $this->arrayToCSV(
-                $this->getCSVfromFormId(['locals' => [$vFormID], 'externals' => []], $pParams)
-            );
-        }
-
-        foreach ($vFormIDs['externals'] as $vFormID) {
-            $vFilename = $this->buildExportFilename($this->wiki->services->get(ExternalBazarService::class)->getExternalFormIDKey($vFormID));
-
-            $csvFiles[$vFilename] = $this->arrayToCSV(
-                $this->getCSVfromFormId(['locals' => [], 'externals' => [$vFormID]], $pParams)
-            );
-        }
-
-        $fileCount = count($csvFiles);
-
-        if ($fileCount === 0) {
-            exit('Error: No file data was provided.');
-        }
-
-        if ($fileCount === 1) {
-            $fileName = key($csvFiles);
-            $csvContent = reset($csvFiles);
-
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="' . $fileName . '"');
-            header('Content-Length: ' . strlen($csvContent));
-            header('Connection: close');
-
-            echo $csvContent;
-            exit;
-        }
-
-        if ($fileCount > 1) {
-            if (!class_exists('ZipArchive')) {
-                exit('Error: The ZipArchive PHP extension is not installed or enabled.');
-            }
-
-            $zip = new \ZipArchive();
-            $tempZipFile = tempnam(sys_get_temp_dir(), 'zip');
-
-            if ($zip->open($tempZipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                exit('Error: Cannot create ZIP archive.');
-            }
-
-            foreach ($csvFiles as $filename => $csvString) {
-                $zip->addFromString($filename, $csvString);
-            }
-
-            $zip->close();
-
-            header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="' . $zipFileName . '"');
-            header('Content-Length: ' . filesize($tempZipFile));
-            header('Connection: close');
-
-            readfile($tempZipFile);
-            unlink($tempZipFile);
-            exit;
-        }
     }
 }

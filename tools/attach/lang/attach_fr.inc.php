@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'ATTACH_GET_URLIMAGE_CACHE_API_HELP' => "Fournit l'url du fichier de cache pour l'image voulue\n" .
-        'Nécessite le passage du jeton anti-csrf !',
+    'ATTACH_GET_URLIMAGE_CACHE_API_HELP' => "Fournit l'url du fichier de cache pour l'image voulue\n"
+        .'Nécessite le passage du jeton anti-csrf !',
     'ATTACH_GET_CACHE_URLIMAGE_NO_FILE' => 'Fichier image inexistant',
     'ATTACH_ACTION_ATTACH' => 'Action {{attach ...}}',
     'ATTACH_PARAM_DESC_REQUIRED' => 'paramètre "desc" obligatoire pour une image',

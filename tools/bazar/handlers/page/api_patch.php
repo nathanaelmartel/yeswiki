@@ -8,7 +8,7 @@ $apiService = $this->services->get(ApiService::class);
 
 if ($entryManager->isEntry($this->GetPageTag())) {
     if ($apiService->isAuthorized()) {
-        $semantic = strpos($_SERVER['CONTENT_TYPE'], 'application/ld+json') !== false;
+        $semantic = false !== strpos($_SERVER['CONTENT_TYPE'], 'application/ld+json');
 
         $_POST['antispam'] = 1;
 

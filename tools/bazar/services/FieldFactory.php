@@ -6,7 +6,6 @@ use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\CachedReader;
 use Doctrine\Common\Cache\PhpFileCache;
-use Exception;
 use YesWiki\Core\Service\TemplateEngine;
 use YesWiki\Wiki;
 
@@ -24,49 +23,60 @@ class FieldFactory
         $this->loadAvailableField();
     }
 
+    public function create(array $values)
+    {
+        if (!empty($this->availableFields[$values[0]])) {
+            return new $this->availableFields[$values[0]]($values, $this->wiki->services);
+        }
+
+        return false;
+        // throw new \Exception('Unknown field type: ' . $values[0]);
+    }
+
     private function checkCacheFolderExistence()
     {
         try {
-            if (!file_exists(__DIR__ . self::CACHE_PATH) || !is_dir(__DIR__ . self::CACHE_PATH)) {
-                throw new Exception('ERROR ! : Folder `cache/` not existing in the root folder on the website host ! Can you create it ? ');
+            if (!file_exists(__DIR__.self::CACHE_PATH) || !is_dir(__DIR__.self::CACHE_PATH)) {
+                throw new \Exception('ERROR ! : Folder `cache/` not existing in the root folder on the website host ! Can you create it ? ');
             }
 
-            if (!is_writable(__DIR__ . self::CACHE_PATH)) {
-                throw new Exception('ERROR ! : Folder `cache/` is not writable ! Can you give it write acces by ftp for example (code 770) ?');
+            if (!is_writable(__DIR__.self::CACHE_PATH)) {
+                throw new \Exception('ERROR ! : Folder `cache/` is not writable ! Can you give it write acces by ftp for example (code 770) ?');
             }
-        } catch (Exception $th) {
+        } catch (\Exception $th) {
             // raw ouput because here TemplateEngine is not ready (services not already compiled and cache folder not available)
             echo "<div style=\"border:1px red solid;background-color: #FFCCCC;margin:3px;padding:5px;border-radius:5px;\">{$th->getMessage()}</div>";
-            exit();
+
+            exit;
         }
     }
 
     private function loadAvailableField()
     {
-        AnnotationRegistry::registerFile(__DIR__ . '/../annotations/Field.php');
+        AnnotationRegistry::registerFile(__DIR__.'/../annotations/Field.php');
 
         $reader = new CachedReader(
             new AnnotationReader(),
-            new PhpFileCache(__DIR__ . self::CACHE_PATH . 'fields'),
+            new PhpFileCache(__DIR__.self::CACHE_PATH.'fields'),
             $debug = true
         );
 
         foreach ($this->wiki->extensions as $extensionKey => $extensionDir) {
-            $fullExtensionDir = realpath($extensionDir) . '/fields';
+            $fullExtensionDir = realpath($extensionDir).'/fields';
             if (is_dir($fullExtensionDir)) {
                 $fieldsFiles = array_diff(scandir($fullExtensionDir), ['..', '.']);
 
                 foreach ($fieldsFiles as $fieldFile) {
-                    preg_match("/^([a-zA-Z0-9_-]+)Field\.php$/", $fieldFile, $matches);
+                    preg_match('/^([a-zA-Z0-9_-]+)Field\\.php$/', $fieldFile, $matches);
                     $fieldName = $matches[1];
 
                     $extensionName = ucfirst($extensionKey);
-                    if ($extensionName === 'Helloworld') {
+                    if ('Helloworld' === $extensionName) {
                         $extensionName = 'HelloWorld';
                     }
 
                     // TODO cache reflection class as this is a costly operation
-                    $fieldClass = new \ReflectionClass('YesWiki\\' . $extensionName . '\\Field\\' . $fieldName . 'Field');
+                    $fieldClass = new \ReflectionClass('YesWiki\\'.$extensionName.'\Field\\'.$fieldName.'Field');
 
                     $annotation = $reader->getClassAnnotation($fieldClass, 'Field');
 
@@ -84,16 +94,6 @@ class FieldFactory
                     }
                 }
             }
-        }
-    }
-
-    public function create(array $values)
-    {
-        if (!empty($this->availableFields[$values[0]])) {
-            return new $this->availableFields[$values[0]]($values, $this->wiki->services);
-        } else {
-            return false;
-            // throw new \Exception('Unknown field type: ' . $values[0]);
         }
     }
 }

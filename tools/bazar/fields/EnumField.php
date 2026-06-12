@@ -11,18 +11,18 @@ use YesWiki\Wiki;
 
 abstract class EnumField extends BazarField
 {
+    public const FIELD_NAME = 6;
+
+    protected const FIELD_LINKED_OBJECT = 1;
+    protected const FIELD_KEYWORDS = 13;
+    protected const FIELD_QUERIES = 15;
     protected $options;
     protected $optionsUrls; // only for loadOptionsFromJson
-    protected $optionsTree = null; // only for list with multi levels
+    protected $optionsTree; // only for list with multi levels
 
     protected $linkedObjectName;
     protected $keywords;
     protected $queries;
-
-    protected const FIELD_LINKED_OBJECT = 1;
-    public const FIELD_NAME = 6;
-    protected const FIELD_KEYWORDS = 13;
-    protected const FIELD_QUERIES = 15;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -53,17 +53,6 @@ abstract class EnumField extends BazarField
         }
     }
 
-    // Recursively load options from list, in case the list is a tree (with children)
-    private function loadOptionsFromListNode($node, $parentLabel = '')
-    {
-        $this->options[$node['id']] = $parentLabel . $node['label'];
-        if (!empty($node['children'])) {
-            foreach ($node['children'] as $childNode) {
-                $this->loadOptionsFromListNode($childNode, "$parentLabel {$node['label']} ➤ ");
-            }
-        }
-    }
-
     public function loadOptionsFromJson()
     {
         $params = $this->getService(ParameterBagInterface::class);
@@ -73,7 +62,7 @@ abstract class EnumField extends BazarField
         $json = $this->getService(ExternalBazarService::class)->getJSONCachedUrlContent(
             $this->sanitizeUrlForEntries($this->getLinkedObjectName()),
             $refreshCacheDuration,
-            isset($_GET['refresh']) && ($_GET['refresh'] === 'true') && $this->getService(Wiki::class)->UserIsAdmin(),
+            isset($_GET['refresh']) && ('true' === $_GET['refresh']) && $this->getService(Wiki::class)->UserIsAdmin(),
             'entries'
         );
         $entries = json_decode($json, true);
@@ -91,26 +80,6 @@ abstract class EnumField extends BazarField
         }
         asort($options);
         $this->options = $options;
-    }
-
-    protected function loadOptionsFromJSONForm($JSONAddress): array
-    {
-        $json = $this->getService(ExternalBazarService::class)->getJSONCachedUrlContent($JSONAddress, 9000000);
-        // do not refresh less than 99 days because cache defined by ExternalBazarService
-        $form = json_decode($json, true);
-        if (isset($form[0]['prepared'])) {
-            foreach ($form[0]['prepared'] as $field) {
-                // be carefull it is an array here
-                if (isset($field['propertyname']) && ($field['propertyname'] == $this->getPropertyName())) {
-                    $this->options = $field['options'] ?? [];
-
-                    return $this->options;
-                }
-            }
-        }
-        $this->options = [];
-
-        return $this->options;
     }
 
     public function loadOptionsFromEntries()
@@ -142,27 +111,6 @@ abstract class EnumField extends BazarField
         }
     }
 
-    /**
-     * prepareJSON for RadioEntriField or SelectEntryField.
-     */
-    protected function prepareJSONEntryField()
-    {
-        $this->loadOptionsFromJson();
-        if (
-            preg_match('/^(.*\/\??)' // catch baseUrl
-                . '(?:' // followed by
-                . '\w*\/json&(?:.*)demand=entries(?:&.*)?' // json handler with demand = entries
-                . '|api\/forms\/[0-9]*\/entries' // or api forms/{id}/entries
-                . '|api\/entries\/[0-9]*' // or api entries/{id}
-                . ')/', $this->name, $matches)
-        ) {
-            $this->baseUrl = $matches[1];
-        } else {
-            $this->baseUrl = $this->name;
-        }
-        $this->options = null;
-    }
-
     public function getOptions()
     {
         return $this->options;
@@ -171,20 +119,6 @@ abstract class EnumField extends BazarField
     public function getOptionsTree()
     {
         return $this->optionsTree;
-    }
-
-    protected function getEntriesOptions()
-    {
-        // load options only when needed but not at construct to prevent infinite loops
-        if (is_null($this->options)) {
-            if ($this->isDistantJson) {
-                $this->loadOptionsFromJson();
-            } else {
-                $this->loadOptionsFromEntries();
-            }
-        }
-
-        return $this->options;
     }
 
     public function getLinkedObjectName()
@@ -214,6 +148,72 @@ abstract class EnumField extends BazarField
         );
     }
 
+    protected function loadOptionsFromJSONForm($JSONAddress): array
+    {
+        $json = $this->getService(ExternalBazarService::class)->getJSONCachedUrlContent($JSONAddress, 9000000);
+        // do not refresh less than 99 days because cache defined by ExternalBazarService
+        $form = json_decode($json, true);
+        if (isset($form[0]['prepared'])) {
+            foreach ($form[0]['prepared'] as $field) {
+                // be carefull it is an array here
+                if (isset($field['propertyname']) && ($field['propertyname'] == $this->getPropertyName())) {
+                    $this->options = $field['options'] ?? [];
+
+                    return $this->options;
+                }
+            }
+        }
+        $this->options = [];
+
+        return $this->options;
+    }
+
+    /**
+     * prepareJSON for RadioEntriField or SelectEntryField.
+     */
+    protected function prepareJSONEntryField()
+    {
+        $this->loadOptionsFromJson();
+        if (
+            preg_match('/^(.*\/\??)' // catch baseUrl
+                .'(?:' // followed by
+                .'\w*\/json&(?:.*)demand=entries(?:&.*)?' // json handler with demand = entries
+                .'|api\/forms\/[0-9]*\/entries' // or api forms/{id}/entries
+                .'|api\/entries\/[0-9]*' // or api entries/{id}
+                .')/', $this->name, $matches)
+        ) {
+            $this->baseUrl = $matches[1];
+        } else {
+            $this->baseUrl = $this->name;
+        }
+        $this->options = null;
+    }
+
+    protected function getEntriesOptions()
+    {
+        // load options only when needed but not at construct to prevent infinite loops
+        if (is_null($this->options)) {
+            if ($this->isDistantJson) {
+                $this->loadOptionsFromJson();
+            } else {
+                $this->loadOptionsFromEntries();
+            }
+        }
+
+        return $this->options;
+    }
+
+    // Recursively load options from list, in case the list is a tree (with children)
+    private function loadOptionsFromListNode($node, $parentLabel = '')
+    {
+        $this->options[$node['id']] = $parentLabel.$node['label'];
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as $childNode) {
+                $this->loadOptionsFromListNode($childNode, "{$parentLabel} {$node['label']} ➤ ");
+            }
+        }
+    }
+
     /**
      * check existence of &fields=bf_titre,id_fiche,url in url when api.
      *
@@ -225,13 +225,13 @@ abstract class EnumField extends BazarField
         $query = parse_url($url, PHP_URL_QUERY);
         if (!empty($query)) {
             $queries = explode('&', $query);
-            if (substr($queries[0], 0, 3) === 'api') {
+            if ('api' === substr($queries[0], 0, 3)) {
                 foreach ($queries as $key => $elem) {
                     $extraction = explode('=', $elem, 2);
-                    if ($extraction[0] === 'fields') {
+                    if ('fields' === $extraction[0]) {
                         $fields = explode(',', $extraction[1]);
                         $fields = $fields + ['id_fiche', 'bf_titre', 'url'];
-                        $queries[$key] = 'fields=' . implode(',', $fields);
+                        $queries[$key] = 'fields='.implode(',', $fields);
                     }
                 }
                 if (empty($fields)) {

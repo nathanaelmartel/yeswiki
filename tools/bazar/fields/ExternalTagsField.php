@@ -22,11 +22,6 @@ class ExternalTagsField extends TagsField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         return null;
@@ -48,6 +43,11 @@ class ExternalTagsField extends TagsField
         $this->getOptions();
     }
 
+    protected function renderInput($entry)
+    {
+        return '';
+    }
+
     protected function renderStatic($entry)
     {
         // copy from parent but with different href
@@ -60,14 +60,14 @@ class ExternalTagsField extends TagsField
             sort($tags);
             $tags = array_map(function ($tag) use ($entry) {
                 return '<a class="tag-label label label-info" href="'
-                    . $entry['external-data']['baseUrl'] . '?' . $GLOBALS['wiki']->GetPageTag() . '/listpages&tags=' . urlencode(trim($tag)) . '" title="' . _t('TAGS_SEE_ALL_PAGES_WITH_THIS_TAGS') . '">' . $tag . '</a>';
+                    .$entry['external-data']['baseUrl'].'?'.$GLOBALS['wiki']->GetPageTag().'/listpages&tags='.urlencode(trim($tag)).'" title="'._t('TAGS_SEE_ALL_PAGES_WITH_THIS_TAGS').'">'.$tag.'</a>';
             }, $tags);
 
             return $this->render('@bazar/fields/tags.twig', [
                 'value' => join(' ', $tags) ?? '',
             ]);
-        } else {
-            return '';
         }
+
+        return '';
     }
 }

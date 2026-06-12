@@ -12,7 +12,7 @@ use YesWiki\Core\YesWikiController;
 class CiController extends YesWikiController
 {
     /**
-     * @Route("/api/ci/update_config", methods={"POST"}, options={"acl":{"@admins"}})
+     * @Route("/api/ci/update_config", methods={"POST"}, options={"acl": {"@admins"}})
      */
     public function updateConfig()
     {

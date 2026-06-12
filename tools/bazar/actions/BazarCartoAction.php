@@ -13,10 +13,10 @@ class BazarCartoAction extends YesWikiAction
         $providerId = $arg['providerid'] ?? null;
         $providerPass = $arg['providerpass'] ?? null;
         if (!empty($providerId) && !empty($providerPass)) {
-            if ($provider === 'MapBox') {
-                $providerCredentials = ', {id: \'' . $providerId . '\', accessToken: \'' . $providerPass . '\'}';
+            if ('MapBox' === $provider) {
+                $providerCredentials = ', {id: \''.$providerId.'\', accessToken: \''.$providerPass.'\'}';
             } else {
-                $providerCredentials = ', {app_id: \'' . $providerId . '\',app_code: \'' . $providerPass . '\'}';
+                $providerCredentials = ', {app_id: \''.$providerId.'\',app_code: \''.$providerPass.'\'}';
             }
         } else {
             $providerCredentials = '';
@@ -24,32 +24,32 @@ class BazarCartoAction extends YesWikiAction
 
         // MARKERS
         $markerSize = $get->get('markersize') ?? $arg['markersize'] ?? null;
-        $smallMarker = $get->get('smallmarker') ?? $arg['smallmarker'] ?? $markerSize === 'small' ? '1' : $this->params->get('baz_small_marker');
+        $smallMarker = $get->get('smallmarker') ?? $arg['smallmarker'] ?? 'small' === $markerSize ? '1' : $this->params->get('baz_small_marker');
 
         // backward compatibility for custom map.tpl.html
         // TO remove this part when dynamic is robust AND user of custom templates are really aware of this
         $dynamic = $this->formatBoolean($arg, false, 'dynamic');
-        $navigation = (!$dynamic) ?
-            ($get->get('navigation') ?? $arg['navigation'] ?? $this->params->get('baz_show_nav')) :
-            $this->formatBoolean($arg['navigation'] ?? $this->params->get('baz_show_nav'), true);
-        $zoom_molette = (!$dynamic) ?
-            ($arg['zoommolette'] ?? $this->params->get('baz_wheel_zoom')) :
-            $this->formatBoolean(($arg['zoommolette'] ?? $this->params->get('baz_wheel_zoom')), false);
-        $fullscreen = (!$dynamic) ?
-            ($arg['fullscreen'] ?? 'true') :
-            $this->formatBoolean($arg, true, 'fullscreen');
-        $template = (!$dynamic) ?
-            ($arg['template'] ?? 'map.tpl.html') :
-            ($arg['template'] ?? 'map');
-        if (strpos($template, 'gogomap') !== false) {
+        $navigation = (!$dynamic)
+            ? ($get->get('navigation') ?? $arg['navigation'] ?? $this->params->get('baz_show_nav'))
+            : $this->formatBoolean($arg['navigation'] ?? $this->params->get('baz_show_nav'), true);
+        $zoom_molette = (!$dynamic)
+            ? ($arg['zoommolette'] ?? $this->params->get('baz_wheel_zoom'))
+            : $this->formatBoolean($arg['zoommolette'] ?? $this->params->get('baz_wheel_zoom'), false);
+        $fullscreen = (!$dynamic)
+            ? ($arg['fullscreen'] ?? 'true')
+            : $this->formatBoolean($arg, true, 'fullscreen');
+        $template = (!$dynamic)
+            ? ($arg['template'] ?? 'map.tpl.html')
+            : ($arg['template'] ?? 'map');
+        if (false !== strpos($template, 'gogomap')) {
             $template = 'gogocarto';
         }
-        $spider = (!$dynamic) ?
-            ($arg['spider'] ?? 'false') :
-            $this->formatBoolean($arg, false, 'spider');
-        $cluster = (!$dynamic) ?
-            ($arg['cluster'] ?? 'false') :
-            $this->formatBoolean($arg, false, 'cluster');
+        $spider = (!$dynamic)
+            ? ($arg['spider'] ?? 'false')
+            : $this->formatBoolean($arg, false, 'spider');
+        $cluster = (!$dynamic)
+            ? ($arg['cluster'] ?? 'false')
+            : $this->formatBoolean($arg, false, 'cluster');
 
         // Filters entries via query to remove whose withou bf_latitude nor bf_longitude
 
@@ -89,10 +89,10 @@ class BazarCartoAction extends YesWikiAction
             'layers' => $this->formatArray($arg['layers'] ?? []),
             // Mettre des puces petites ? non par defaut
             'markersize' => $markerSize,
-            'smallmarker' => $smallMarker === '1' ? '' : ' xl',
-            'iconSize' => $smallMarker === '1' ? '[15, 20]' : '[35, 46]',
-            'iconAnchor' => $smallMarker === '1' ? '[8, 19]' : '[18, 45]',
-            'popupAnchor' => $smallMarker === '1' ? '[0, -19]' : '[0, -45]',
+            'smallmarker' => '1' === $smallMarker ? '' : ' xl',
+            'iconSize' => '1' === $smallMarker ? '[15, 20]' : '[35, 46]',
+            'iconAnchor' => '1' === $smallMarker ? '[8, 19]' : '[18, 45]',
+            'popupAnchor' => '1' === $smallMarker ? '[0, -19]' : '[0, -45]',
             // Largeur de la carte à l'écran en pixels ou pourcentage
             'width' => $get->get('width') ?? $arg['width'] ?? $this->params->get('baz_map_width'),
             // Hauteur de la carte à l'écran en pixels ou pourcentage
@@ -115,7 +115,7 @@ class BazarCartoAction extends YesWikiAction
             'fullscreen' => $fullscreen,
             // Fournit une configuration JSON via un URL
             'jsonconfurl' => $arg['jsonconfurl'] ?? null,
-            //template - default value map
+            // template - default value map
             'template' => $template,
 
             'entrydisplay' => $arg['entrydisplay'] ?? 'sidebar',

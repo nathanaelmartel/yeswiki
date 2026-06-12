@@ -8,15 +8,14 @@ use YesWiki\Wiki;
 
 class LinkTracker
 {
+    public $enabled;
+    public $links;
     protected $wiki;
     protected $dbService;
     protected $securityController;
     protected $pageManager;
     protected $userManager;
     protected $params;
-
-    public $enabled;
-    public $links;
 
     public function __construct(Wiki $wiki, DbService $dbService, PageManager $pageManager, UserManager $userManager, ParameterBagInterface $params, SecurityController $securityController)
     {
@@ -44,7 +43,7 @@ class LinkTracker
     public function track($newState = null): bool
     {
         $oldState = $this->enabled;
-        if ($newState !== null) {
+        if (null !== $newState) {
             $this->enabled = $newState;
         }
 
@@ -58,9 +57,9 @@ class LinkTracker
             $this->links[] = $tag;
 
             return true;
-        } else {
-            return false;
         }
+
+        return false;
     }
 
     public function add($tag)
@@ -83,13 +82,13 @@ class LinkTracker
         $fromTag = $this->wiki->GetPageTag();
 
         // Delete old links for this page
-        $this->dbService->query('DELETE FROM ' . $this->dbService->prefixTable('links') . "WHERE from_tag = '" . $this->dbService->escape($fromTag) . "'");
+        $this->dbService->query('DELETE FROM '.$this->dbService->prefixTable('links')."WHERE from_tag = '".$this->dbService->escape($fromTag)."'");
 
         if ($tags = $this->getAll()) {
             $written = [];
             foreach ($tags as $toTag) {
                 if (!isset($written[strtolower($toTag)])) {
-                    $this->dbService->query('INSERT INTO ' . $this->dbService->prefixTable('links') . "SET from_tag = '" . $this->dbService->escape($fromTag) . "', to_tag = '" . $this->dbService->escape($toTag) . "'");
+                    $this->dbService->query('INSERT INTO '.$this->dbService->prefixTable('links')."SET from_tag = '".$this->dbService->escape($fromTag)."', to_tag = '".$this->dbService->escape($toTag)."'");
                     $written[strtolower($toTag)] = 1;
                 }
             }
@@ -129,7 +128,7 @@ class LinkTracker
         }
         if ($trackMetadata && !empty($page['metadatas'])) {
             foreach (ThemeManager::SPECIAL_METADATA as $specialPageKey) {
-                if ($specialPageKey !== 'favorite_preset' && !empty($page['metadatas'][$specialPageKey])) {
+                if ('favorite_preset' !== $specialPageKey && !empty($page['metadatas'][$specialPageKey])) {
                     $specialPage = $this->pageManager->getOne($page['metadatas'][$specialPageKey]);
                     if (!empty($specialPage)) {
                         $this->add($specialPage['tag']);
@@ -159,7 +158,7 @@ class LinkTracker
 
     private function preventTrackingActions(string $body): string
     {
-        if (preg_match_all('/{{(?:include\\s*page="|redirect\\s*page="|listpages\\s*tree="|bazar [^}]*redirecturl="(?<!http:\\/\\/|https:\\/\\/))([^"]*)"\\s*[^}]*}}/i', $body, $matches)) {
+        if (preg_match_all('/{{(?:include\s*page="|redirect\s*page="|listpages\s*tree="|bazar [^}]*redirecturl="(?<!http:\/\/|https:\/\/))([^"]*)"\s*[^}]*}}/i', $body, $matches)) {
             foreach ($matches[0] as $key => $value) {
                 $body = str_replace($matches[0][$key], '', $body);
                 $page = $this->pageManager->getOne($matches[1][$key]);
@@ -174,7 +173,7 @@ class LinkTracker
 
     private function preventNotTrackingActions(string $body): string
     {
-        if (preg_match_all('/{{(?:gerertheme|setwikidefaulttheme|admintag|editgroups|userstable|editconfig|gererdroits|update\\s*(?:version="[^"]*")?|syndication(?:[^}]|\\s)*|listpages(?:[^}]|\\s)*|bazarliste(?:[^}]|\\s)*|bazarcarto(?:[^}]|\\s)*|bazar(?:[^}]|\\s)*)\\s*}}/i', $body, $matches)) {
+        if (preg_match_all('/{{(?:gerertheme|setwikidefaulttheme|admintag|editgroups|userstable|editconfig|gererdroits|update\s*(?:version="[^"]*")?|syndication(?:[^}]|\s)*|listpages(?:[^}]|\s)*|bazarliste(?:[^}]|\s)*|bazarcarto(?:[^}]|\s)*|bazar(?:[^}]|\s)*)\s*}}/i', $body, $matches)) {
             foreach ($matches[0] as $key => $value) {
                 $body = str_replace($matches[0][$key], '', $body);
             }

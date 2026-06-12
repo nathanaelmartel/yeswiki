@@ -28,12 +28,12 @@ class GeoJSONFormatter extends YesWikiController
             $geo = $this->getGeoData($entry, $cache);
             if (empty($geo)) {
                 return [];
-            } else {
-                return [
-                    'entry' => $entry,
-                    'geo' => $geo,
-                ];
             }
+
+            return [
+                'entry' => $entry,
+                'geo' => $geo,
+            ];
         }, $entries), function ($entry) {
             return !empty($entry);
         });
@@ -62,8 +62,6 @@ class GeoJSONFormatter extends YesWikiController
 
     /**
      * extract geoData.
-     *
-     * @param array &$cache
      *
      * @return array ['latitude'=>000,'longitude'=>00] or []
      */
@@ -101,7 +99,7 @@ class GeoJSONFormatter extends YesWikiController
      *
      * @param array &$cache cache of correspondance of propertynames and forms id
      *
-     * @return string|null $propertyName
+     * @return null|string $propertyName
      */
     private function getFirstMapFieldPropertyName(int $formId, array &$cache): ?string
     {

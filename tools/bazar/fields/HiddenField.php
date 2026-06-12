@@ -16,11 +16,6 @@ class HiddenField extends BazarField
         $this->label = $this->getPropertyName();
     }
 
-    protected function renderStatic($entry)
-    {
-        return '';
-    }
-
     // Format input values before save
     // public function formatValuesBeforeSave($entry)
     // {
@@ -35,5 +30,10 @@ class HiddenField extends BazarField
             'type' => $this->getType(),
             'default' => $this->getDefault(),
         ];
+    }
+
+    protected function renderStatic($entry)
+    {
+        return '';
     }
 }

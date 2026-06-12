@@ -4,9 +4,9 @@ use Symfony\Component\Security\Csrf\CsrfTokenManager;
 use YesWiki\Core\Service\ThemeManager;
 
 $themeManager = $this->services->get(ThemeManager::class);
-$yeswiki_javascripts = "\n" . '  <!-- javascripts -->' . "\n";
+$yeswiki_javascripts = "\n".'  <!-- javascripts -->'."\n";
 
-if (isset($this->config['use_jquery_cdn']) && $this->config['use_jquery_cdn'] == '1') {
+if (isset($this->config['use_jquery_cdn']) && '1' == $this->config['use_jquery_cdn']) {
     $this->addJavascriptFile('https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js', true);
 } else {
     $this->addJavascriptFile('javascripts/vendor/jquery/jquery.min.js', true);
@@ -14,11 +14,11 @@ if (isset($this->config['use_jquery_cdn']) && $this->config['use_jquery_cdn'] ==
 
 // on récupère le bon chemin pour le theme
 if ($themeManager->getUseFallbackTheme()) {
-    $repertoire = 'themes/' . $themeManager->getFavoriteTheme() . '/javascripts';
+    $repertoire = 'themes/'.$themeManager->getFavoriteTheme().'/javascripts';
 } else {
-    $jsDir = 'themes/' . $themeManager->getFavoriteTheme() . '/javascripts';
-    if (is_dir('custom/' . $jsDir)) {
-        $repertoire = 'custom/' . $jsDir;
+    $jsDir = 'themes/'.$themeManager->getFavoriteTheme().'/javascripts';
+    if (is_dir('custom/'.$jsDir)) {
+        $repertoire = 'custom/'.$jsDir;
     } else {
         $repertoire = $jsDir;
     }
@@ -29,8 +29,8 @@ $bootstrapjs = false;
 $yeswikijs = false;
 $dir = (is_dir($repertoire) ? opendir($repertoire) : false);
 while ($dir && ($file = readdir($dir)) !== false) {
-    if (substr($file, -3, 3) == '.js') {
-        $scripts[] = $repertoire . '/' . $file;
+    if ('.js' == substr($file, -3, 3)) {
+        $scripts[] = $repertoire.'/'.$file;
         if (strstr($file, 'bootstrap.min.') || strstr($file, 'bs.')) {
             // le theme contient deja le js de bootstrap
             $bootstrapjs = true;
@@ -71,13 +71,13 @@ $this->addJavascriptFile('javascripts/yeswiki-base-no-defer.js', true);
 $customJsPath = 'custom/javascripts';
 $customJsDir = is_dir($customJsPath) ? opendir($customJsPath) : false;
 while ($customJsDir && ($file = readdir($customJsDir)) !== false) {
-    if (substr($file, -3, 3) == '.js') {
-        $this->addJavascriptFile($customJsPath . '/' . $file);
+    if ('.js' == substr($file, -3, 3)) {
+        $this->addJavascriptFile($customJsPath.'/'.$file);
     }
 }
 
 // si quelque chose est passée dans la variable globale pour le javascript, on l'intègre
-$yeswiki_javascripts .= isset($GLOBALS['js']) ? $GLOBALS['js'] : '';
+$yeswiki_javascripts .= $GLOBALS['js'] ?? '';
 
 // on vide la variable globale pour le javascript
 $GLOBALS['js'] = '';
@@ -87,7 +87,7 @@ $wikiprops = [
     'timezone' => date_default_timezone_get(),
     'baseUrl' => $this->config['base_url'],
     'pageTag' => $this->getPageTag(),
-    'isDebugEnabled' => ($this->GetConfigValue('debug') == 'yes' ? 'true' : 'false'),
+    'isDebugEnabled' => ('yes' == $this->GetConfigValue('debug') ? 'true' : 'false'),
     'antiCsrfToken' => $this->services->get(CsrfTokenManager::class)->getToken('main')->getValue(),
 ];
 
@@ -95,15 +95,15 @@ $wikiprops = [
 echo "<script>
     var wiki = {
         ...((typeof wiki !== 'undefined') ? wiki : null),
-        ..." . json_encode($wikiprops) . ",
+        ...".json_encode($wikiprops).",
         ...{
             lang: {
                 ...((typeof wiki !== 'undefined') ? (wiki.lang ?? null) : null),
-                ..." . json_encode($GLOBALS['translations_js'] ?? null) . '
+                ...".json_encode($GLOBALS['translations_js'] ?? null).'
             }
         },
         ...{
-        	minSearchKeywordLength : ' . (isset($this->config['min_search_keyword_length']) ? intval($this->config['min_search_keyword_length']) : MIN_SEARCH_KEYWORD_LENGTH) . '
+        	minSearchKeywordLength : '.(isset($this->config['min_search_keyword_length']) ? intval($this->config['min_search_keyword_length']) : MIN_SEARCH_KEYWORD_LENGTH).'
         }
     };
 </script>';

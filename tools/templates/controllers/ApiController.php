@@ -10,7 +10,9 @@ use YesWiki\Core\YesWikiController;
 class ApiController extends YesWikiController
 {
     /**
-     * @Route("/api/templates/custom-presets/{presetFilename}", methods={"DELETE"},options={"acl":{"@admins"}})
+     * @Route("/api/templates/custom-presets/{presetFilename}", methods={"DELETE"}, options={"acl": {"@admins"}})
+     *
+     * @param mixed $presetFilename
      */
     public function deleteCustomCSSPreset($presetFilename)
     {
@@ -23,12 +25,14 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/templates/custom-presets/{presetFilename}", methods={"POST"},options={"acl":{"+"}})
+     * @Route("/api/templates/custom-presets/{presetFilename}", methods={"POST"}, options={"acl": {"+"}})
+     *
+     * @param mixed $presetFilename
      */
     public function addCustomCSSPreset($presetFilename)
     {
         $fileParts = pathinfo($presetFilename);
-        if (strtolower($fileParts['extension']) !== 'css') {
+        if ('css' !== strtolower($fileParts['extension'])) {
             return new ApiResponse(['code' => 400, 'message' => 'Wrong filename extension, should be .css'], 400);
         }
         $result = $this->getService(ThemeManager::class)->addCustomCSSPreset($presetFilename, $_POST);
@@ -50,18 +54,18 @@ class ApiController extends YesWikiController
      */
     public function getDocumentation()
     {
-        $output = '<h2>Extension Templates</h2>' . "\n";
+        $output = '<h2>Extension Templates</h2>'."\n";
 
         $output .= '
         <p>
-        <b><code>POST ' . $this->wiki->href('', 'api/templates/custom-presets/{presetFilename}') . '</code></b><br />
-        ' . _t('TEMPLATE_ADD_CSS_PRESET_API_HINT') . '.
+        <b><code>POST '.$this->wiki->href('', 'api/templates/custom-presets/{presetFilename}').'</code></b><br />
+        '._t('TEMPLATE_ADD_CSS_PRESET_API_HINT').'.
         </p>';
 
         $output .= '
         <p>
-        <b><code>DELETE ' . $this->wiki->href('', 'api/templates/custom-presets/{presetFilename}') . '</code></b><br />
-        ' . _t('TEMPLATE_DELETE_CSS_PRESET_API_HINT') . '.
+        <b><code>DELETE '.$this->wiki->href('', 'api/templates/custom-presets/{presetFilename}').'</code></b><br />
+        '._t('TEMPLATE_DELETE_CSS_PRESET_API_HINT').'.
         </p>';
 
         return $output;

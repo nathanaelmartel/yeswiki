@@ -15,6 +15,44 @@ class DateField extends BazarField
         return true;
     }
 
+    public function formatValuesBeforeSave($entry)
+    {
+        $return = [];
+        if ('bf_date_fin_evenement' === $this->getPropertyname()) {
+            if (!empty($entry['id_fiche'])
+                    && is_string($entry['id_fiche'])) {
+                $this->getService(DateService::class)->followId($entry['id_fiche']);
+            }
+            if (!$this->getService(DateService::class)->canRegisterMultipleEntries($entry)) {
+                // clean data from entry because not possible to create repetition
+                if (isset($entry['bf_date_fin_evenement_data'])) {
+                    unset($entry['bf_date_fin_evenement_data']);
+                }
+            } elseif (!empty($entry['bf_date_fin_evenement_data']['other'])) {
+                unset($entry['bf_date_fin_evenement_data']['other']);
+                if (!empty($entry['bf_date_fin_evenement_data'])) {
+                    $return['bf_date_fin_evenement_data'] = $entry['bf_date_fin_evenement_data'];
+                }
+            }
+        }
+        $value = $this->getValue($entry);
+        if (!empty($value) && isset($entry[$this->propertyName.'_allday']) && 0 == $entry[$this->propertyName.'_allday']
+             && isset($entry[$this->propertyName.'_hour'], $entry[$this->propertyName.'_minutes'])) {
+            $value = $this->getService(CoreDateService::class)->getDateTimeWithRightTimeZone("{$value} {$entry[$this->propertyName.'_hour']}:{$entry[$this->propertyName.'_minutes']}")->format('c');
+        }
+        $return[$this->propertyName] = $value;
+        $return['fields-to-remove'] = [
+            $this->propertyName.'_allday',
+            $this->propertyName.'_hour',
+            $this->propertyName.'_minutes',
+        ];
+        if (empty($entry['bf_date_fin_evenement_data'])) {
+            $return['fields-to-remove'][] = 'bf_date_fin_evenement_data';
+        }
+
+        return $return;
+    }
+
     protected function renderInput($entry)
     {
         $day = '';
@@ -29,7 +67,7 @@ class DateField extends BazarField
             $hasTime = (strlen($value) > 10);
             if ($hasTime) {
                 $result = explode(' ', $day);
-                list($hour, $minute) = array_map('intval', explode(':', $result[1]));
+                [$hour, $minute] = array_map('intval', explode(':', $result[1]));
                 $day = $result[0];
             } else {
                 $day = substr($day, 0, 10);
@@ -55,44 +93,6 @@ class DateField extends BazarField
         ]);
     }
 
-    public function formatValuesBeforeSave($entry)
-    {
-        $return = [];
-        if ($this->getPropertyname() === 'bf_date_fin_evenement') {
-            if (!empty($entry['id_fiche'])
-                    && is_string($entry['id_fiche'])) {
-                $this->getService(DateService::class)->followId($entry['id_fiche']);
-            }
-            if (!$this->getService(DateService::class)->canRegisterMultipleEntries($entry)) {
-                // clean data from entry because not possible to create repetition
-                if (isset($entry['bf_date_fin_evenement_data'])) {
-                    unset($entry['bf_date_fin_evenement_data']);
-                }
-            } elseif (!empty($entry['bf_date_fin_evenement_data']['other'])) {
-                unset($entry['bf_date_fin_evenement_data']['other']);
-                if (!empty($entry['bf_date_fin_evenement_data'])) {
-                    $return['bf_date_fin_evenement_data'] = $entry['bf_date_fin_evenement_data'];
-                }
-            }
-        }
-        $value = $this->getValue($entry);
-        if (!empty($value) && isset($entry[$this->propertyName . '_allday']) && $entry[$this->propertyName . '_allday'] == 0
-             && isset($entry[$this->propertyName . '_hour']) && isset($entry[$this->propertyName . '_minutes'])) {
-            $value = $this->getService(CoreDateService::class)->getDateTimeWithRightTimeZone("$value {$entry[$this->propertyName . '_hour']}:{$entry[$this->propertyName . '_minutes']}")->format('c');
-        }
-        $return[$this->propertyName] = $value;
-        $return['fields-to-remove'] = [
-            $this->propertyName . '_allday',
-            $this->propertyName . '_hour',
-            $this->propertyName . '_minutes',
-        ];
-        if (empty($entry['bf_date_fin_evenement_data'])) {
-            $return['fields-to-remove'][] = 'bf_date_fin_evenement_data';
-        }
-
-        return $return;
-    }
-
     protected function renderStatic($entry)
     {
         $value = $this->getValue($entry);
@@ -109,10 +109,10 @@ class DateField extends BazarField
         $matches = [];
         $recurrenceBaseId = '';
         $data = [];
-        if ($this->getPropertyname() === 'bf_date_fin_evenement'
+        if ('bf_date_fin_evenement' === $this->getPropertyname()
                 && !empty($entry['bf_date_fin_evenement_data'])) {
             if (is_string($entry['bf_date_fin_evenement_data'])
-                && preg_match('/\{\\"recurrentParentId\\":\\"([^"]+)\\"\}/', $entry['bf_date_fin_evenement_data'], $matches)) {
+                && preg_match('/\{\"recurrentParentId\":\"([^"]+)\"\}/', $entry['bf_date_fin_evenement_data'], $matches)) {
                 $recurrenceBaseId = $matches[1];
             } elseif (is_array($entry['bf_date_fin_evenement_data'])) {
                 $data = $entry['bf_date_fin_evenement_data'];

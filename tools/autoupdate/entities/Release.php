@@ -21,21 +21,21 @@ class Release
             return _t('AU_UNKNOW');
         }
 
-        return (string)$this->release;
+        return (string) $this->release;
     }
 
     public function compare($releaseToCompare)
     {
-        if ((string)$releaseToCompare === $this->release) {
+        if ((string) $releaseToCompare === $this->release) {
             return 0;
         }
-        if (strpos($this->release, '.') !== false && strpos((string)$releaseToCompare, '.') === false) {
+        if (false !== strpos($this->release, '.') && false === strpos((string) $releaseToCompare, '.')) {
             return 1;
         }
         $releaseToCompare = $this->evalRelease(is_string($releaseToCompare) ? $releaseToCompare : $releaseToCompare->release);
         $release = $this->evalRelease($this->release);
 
-        for ($i = 0; $i < min(count($release), count($releaseToCompare)); $i++) {
+        for ($i = 0; $i < min(count($release), count($releaseToCompare)); ++$i) {
             if ($release[$i] > $releaseToCompare[$i]) {
                 return $i + 1;
             }
@@ -46,17 +46,17 @@ class Release
 
     private function evalRelease($release)
     {
-        return strpos($release, '-') !== false ? explode('-', $release) : explode('.', $release);
+        return false !== strpos($release, '-') ? explode('-', $release) : explode('.', $release);
     }
 
     private function checkFormat($release)
     {
         $patternDate = '/^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{1,2}$/';
-        if (preg_match($patternDate, $release) === 1) {
+        if (1 === preg_match($patternDate, $release)) {
             return true;
         }
-        $patternSemVersion = '/^' . SEMVER . '$/';
-        if (preg_match($patternSemVersion, $release) === 1) {
+        $patternSemVersion = '/^'.SEMVER.'$/';
+        if (1 === preg_match($patternSemVersion, $release)) {
             return true;
         }
 

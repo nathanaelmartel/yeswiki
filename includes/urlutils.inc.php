@@ -1,7 +1,6 @@
 <?php
-/*
-Some usefull functions to deal with URLs
-*/
+
+// Some usefull functions to deal with URLs
 
 /**
  * Return the root url of the current page. Specify the http or https protocol according to which is activated,
@@ -17,7 +16,7 @@ function getRootUrl()
         $protocol = 'https://';
     }
 
-    return $protocol . $_SERVER['HTTP_HOST'];
+    return $protocol.$_SERVER['HTTP_HOST'];
 }
 
 /**
@@ -28,7 +27,7 @@ function getRootUrl()
  */
 function getAbsoluteUrl()
 {
-    return getRootUrl() . $_SERVER['REQUEST_URI'];
+    return getRootUrl().$_SERVER['REQUEST_URI'];
 }
 
 /**
@@ -45,8 +44,8 @@ function computeBaseURL($rewrite_mode = false)
     $scriptlocation = str_replace(['/index.php', '/wakka.php'], '', $_SERVER['SCRIPT_NAME']);
 
     return getRootUrl()
-        . $scriptlocation
-        . ($rewrite_mode ? '/' : '/?');
+        .$scriptlocation
+        .($rewrite_mode ? '/' : '/?');
 }
 
 /**
@@ -60,11 +59,11 @@ function detectRewriteMode()
     $pieces = parse_url($_SERVER['REQUEST_URI']);
     $scriptlocation = str_replace(['/index.php', '/wakka.php'], '', $_SERVER['SCRIPT_NAME']);
     $path = preg_replace('/\/$/', '', $pieces['path']);
-    if ($path == $scriptlocation or $pieces['path'] == '/' or $pieces['path'] == '/index.php' or $pieces['path'] == '/wakka.php') {
+    if ($path == $scriptlocation or '/' == $pieces['path'] or '/index.php' == $pieces['path'] or '/wakka.php' == $pieces['path']) {
         return false;
     }
 
-    return substr($pieces['path'], -strlen(WAKKA_ENGINE)) != WAKKA_ENGINE;
+    return WAKKA_ENGINE != substr($pieces['path'], -strlen(WAKKA_ENGINE));
 }
 
 /**
@@ -78,9 +77,9 @@ function replaceLinksWithIframe(string $body): string
 {
     // pattern qui rajoute le /iframe pour les liens au bon endroit, merci raphael@tela-botanica.org
 
-    $pattern = '~(<a[[:blank:]]*[^>]*[[:blank:]]*href[[:blank:]]*=[[:blank:]]*)(["\'])((?:' . preg_quote($GLOBALS['wiki']->config['base_url'], '~') . '|\?))([\w\-_]+)(\/(?:edit|show))?([&#?].*?)?(\2)([^>]*>)~i';
+    $pattern = '~(<a[[:blank:]]*[^>]*[[:blank:]]*href[[:blank:]]*=[[:blank:]]*)(["\'])((?:'.preg_quote($GLOBALS['wiki']->config['base_url'], '~').'|\?))([\w\-_]+)(\/(?:edit|show))?([&#?].*?)?(\2)([^>]*>)~i';
 
-    $NEW_WINDOW_PATTERN = "~^(.*target=[\"']\s*_?blank\s*[\"'].*)|(.*class=[\"'].*?new-window.*?[\"'].*)$~i";
+    $NEW_WINDOW_PATTERN = "~^(.*target=[\"']\\s*_?blank\\s*[\"'].*)|(.*class=[\"'].*?new-window.*?[\"'].*)$~i";
 
     if (preg_match_all($pattern, $body, $matches)) {
         foreach ($matches[0] as $key => $match) {
@@ -88,15 +87,15 @@ function replaceLinksWithIframe(string $body): string
                 $NEW_WINDOW_PATTERN,
                 $matches[8][$key]
             )) {
-                $replacement =
-                    $matches[1][$key] .
-                    $matches[2][$key] .
-                    $matches[3][$key] .
-                    $matches[4][$key] .
-                    ($matches[5][$key] == '/edit' ? '/editiframe' : '/iframe') .
-                    $matches[6][$key] .
-                    $matches[7][$key] .
-                    $matches[8][$key];
+                $replacement
+                    = $matches[1][$key]
+                    .$matches[2][$key]
+                    .$matches[3][$key]
+                    .$matches[4][$key]
+                    .('/edit' == $matches[5][$key] ? '/editiframe' : '/iframe')
+                    .$matches[6][$key]
+                    .$matches[7][$key]
+                    .$matches[8][$key];
                 $body = str_replace($match, $replacement, $body);
             }
         }
@@ -118,7 +117,7 @@ function testUrlInIframe($url = '')
 
 function testRefererUrlInIframe()
 {
-    $url = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+    $url = $_SERVER['HTTP_REFERER'] ?? '';
     $iframe = preg_match('/\/(edit)?iframe/Ui', $url);
 
     return $iframe ? 'iframe' : '';
@@ -135,13 +134,14 @@ function isLocalUrl($pURL)
 {
     $vParsed = parse_url($pURL);
 
-    if ($vParsed === false) {
+    if (false === $vParsed) {
         return true;
-    } elseif ($vParsed['scheme'] . '://' . $vParsed['host'] . ':' . $vParsed['port'] == getRootUrl()) {
-        return true;
-    } else {
-        return false;
     }
+    if ($vParsed['scheme'].'://'.$vParsed['host'].':'.$vParsed['port'] == getRootUrl()) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -155,20 +155,20 @@ function isLocalUrl($pURL)
 function getAbsoluteURLForLinkInAPage($pPageAbsoluteURL, $pLink)
 {
     // Si $pLink est déjà absolu, on le retourne tel quel.
-    if (parse_url($pLink, PHP_URL_SCHEME) !== null) {
+    if (null !== parse_url($pLink, PHP_URL_SCHEME)) {
         return $pLink;
     }
 
     // Parse l'url absolue de la page
     $vPageParts = parse_url($pPageAbsoluteURL);
-    if ($vPageParts === false || !isset($vPageParts['scheme'], $vPageParts['host'])) {
-        throw new InvalidArgumentException("URL de base invalide : $pPageAbsoluteURL");
+    if (false === $vPageParts || !isset($vPageParts['scheme'], $vPageParts['host'])) {
+        throw new InvalidArgumentException("URL de base invalide : {$pPageAbsoluteURL}");
     }
 
     // Construction du chemin de base
     $vBasePath = $vPageParts['vPath'] ?? '/';
     // Si la base finit par un fichier, on enlève tout après le dernier '/'
-    if (substr($vBasePath, -1) !== '/') {
+    if ('/' !== substr($vBasePath, -1)) {
         $vBasePath = substr($vBasePath, 0, strrpos($vBasePath, '/') + 1);
     }
 
@@ -176,25 +176,27 @@ function getAbsoluteURLForLinkInAPage($pPageAbsoluteURL, $pLink)
     if (str_starts_with($pLink, '/')) {
         $vPath = $pLink;
     } else {
-        $vPath = $vBasePath . $pLink;
+        $vPath = $vBasePath.$pLink;
     }
 
     // Normalisation des vSegments (./, ../)
     $vSegments = explode('/', $vPath);
     $vResolved = [];
     foreach ($vSegments as $vSegment) {
-        if ($vSegment === '' || $vSegment === '.') {
+        if ('' === $vSegment || '.' === $vSegment) {
             // ignore
-            if ($vSegment === '' && empty($vResolved)) {
+            if ('' === $vSegment && empty($vResolved)) {
                 // conserver les premières slashs pour les cas comme "/foo"
                 $vResolved[] = '';
             }
+
             continue;
         }
-        if ($vSegment === '..') {
-            if (count($vResolved) > 1 || (count($vResolved) === 1 && $vResolved[0] !== '')) {
+        if ('..' === $vSegment) {
+            if (count($vResolved) > 1 || (1 === count($vResolved) && '' !== $vResolved[0])) {
                 array_pop($vResolved);
             }
+
             continue;
         }
         $vResolved[] = $vSegment;
@@ -207,9 +209,9 @@ function getAbsoluteURLForLinkInAPage($pPageAbsoluteURL, $pLink)
     }
 
     // Reconstruire l'URL
-    $vAbsolutePath = $vPageParts['scheme'] . '://' . $vPageParts['host'];
+    $vAbsolutePath = $vPageParts['scheme'].'://'.$vPageParts['host'];
     if (isset($vPageParts['port'])) {
-        $vAbsolutePath .= ':' . $vPageParts['port'];
+        $vAbsolutePath .= ':'.$vPageParts['port'];
     }
 
     $vAbsolutePath .= $vNormalizedPath;

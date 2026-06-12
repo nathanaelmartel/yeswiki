@@ -2,7 +2,6 @@
 
 namespace YesWiki\Login;
 
-use Exception;
 use YesWiki\Core\Controller\AuthController;
 use YesWiki\Core\Entity\User;
 use YesWiki\Core\Exception\BadFormatPasswordException;
@@ -38,12 +37,12 @@ class LostPasswordAction extends YesWikiAction
                 $user = $this->manageSubStep(
                     $this->securityController->filterInput(INPUT_POST, 'subStep', FILTER_SANITIZE_NUMBER_INT, false, 'int')
                 );
-            } catch (Exception $ex) {
+            } catch (\Exception $ex) {
                 $this->typeOfRendering = 'directDangerMessage';
                 $this->errorType = 'exception';
                 $message = $ex->getMessage();
             }
-        } elseif ($request->query->get('a') === 'recover' && !empty($request->query->get('email'))) {
+        } elseif ('recover' === $request->query->get('a') && !empty($request->query->get('email'))) {
             $this->typeOfRendering = 'directDangerMessage';
             $message = _t('LOGIN_INVALID_KEY');
             $hash = $this->securityController->filterInput(INPUT_GET, 'email', FILTER_DEFAULT, true);
@@ -62,23 +61,27 @@ class LostPasswordAction extends YesWikiAction
                 $this->errorType = 'invalidKey';
             }
         }
-        $renderedTitle = '<h2>' . _t('LOGIN_CHANGE_PASSWORD') . '</h2>';
+        $renderedTitle = '<h2>'._t('LOGIN_CHANGE_PASSWORD').'</h2>';
+
         switch ($this->typeOfRendering) {
             case 'userNotFound':
-                return $renderedTitle . $this->render('@templates/alert-message-with-back.twig', [
+                return $renderedTitle.$this->render('@templates/alert-message-with-back.twig', [
                     'type' => 'danger',
                     'message' => _t('LOGIN_UNKNOWN_USER'),
                 ]);
+
             case 'successPage':
-                return $renderedTitle . $this->render('@templates/alert-message.twig', [
+                return $renderedTitle.$this->render('@templates/alert-message.twig', [
                     'type' => 'success',
                     'message' => _t('LOGIN_MESSAGE_SENT'),
                 ]);
+
             case 'recoverSuccess':
-                return $renderedTitle . $this->render('@templates/alert-message.twig', [
+                return $renderedTitle.$this->render('@templates/alert-message.twig', [
                     'type' => 'success',
                     'message' => _t('LOGIN_PASSWORD_WAS_RESET'),
                 ]);
+
             case 'recoverForm':
                 if (isset($hash)) {
                     $key = $hash;
@@ -91,13 +94,15 @@ class LostPasswordAction extends YesWikiAction
                     'user' => $user,
                     'message' => $message ?? '',
                     'key' => $hash ?? $key,
-                    'inIframe' => (testUrlInIframe() == 'iframe'),
+                    'inIframe' => ('iframe' == testUrlInIframe()),
                 ]);
+
             case 'directDangerMessage':
-                return $renderedTitle . $this->render('@templates/alert-message.twig', [
+                return $renderedTitle.$this->render('@templates/alert-message.twig', [
                     'type' => 'danger',
                     'message' => $message,
                 ]);
+
             case 'emailForm':
             default:
                 return $this->render('@login/lost-password-email-form.twig', [
@@ -109,9 +114,9 @@ class LostPasswordAction extends YesWikiAction
     /**
      * manage subStep.
      *
-     * @throws Exception
+     * @return null|User $user
      *
-     * @return User|null $user
+     * @throws \Exception
      */
     private function manageSubStep(int $subStep): ?User
     {
@@ -132,7 +137,9 @@ class LostPasswordAction extends YesWikiAction
                         $this->typeOfRendering = 'userNotFound';
                     }
                 }
+
                 break;
+
             case 2:
                 // we are submitting a new password (only for encrypted)
                 $post = $this->getRequest()->request;
@@ -142,7 +149,7 @@ class LostPasswordAction extends YesWikiAction
                 $userName = $this->securityController->filterInput(INPUT_POST, 'userID', FILTER_DEFAULT, true);
                 $user = $this->userManager->getOneByName($userName);
                 $this->typeOfRendering = 'recoverForm';
-                if (empty($post->get('pw0')) || empty($post->get('pw1')) || (strcmp($post->get('pw0'), $post->get('pw1')) != 0) || (trim($post->get('pw0')) == '')) {
+                if (empty($post->get('pw0')) || empty($post->get('pw1')) || (0 != strcmp($post->get('pw0'), $post->get('pw1'))) || ('' == trim($post->get('pw0')))) {
                     // No pw0 or different pwd
                     $this->errorType = 'differentPasswords';
                 } else {
@@ -168,6 +175,7 @@ class LostPasswordAction extends YesWikiAction
                         $this->errorType = 'userNotFound';
                     }
                 }
+
                 break;
         }
 
@@ -181,17 +189,16 @@ class LostPasswordAction extends YesWikiAction
      *
      * @param string $userName The user login
      * @param string $key      The password recovery key (sent by email)
-     * @param string $pwd      the new password value
      *
      * @return bool True if OK or false if any problems
      */
     private function resetPassword(string $userName, string $key, string $password)
     {
         if ($this->securityController->isWikiHibernated()) {
-            throw new Exception(_t('WIKI_IN_HIBERNATION'));
+            throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
-        if ($this->checkEmailKey($key, $userName) === false) { // The password recovery key does not match
-            throw new Exception(_t('USER_INCORRECT_PASSWORD_KEY') . '.');
+        if (false === $this->checkEmailKey($key, $userName)) { // The password recovery key does not match
+            throw new \Exception(_t('USER_INCORRECT_PASSWORD_KEY').'.');
         }
 
         $user = $this->userManager->getOneByName($userName);

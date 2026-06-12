@@ -1,6 +1,6 @@
 <?php
 
-//function pour troquer une chaine sans casser les balises
+// function pour troquer une chaine sans casser les balises
 /**
  * Truncates text.
  *
@@ -9,7 +9,7 @@
  *
  * @param string $text   string to truncate
  * @param int    $length length of returned string, including ellipsis
- * @param string $ending ending to be appended to the trimmed string
+ * @param mixed  $append
  *
  * @return string trimmed string
  */
@@ -20,7 +20,7 @@ function truncate($text, $length = 100, $append = '&hellip;')
     if (strlen($string) > $length) {
         $string = wordwrap($string, $length);
         $string = explode("\n", $string, 2);
-        $string = $string[0] . $append;
+        $string = $string[0].$append;
     }
 
     return $string;
@@ -28,6 +28,8 @@ function truncate($text, $length = 100, $append = '&hellip;')
 
 /**
  * Fonction getRelativeDate.
+ *
+ * @param mixed $date
  * par Jay Salvat - http://blog.jaysalvat.com/*/
 function getRelativeDate($date)
 {
@@ -47,7 +49,7 @@ function getRelativeDate($date)
     // si elle est proche alors on retourne une date relative...
     if ($time < $after && $time > $before) {
         if ($time >= $after) {
-            $relative = date('l', $date) . ' prochain';
+            $relative = date('l', $date).' prochain';
         } elseif ($time >= $afterTomorrow) {
             $relative = 'Après demain';
         } elseif ($time >= $tomorrow) {
@@ -59,15 +61,15 @@ function getRelativeDate($date)
         } elseif ($time >= $beforeYesterday) {
             $relative = 'Avant hier';
         } elseif ($time >= $before) {
-            $relative = date('l', $time) . ' dernier';
+            $relative = date('l', $time).' dernier';
         }
-        // sinon on retourne une date complète.
+    // sinon on retourne une date complète.
     } else {
-        $relative = 'Le ' . date('j.n.Y', $time);
+        $relative = 'Le '.date('j.n.Y', $time);
     }
     // si l'heure est présente dans la date originale, on l'ajoute
     if (preg_match('/[0-9]{2}:[0-9]{2}/', $date)) {
-        $relative .= ' à ' . date('H:i', $time);
+        $relative .= ' à '.date('H:i', $time);
     }
 
     return $relative;

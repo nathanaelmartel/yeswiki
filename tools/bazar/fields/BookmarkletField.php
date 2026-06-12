@@ -10,13 +10,12 @@ use YesWiki\Core\Service\HtmlPurifierService;
  */
 class BookmarkletField extends BazarField
 {
-    protected $urlField;
-    protected $descriptionField;
-    protected $text;
-
     protected const FIELD_URL_FIELD = 3;
     protected const FIELD_DESCRIPTION_FIELD = 4;
     protected const FIELD_TEXT_FIELD = 5;
+    protected $urlField;
+    protected $descriptionField;
+    protected $text;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -28,30 +27,6 @@ class BookmarkletField extends BazarField
         $this->maxChars = null;
         $this->default = '';
         $this->text = $this->services->get(HtmlPurifierService::class)->cleanHTML($values[self::FIELD_TEXT_FIELD] ?? '');
-    }
-
-    protected function renderInput($entry)
-    {
-        $wiki = $this->getWiki();
-        if ($this->getWiki()->GetMethod() != 'bazariframe') {
-            return $this->render('@bazar/inputs/bookmarklet.twig', [
-                'urlParams' => [
-                    'vue' => BAZ_VOIR_SAISIR,
-                    'action' => BAZ_ACTION_NOUVEAU,
-                    'id' => $entry['id_typeannonce'] ?? (function () {
-                        $id = $this->getRequest()->query->get('id');
-                        return (!empty($id) && is_scalar($id) && strval($id) == strval(intval($id))) ? strval($id) : '';
-                    })(),
-                ],
-            ]);
-        }
-    }
-
-    protected function renderStatic($entry)
-    {
-        if ($this->getWiki()->GetMethod() == 'bazariframe') {
-            return '<a class="btn btn-danger pull-right" href="javascript:window.close();"><i class="fa fa-remove icon-remove icon-white"></i>&nbsp;' . _t('BAZ_CLOSE_THIS_WINDOW') . '</a>';
-        }
     }
 
     // GETTERS. Needed to use them in the Twig syntax
@@ -83,5 +58,30 @@ class BookmarkletField extends BazarField
                 'text' => $this->getText(),
             ]
         );
+    }
+
+    protected function renderInput($entry)
+    {
+        $wiki = $this->getWiki();
+        if ('bazariframe' != $this->getWiki()->GetMethod()) {
+            return $this->render('@bazar/inputs/bookmarklet.twig', [
+                'urlParams' => [
+                    'vue' => BAZ_VOIR_SAISIR,
+                    'action' => BAZ_ACTION_NOUVEAU,
+                    'id' => $entry['id_typeannonce'] ?? (function () {
+                        $id = $this->getRequest()->query->get('id');
+
+                        return (!empty($id) && is_scalar($id) && strval($id) == strval(intval($id))) ? strval($id) : '';
+                    })(),
+                ],
+            ]);
+        }
+    }
+
+    protected function renderStatic($entry)
+    {
+        if ('bazariframe' == $this->getWiki()->GetMethod()) {
+            return '<a class="btn btn-danger pull-right" href="javascript:window.close();"><i class="fa fa-remove icon-remove icon-white"></i>&nbsp;'._t('BAZ_CLOSE_THIS_WINDOW').'</a>';
+        }
     }
 }

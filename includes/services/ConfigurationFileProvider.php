@@ -10,7 +10,7 @@ class ConfigurationFileProvider
     public static function getConfigFileFromEnv(): string
     {
         $wakkaConfigFile = getenv('WAKKA_CONFIG_FILE');
-        if ($wakkaConfigFile === false) {
+        if (false === $wakkaConfigFile) {
             return 'wakka.config.php';
         }
 

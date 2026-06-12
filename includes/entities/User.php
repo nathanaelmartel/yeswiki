@@ -3,17 +3,16 @@
 namespace YesWiki\Core\Entity;
 
 use ArrayAccess;
-use Exception;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use YesWiki\Core\Exception\UserNotAuthorizedToSetOffset;
 use YesWiki\Core\Exception\UserNotExistingOffset;
 
-class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAccess
+class User implements UserInterface, PasswordAuthenticatedUserInterface, \ArrayAccess
 {
     // Obviously needs a group or ACLS class. In the meantime, use of $this->wiki->GetGroupACL and so on
 
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROPERTIES ~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROPERTIES ~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // User properties (cf database)
     // The case is, on purpose, similar to the one in the database
     public const PROPS_LIST = [
@@ -33,7 +32,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
     {
         foreach (self::PROPS_LIST as $key) {
             if (!array_key_exists($key, $properties)) {
-                throw new Exception("\$properties[$key] should be set to construct an User!");
+                throw new \Exception("\$properties[{$key}] should be set to construct an User!");
             }
             $this->properties[$key] = $properties[$key];
         }
@@ -44,7 +43,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
         return $this->properties;
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ getters ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ getters ~~~~~~~~~~~~~~~~~~
     public function getName(): string
     {
         return $this->properties['name'];
@@ -55,7 +54,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
         return $this->properties['email'];
     }
 
-    /* ~~~~~~~~~ implements PasswordAuthenticatedUserInterface ~~~~~~~~~~ */
+    // ~~~~~~~~~ implements PasswordAuthenticatedUserInterface ~~~~~~~~~~
 
     /**
      * Returns the hashed password used to authenticate the user.
@@ -67,13 +66,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
         return $this->properties['password'];
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ setters ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ setters ~~~~~~~~~~~~~~~~~~
     public function setPassword(string $hashedPassword)
     {
         $this->properties['password'] = $hashedPassword;
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ implement ArrayAccess ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ implement ArrayAccess ~~~~~~~~~~~~~~~~~~
 
     public function offsetExists($offset): bool
     {
@@ -85,7 +84,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
     public function offsetGet($offset)
     {
         if (!$this->offsetExists($offset)) {
-            throw new UserNotExistingOffset("Not existing $offset in User!");
+            throw new UserNotExistingOffset("Not existing {$offset} in User!");
         }
 
         return $this->properties[$offset];
@@ -104,7 +103,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
         throw new UserNotAuthorizedToSetOffset('unsetting offset is not allowed for User!');
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ implements UserInterface ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ implements UserInterface ~~~~~~~~~~~~~~~~~~
 
     /**
      * Returns the roles granted to the user.
@@ -133,7 +132,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
      *
      * This method is deprecated since Symfony 5.3, implement it from {@link LegacyPasswordAuthenticatedUserInterface} instead.
      *
-     * @return string|null
+     * @return null|string
      */
     public function getSalt()
     {
@@ -161,7 +160,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, ArrayAc
         return $this->getUserIdentifier();
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ end of implements ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ end of implements ~~~~~~~~~~~~~~~~~~
 
     /**
      * @return string

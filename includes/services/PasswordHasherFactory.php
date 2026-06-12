@@ -5,7 +5,6 @@ namespace YesWiki\Core\Service;
 require_once 'includes/objects/MD5PasswordHasher.php'; // TODO use autoload
 
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactory as SymfonyPasswordHasherFactory;
-use Throwable;
 use YesWiki\Core\Entity\User;
 use YesWiki\Core\MD5PasswordHasher;
 
@@ -39,14 +38,14 @@ class PasswordHasherFactory extends SymfonyPasswordHasherFactory
     {
         try {
             $result = $this->dbService->query("SHOW COLUMNS FROM {$this->dbService->prefixTable('users')} LIKE 'password';");
-            if (@mysqli_num_rows($result) === 0) {
+            if (0 === @mysqli_num_rows($result)) {
                 return false;
             }
             $row = mysqli_fetch_assoc($result);
             mysqli_free_result($result);
 
-            return !empty($row['Type']) && $row['Type'] == 'varchar(256)';
-        } catch (Throwable $th) {
+            return !empty($row['Type']) && 'varchar(256)' == $row['Type'];
+        } catch (\Throwable $th) {
             return false;
         }
     }

@@ -29,7 +29,7 @@ abstract class YesWikiController
 
     protected function render($templatePath, $data = [], $method = 'render')
     {
-        return $this->wiki->services->get(TemplateEngine::class)->$method($templatePath, $data);
+        return $this->wiki->services->get(TemplateEngine::class)->{$method}($templatePath, $data);
     }
 
     protected function renderInSquelette($templatePath, $data = [])
@@ -56,7 +56,7 @@ abstract class YesWikiController
      *
      * @param class-string<T> $className
      *
-     * @return T|null
+     * @return null|T
      */
     protected function getService($className)
     {

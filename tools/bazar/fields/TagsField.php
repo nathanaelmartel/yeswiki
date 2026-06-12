@@ -15,13 +15,52 @@ class TagsField extends EnumField
     {
         parent::__construct($values, $services);
         $this->name = $this->linkedObjectName; // hack because tags are Enums but id is not on same position than enums
-        $this->maxChars = $this->maxChars ?? 255;
+        $this->maxChars ??= 255;
         $this->propertyName = $this->name;
     }
 
     public function getValueStructure() // See BazarField::getValueStructure
     {
         return [$this->propertyName => ['_mode_' => 'multiple', '_type_' => 'string']];
+    }
+
+    public function formatValuesBeforeSave($entry)
+    {
+        // TODO use TagsManager instead of TripleStore
+        $tripleStore = $this->getService(TripleStore::class);
+
+        $value = $this->getValue($entry);
+
+        // Delete existing tags linked to this entry
+        if (!isset($GLOBALS['delete_tags']) && !empty($entry['id_fiche'])) {
+            $tripleStore->delete($entry['id_fiche'], 'http://outils-reseaux.org/_vocabulary/tag', null, '', '');
+            $GLOBALS['delete_tags'] = true;
+        }
+
+        // Add back all specified tags
+        $tags = explode(',', $value);
+        foreach ($tags as $tag) {
+            trim($tag);
+            if ('' != $tag) {
+                $tripleStore->create($entry['id_fiche'], 'http://outils-reseaux.org/_vocabulary/tag', _convert($tag, YW_CHARSET, true), '', '');
+            }
+        }
+
+        return [$this->propertyName => $value];
+    }
+
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    public function getOptions()
+    {
+        if (empty($this->options)) {
+            $this->loadOptionsFromTags();
+        }
+
+        return parent::getOptions();
     }
 
     protected function renderInput($entry)
@@ -39,14 +78,14 @@ class TagsField extends EnumField
         }
         if (isset($response)) {
             sort($response);
-            $allTags = '\'' . implode('\',\'', $response) . '\'';
+            $allTags = '\''.implode('\',\'', $response).'\'';
         } else {
             $allTags = '';
         }
 
         $script = '$(function(){
-            var tagsexistants = [' . $allTags . '];
-            var pagetag = $(\'#formulaire .yeswiki-input-pagetag[name="' . $this->getName() . '"]\');
+            var tagsexistants = ['.$allTags.'];
+            var pagetag = $(\'#formulaire .yeswiki-input-pagetag[name="'.$this->getName().'"]\');
             pagetag.tagsinput({
                 typeahead: {
                     afterSelect: function(val) { pagetag.tagsinput(\'input\').val(""); },
@@ -75,31 +114,6 @@ class TagsField extends EnumField
         ]);
     }
 
-    public function formatValuesBeforeSave($entry)
-    {
-        // TODO use TagsManager instead of TripleStore
-        $tripleStore = $this->getService(TripleStore::class);
-
-        $value = $this->getValue($entry);
-
-        // Delete existing tags linked to this entry
-        if (!isset($GLOBALS['delete_tags']) && !empty($entry['id_fiche'])) {
-            $tripleStore->delete($entry['id_fiche'], 'http://outils-reseaux.org/_vocabulary/tag', null, '', '');
-            $GLOBALS['delete_tags'] = true;
-        }
-
-        // Add back all specified tags
-        $tags = explode(',', $value);
-        foreach ($tags as $tag) {
-            trim($tag);
-            if ($tag != '') {
-                $tripleStore->create($entry['id_fiche'], 'http://outils-reseaux.org/_vocabulary/tag', _convert($tag, YW_CHARSET, true), '', '');
-            }
-        }
-
-        return [$this->propertyName => $value];
-    }
-
     protected function renderStatic($entry)
     {
         $value = $this->getValue($entry);
@@ -109,29 +123,15 @@ class TagsField extends EnumField
         if (count($tags) > 0 && !empty($tags[0])) {
             sort($tags);
             $tags = array_map(function ($tag) {
-                return '<a class="tag-label label label-info" href="' . $GLOBALS['wiki']->href('listpages', $GLOBALS['wiki']->GetPageTag(), 'tags=' . urlencode(trim($tag))) . '" title="' . _t('TAGS_SEE_ALL_PAGES_WITH_THIS_TAGS') . '">' . $tag . '</a>';
+                return '<a class="tag-label label label-info" href="'.$GLOBALS['wiki']->href('listpages', $GLOBALS['wiki']->GetPageTag(), 'tags='.urlencode(trim($tag))).'" title="'._t('TAGS_SEE_ALL_PAGES_WITH_THIS_TAGS').'">'.$tag.'</a>';
             }, $tags);
 
             return $this->render('@bazar/fields/tags.twig', [
                 'value' => join(' ', $tags) ?? '',
             ]);
-        } else {
-            return '';
-        }
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
-
-    public function getOptions()
-    {
-        if (empty($this->options)) {
-            $this->loadOptionsFromTags();
         }
 
-        return parent::getOptions();
+        return '';
     }
 
     private function loadOptionsFromTags()

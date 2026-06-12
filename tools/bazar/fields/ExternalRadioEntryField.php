@@ -22,11 +22,6 @@ class ExternalRadioEntryField extends RadioEntryField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         return null;
@@ -44,5 +39,10 @@ class ExternalRadioEntryField extends RadioEntryField
         }
 
         return $this->options;
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
     }
 }

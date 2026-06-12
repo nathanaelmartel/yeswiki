@@ -10,16 +10,14 @@ use YesWiki\Core\Service\HtmlPurifierService;
  */
 class TextField extends BazarField
 {
-    protected $pattern;
-    protected $subType;
-    protected $placeholder;
-
     protected const FIELD_PATTERN = 6;
     protected const FIELD_SUB_TYPE = 7;
     protected const FIELD_PLACEHOLDER = 15;
 
-
     protected const ALLOWED_SUB_TYPES = ['text', 'date', 'email', 'url', 'range', 'password', 'number', 'color'];
+    protected $pattern;
+    protected $subType;
+    protected $placeholder;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -35,9 +33,9 @@ class TextField extends BazarField
         }
 
         $this->placeholder = $values[self::FIELD_PLACEHOLDER];
-        $this->maxChars = $this->maxChars ?? 255;
+        $this->maxChars ??= 255;
 
-        if ($this->type === 'range') {
+        if ('range' === $this->type) {
             $this->size = empty($this->size) ? 0 : $this->size;
             $this->maxChars = empty($this->maxChars) ? 100 : $this->maxChars;
         }
@@ -45,37 +43,11 @@ class TextField extends BazarField
 
     public function getValueStructure() // See BazarField::getValueStructure
     {
-        if ($this->type == 'number' || $this->type == 'range') {
+        if ('number' == $this->type || 'range' == $this->type) {
             return [$this->propertyName => ['_mode_' => 'single', '_type_' => 'number']];
-        } else {
-            return [$this->propertyName => ['_mode_' => 'single', '_type_' => 'string']];
-        }
-    }
-
-    protected function renderInput($entry)
-    {
-        // Handling all subtypes (url, number) in the text.twig
-        return $this->render('@bazar/inputs/' . ($this->getType() == 'range' ? 'range' : 'text') . '.twig', [
-            'value' => $this->getValue($entry),
-        ]);
-    }
-
-    protected function renderStatic($entry)
-    {
-        $value = $this->getValue($entry);
-        if ($value !== '0' && !$value) {
-            return '';
         }
 
-        if ($this->name === 'bf_titre') {
-            return $this->render('@bazar/fields/title.twig', [
-                'value' => $value,
-            ]);
-        } else {
-            return $this->render('@bazar/fields/text.twig', [
-                'value' => $value,
-            ]);
-        }
+        return [$this->propertyName => ['_mode_' => 'single', '_type_' => 'string']];
     }
 
     public function formatValuesBeforeSave($entry)
@@ -118,5 +90,31 @@ class TextField extends BazarField
                 'placeholder' => $this->getPlaceholder(),
             ]
         );
+    }
+
+    protected function renderInput($entry)
+    {
+        // Handling all subtypes (url, number) in the text.twig
+        return $this->render('@bazar/inputs/'.('range' == $this->getType() ? 'range' : 'text').'.twig', [
+            'value' => $this->getValue($entry),
+        ]);
+    }
+
+    protected function renderStatic($entry)
+    {
+        $value = $this->getValue($entry);
+        if ('0' !== $value && !$value) {
+            return '';
+        }
+
+        if ('bf_titre' === $this->name) {
+            return $this->render('@bazar/fields/title.twig', [
+                'value' => $value,
+            ]);
+        }
+
+        return $this->render('@bazar/fields/text.twig', [
+            'value' => $value,
+        ]);
     }
 }

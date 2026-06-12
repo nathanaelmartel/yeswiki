@@ -2,10 +2,28 @@
 
 namespace YesWiki\AutoUpdate\Entity;
 
-use Throwable;
-
 class Files
 {
+    public function download($sourceUrl, $destPath = null, $timeoutInSec = 5)
+    {
+        if (null === $destPath) {
+            $destPath = tempnam('cache', 'tmp_to_delete_');
+        }
+        $fp = fopen($destPath, 'wb');
+        $ch = curl_init($sourceUrl);
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeoutInSec);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutInSec);
+        curl_exec($ch);
+        if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+            curl_close($ch);
+        }
+        fclose($fp);
+
+        return $destPath;
+    }
+
     protected function tmpdir()
     {
         $path = tempnam(realpath('cache'), 'yeswiki_');
@@ -28,9 +46,9 @@ class Files
         if (is_file($path)) {
             if (@unlink($path)) {
                 return true;
-            } else {
-                return [$path];
             }
+
+            return [$path];
         }
 
         if (is_dir($path)) {
@@ -69,9 +87,9 @@ class Files
             if (@is_file($path)) {
                 if (@is_writable($path)) {
                     return true;
-                } else {
-                    return [$path];
                 }
+
+                return [$path];
             }
 
             if (@is_dir($path)) {
@@ -80,29 +98,9 @@ class Files
 
             // TODO Gérer les liens
             return [$path];
-        } catch (Throwable $pThrowable) {
+        } catch (\Throwable $pThrowable) {
             return [$path];
         }
-    }
-
-    public function download($sourceUrl, $destPath = null, $timeoutInSec = 5)
-    {
-        if ($destPath === null) {
-            $destPath = tempnam('cache', 'tmp_to_delete_');
-        }
-        $fp = fopen($destPath, 'wb');
-        $ch = curl_init($sourceUrl);
-        curl_setopt($ch, CURLOPT_FILE, $fp);
-        curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeoutInSec);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutInSec);
-        curl_exec($ch);
-        if (version_compare(PHP_VERSION, '8.0.0', '<')) {
-            curl_close($ch);
-        }
-        fclose($fp);
-
-        return $destPath;
     }
 
     private function isWritableFolder($path)
@@ -112,16 +110,16 @@ class Files
         $vNotWritables = [];
 
         if (@is_dir($path)) {
-            if (@is_writable($path) !== true) {
+            if (true !== @is_writable($path)) {
                 $vNotWritables[] = $path;
             }
 
             if ($res = @opendir($path)) {
                 while (($file = @readdir($res)) !== false) {
                     if (!in_array($file, $file2ignore)) {
-                        $vIsWritable = $this->isWritable($path . '/' . $file);
+                        $vIsWritable = $this->isWritable($path.'/'.$file);
 
-                        if ($vIsWritable !== true) {
+                        if (true !== $vIsWritable) {
                             $vNotWritables = array_merge($vNotWritables, $vIsWritable);
                         }
                     }
@@ -134,11 +132,11 @@ class Files
             $vNotWritables[] = $path;
         }
 
-        if (count($vNotWritables) == 0) {
+        if (0 == count($vNotWritables)) {
             return true;
-        } else {
-            return $vNotWritables;
         }
+
+        return $vNotWritables;
     }
 
     private function deleteFolder($path)
@@ -147,35 +145,34 @@ class Files
         if (is_link($path)) {
             if (@unlink($path)) {
                 return true;
-            } else {
-                return [$path];
             }
-        } else {
-            $vNotDeleteds = [];
 
-            if ($res = opendir($path)) {
-                while (($file = readdir($res)) !== false) {
-                    if (!in_array($file, $file2ignore)) {
-                        $vDeleteStatus = $this->delete(rtrim($path, '/') . '/' . $file);
+            return [$path];
+        }
+        $vNotDeleteds = [];
 
-                        if ($vDeleteStatus !== true) {
-                            $vNotDeleteds = array_merge($vNotDeleteds, $vDeleteStatus);
-                        }
+        if ($res = opendir($path)) {
+            while (($file = readdir($res)) !== false) {
+                if (!in_array($file, $file2ignore)) {
+                    $vDeleteStatus = $this->delete(rtrim($path, '/').'/'.$file);
+
+                    if (true !== $vDeleteStatus) {
+                        $vNotDeleteds = array_merge($vNotDeleteds, $vDeleteStatus);
                     }
                 }
-                closedir($res);
             }
-
-            if (!@rmdir($path)) {
-                $vNotDeleteds[] = $path;
-            }
+            closedir($res);
         }
 
-        if (count($vNotDeleteds) == 0) {
+        if (!@rmdir($path)) {
+            $vNotDeleteds[] = $path;
+        }
+
+        if (0 == count($vNotDeleteds)) {
             return true;
-        } else {
-            return $vNotDeleteds;
         }
+
+        return $vNotDeleteds;
     }
 
     private function copyFolder($srcPath, $desPath)
@@ -184,7 +181,7 @@ class Files
         if ($res = opendir($srcPath)) {
             while (($file = readdir($res)) !== false) {
                 if (!in_array($file, $file2ignore)) {
-                    $this->copy(rtrim($srcPath, '/') . '/' . $file, rtrim($desPath, '/') . '/' . $file);
+                    $this->copy(rtrim($srcPath, '/').'/'.$file, rtrim($desPath, '/').'/'.$file);
                 }
             }
             closedir($res);

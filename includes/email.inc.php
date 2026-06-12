@@ -15,32 +15,32 @@ function send_mail($mail_sender, $name_sender, $mail_receiver, $subject, $messag
 {
     $batchSize = 10; // quite a low limit to be able to send even on shared host smtp
 
-    //Create a new PHPMailer instance
+    // Create a new PHPMailer instance
     $mail = new PHPMailer(true);
 
     try {
         $mail->set('CharSet', 'utf-8');
 
-        if ($GLOBALS['wiki']->config['contact_mail_func'] == 'smtp') {
-            //Tell PHPMailer to use SMTP
+        if ('smtp' == $GLOBALS['wiki']->config['contact_mail_func']) {
+            // Tell PHPMailer to use SMTP
             $mail->isSMTP();
-            //Enable SMTP debugging
+            // Enable SMTP debugging
             // 0 = off (for production use)
             // 1 = client messages
             // 2 = client and server messages
             $mail->SMTPDebug = $GLOBALS['wiki']->config['contact_debug'];
-            //Ask for HTML-friendly debug output
+            // Ask for HTML-friendly debug output
             $mail->Debugoutput = 'html';
-            //Set the hostname of the mail server
+            // Set the hostname of the mail server
             $mail->Host = $GLOBALS['wiki']->config['contact_smtp_host'];
-            //Set the SMTP port number - likely to be 25, 465 or 587
+            // Set the SMTP port number - likely to be 25, 465 or 587
             $mail->Port = $GLOBALS['wiki']->config['contact_smtp_port'];
-            //Whether to use SMTP authentication
+            // Whether to use SMTP authentication
             if (!empty($GLOBALS['wiki']->config['contact_smtp_user'])) {
                 $mail->SMTPAuth = true;
-                //Username to use for SMTP authentication
+                // Username to use for SMTP authentication
                 $mail->Username = $GLOBALS['wiki']->config['contact_smtp_user'];
-                //Password to use for SMTP authentication
+                // Password to use for SMTP authentication
                 $mail->Password = $GLOBALS['wiki']->config['contact_smtp_pass'];
 
                 $vSMTPSecure = $GLOBALS['wiki']->config['contact_smtp_secure'] ?? null;
@@ -52,20 +52,23 @@ function send_mail($mail_sender, $name_sender, $mail_receiver, $subject, $messag
                 switch ($vSMTPSecure) {
                     case 'ssl':
                         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-                    break;
+
+                        break;
+
                     case 'tls':
                         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    break;
+
+                        break;
                 }
             } else {
                 $mail->SMTPAuth = false;
             }
-        } elseif ($GLOBALS['wiki']->config['contact_mail_func'] == 'sendmail') {
+        } elseif ('sendmail' == $GLOBALS['wiki']->config['contact_mail_func']) {
             // Set PHPMailer to use the sendmail transport
             $mail->isSendmail();
         }
 
-        //Set an alternative reply-to address
+        // Set an alternative reply-to address
         if (!empty($GLOBALS['wiki']->config['contact_reply_to'])) {
             $mail->addReplyTo($GLOBALS['wiki']->config['contact_reply_to']);
         } else {
@@ -76,19 +79,19 @@ function send_mail($mail_sender, $name_sender, $mail_receiver, $subject, $messag
         if (!empty($GLOBALS['wiki']->config['contact_from'])) {
             $mail_sender = $GLOBALS['wiki']->config['contact_from'];
         }
-        //Set who the message is to be sent from
+        // Set who the message is to be sent from
         if (empty($name_sender)) {
             $name_sender = $mail_sender;
         }
         $mail->setFrom($mail_sender, $name_sender);
 
-        //Set the subject line
+        // Set the subject line
         $mail->Subject = $subject;
 
         // That's bad if only text passed to function: Linebreaks won't be rendered.
-        //if (empty($message_html)) {
+        // if (empty($message_html)) {
         //  $message_html = $message_txt;
-        //}
+        // }
 
         if (empty($message_html)) {
             $mail->isHTML(false);
@@ -136,9 +139,8 @@ function getMailDomain($pHost)
 {
     $vHost = preg_replace('/^www\./', '', $pHost);
     $vParts = explode('.', $vHost);
-    $vDomain = implode('.', array_slice($vParts, -2));
 
-    return $vDomain;
+    return implode('.', array_slice($vParts, -2));
 }
 
 function getSMTPSecure($pPort = null)
@@ -146,6 +148,7 @@ function getSMTPSecure($pPort = null)
     if (!empty($pPort)) {
         switch ($pPort) {
             case '465': return 'ssl';
+
             case '587': return 'tls';
         }
     }

@@ -6,9 +6,9 @@ use Symfony\Component\Security\Csrf\Exception\TokenNotFoundException;
 use Tamtamchik\SimpleFlash\Flash;
 use YesWiki\Bazar\Field\MapField;
 use YesWiki\Bazar\Service\ActivityPubService;
-use YesWiki\Bazar\Service\WebfingerService;
 use YesWiki\Bazar\Service\FormManager;
 use YesWiki\Bazar\Service\Guard;
+use YesWiki\Bazar\Service\WebfingerService;
 use YesWiki\Core\Controller\CsrfTokenController;
 use YesWiki\Core\YesWikiController;
 use YesWiki\Security\Controller\SecurityController;
@@ -65,7 +65,7 @@ class FormController extends YesWikiController
                 $values[$form['bn_id_nature']]['canEdit'] = !$this->securityController->isWikiHibernated() && $this->getService(Guard::class)->isAllowed('saisie_formulaire');
                 $values[$form['bn_id_nature']]['canDelete'] = !$this->securityController->isWikiHibernated() && $this->wiki->UserIsAdmin();
                 $values[$form['bn_id_nature']]['isSemantic'] = !empty($form['bn_sem_template']);
-                $values[$form['bn_id_nature']]['isActivityPubEnabled'] = $form['bn_activitypub_enable'] === '1';
+                $values[$form['bn_id_nature']]['isActivityPubEnabled'] = '1' === $form['bn_activitypub_enable'];
                 $values[$form['bn_id_nature']]['isGeo'] = !empty(array_filter($form['prepared'], function ($field) {
                     return $field instanceof MapField;
                 }));
@@ -91,10 +91,10 @@ class FormController extends YesWikiController
                 if ($this->formIsValid($form)) {
                     $this->formManager->create($post->all());
 
-                    /* mrflos : i think this is not used*/
-                    /* if ($this->activityPubService->isEnabled($form)) { */
-                    /*     $this->activityPubService->postCreateActivity($form); */
-                    /* } */
+                    // mrflos : i think this is not used
+                    // if ($this->activityPubService->isEnabled($form)) {
+                    // $this->activityPubService->postCreateActivity($form);
+                    // }
 
                     return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_NOUVEAU_FORMULAIRE_ENREGISTRE'], false));
                 }
@@ -106,9 +106,9 @@ class FormController extends YesWikiController
                 'groupsList' => $this->getGroupsListIfEnabled(),
                 'onlyOneEntryOptionAvailable' => $this->formManager->isAvailableOnlyOneEntryOption(),
             ]);
-        } else {
-            return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_AUTH_NEEDED'], false));
         }
+
+        return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_AUTH_NEEDED'], false));
     }
 
     public function update($id)
@@ -131,23 +131,9 @@ class FormController extends YesWikiController
                 'groupsList' => $this->getGroupsListIfEnabled(),
                 'onlyOneEntryOptionAvailable' => $this->formManager->isAvailableOnlyOneEntryOption() && $this->formManager->isAvailableOnlyOneEntryMessage(),
             ]);
-        } else {
-            return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_NEED_ADMIN_RIGHTS'], false));
-        }
-    }
-
-    private function formIsValid($form)
-    {
-        $titleFields = array_filter($form['prepared'], function ($field) {
-            return $field->getPropertyName() == 'bf_titre';
-        });
-        if (count($titleFields) == 0) {
-            Flash::error(_t('BAZ_FORM_NEED_TITLE'));
-
-            return false;
         }
 
-        return true;
+        return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_NEED_ADMIN_RIGHTS'], false));
     }
 
     public function delete($id)
@@ -189,9 +175,9 @@ class FormController extends YesWikiController
             $this->formManager->clone($id);
 
             return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_FORM_CLONED'], false));
-        } else {
-            return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_AUTH_NEEDED'], false));
         }
+
+        return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'formulaire', 'msg' => 'BAZ_AUTH_NEEDED'], false));
     }
 
     public function manageAbonnements($id)
@@ -203,7 +189,7 @@ class FormController extends YesWikiController
             $actorHandle = $post->get('actor_handle');
             $recipientUri = str_starts_with($actorHandle, 'http') ? $actorHandle : $this->webfingerService->getRemoteActor($actorHandle);
 
-            $this->activityPubService->postActivity(["type" => "Follow", "object" => $recipientUri, "to" => $recipientUri], $form);
+            $this->activityPubService->postActivity(['type' => 'Follow', 'object' => $recipientUri, 'to' => $recipientUri], $form);
 
             return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'abonnements', 'action' => 'list', 'msg' => 'BAZ_FOLLOWING_ADDED', 'idformulaire' => $id], false));
         }
@@ -226,7 +212,7 @@ class FormController extends YesWikiController
     {
         $form = $this->formManager->getOne($id);
 
-        $this->activityPubService->postActivity(["type" => "Follow", "object" => $actorUri, "to" => $actorUri], $form);
+        $this->activityPubService->postActivity(['type' => 'Follow', 'object' => $actorUri, 'to' => $actorUri], $form);
 
         return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'abonnements', 'action' => 'list', 'msg' => 'BAZ_FOLLOWING_ADDED', 'idformulaire' => $id], false));
     }
@@ -239,14 +225,14 @@ class FormController extends YesWikiController
         $this->activityPubService->removeFollowing($form, $actorUri);
 
         $this->activityPubService->postActivity([
-            "type" => "Undo",
-            "object" => [
-                "type" => "Follow",
-                "actor" => $formActorUri,
-                "object" => $actorUri,
-                "to" => $actorUri,
+            'type' => 'Undo',
+            'object' => [
+                'type' => 'Follow',
+                'actor' => $formActorUri,
+                'object' => $actorUri,
+                'to' => $actorUri,
             ],
-            "to" => $actorUri,
+            'to' => $actorUri,
         ], $form);
 
         return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'abonnements', 'action' => 'list', 'msg' => 'BAZ_FOLLOWING_REMOVED', 'idformulaire' => $id], false));
@@ -275,22 +261,36 @@ class FormController extends YesWikiController
         $this->activityPubService->removeFollower($form, $actorUri);
 
         $this->activityPubService->postActivity([
-            "type" => "Undo",
-            "object" => [
-                "type" => "Accept",
-                "actor" => $formActorUri,
-                "object" => [
-                    "type" => "Follow",
-                    "actor" => $formActorUri,
-                    "object" => $actorUri,
-                    "to" => $actorUri,
+            'type' => 'Undo',
+            'object' => [
+                'type' => 'Accept',
+                'actor' => $formActorUri,
+                'object' => [
+                    'type' => 'Follow',
+                    'actor' => $formActorUri,
+                    'object' => $actorUri,
+                    'to' => $actorUri,
                 ],
-                "to" => $actorUri,
+                'to' => $actorUri,
             ],
-            "to" => $actorUri,
+            'to' => $actorUri,
         ], $form);
 
         return $this->wiki->redirect($this->wiki->href('', '', ['vue' => 'abonnements', 'action' => 'list', 'msg' => 'BAZ_FOLLOWER_REMOVED', 'idformulaire' => $id], false));
+    }
+
+    private function formIsValid($form)
+    {
+        $titleFields = array_filter($form['prepared'], function ($field) {
+            return 'bf_titre' == $field->getPropertyName();
+        });
+        if (0 == count($titleFields)) {
+            Flash::error(_t('BAZ_FORM_NEED_TITLE'));
+
+            return false;
+        }
+
+        return true;
     }
 
     private function getGroupsListIfEnabled(): ?array

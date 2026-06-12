@@ -2,7 +2,6 @@
 
 namespace YesWiki\Core\Service;
 
-use Exception;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\PhpExecutableFinder;
@@ -56,7 +55,7 @@ class ConsoleService
     }
 
     /**
-     * @return array|null ['stdout|stderr' => $output]
+     * @return null|array ['stdout|stderr' => $output]
      */
     public function startConsoleSync(string $command, array $args = [], string $subfolder = '', int $timeoutInSec = 60): ?array
     {
@@ -77,7 +76,7 @@ class ConsoleService
         if (!empty($subfolder) && !is_dir(basename($subfolder))) {
             return null;
         }
-        $folder = getcwd() . (empty($subfolder) ? '' : (DIRECTORY_SEPARATOR . basename($subfolder)));
+        $folder = getcwd().(empty($subfolder) ? '' : (DIRECTORY_SEPARATOR.basename($subfolder)));
         $params = [$command];
         foreach ($args as $arg) {
             $params[] = $arg;
@@ -96,7 +95,7 @@ class ConsoleService
     }
 
     /**
-     * @return array|null ['stdout|stderr' => $output]
+     * @return null|array ['stdout|stderr' => $output]
      */
     public function startRawCommandSync(string $command, array $args = [], string $subfolder = '', int $timeoutInSec = 60): ?array
     {
@@ -113,14 +112,14 @@ class ConsoleService
     {
         $executable = $this->findExecutable($executableName, $extraDirsWhereSearch);
         if (empty($executable)) {
-            throw new Exception("Executable \"$executableName\" not found !");
+            throw new \Exception("Executable \"{$executableName}\" not found !");
         }
 
         return $this->startRawCommandAsync($executable, $args, $subfolder, $newConsole, $timeoutInSec);
     }
 
     /**
-     * @return array|null ['command'=>['stdout|stderr' => $output]]
+     * @return null|array ['command'=>['stdout|stderr' => $output]]
      */
     public function findAndStartExecutableSync(string $executableName, array $args = [], string $subfolder = '', array $extraDirsWhereSearch = [], int $timeoutInSec = 60): ?array
     {
@@ -141,24 +140,23 @@ class ConsoleService
     public function formatHtmlForCLI(string $input): string
     {
         $bufferedOutput = strip_tags($input, '<br><hr><em><strong>');
-        $output = preg_replace(
+
+        return preg_replace(
             ['#<[bh]r ?/?>#Ui', '/<(em|strong)>/Ui', '#</ ?(em|strong)>#Ui'],
             ["\n", "\e[1m", "\e[0m"],
             $bufferedOutput
         );
-
-        return $output;
     }
 
     /**
      * @param array $extraDirs wherer search
      *
-     * @throws Exception
+     * @throws \Exception
      */
     protected function findExecutable(string $name, array $extraDirs = []): string
     {
         if (empty($name)) {
-            throw new Exception("'name' should not be empty !");
+            throw new \Exception("'name' should not be empty !");
         }
 
         return $this->executableFinder->find($name, '', $extraDirs);

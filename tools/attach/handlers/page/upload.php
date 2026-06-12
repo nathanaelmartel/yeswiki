@@ -12,12 +12,12 @@ ob_start();
     if (!class_exists('attach')) {
         include 'tools/attach/libs/attach.lib.php';
     }
-    $att = new attach($this);
-    $att->doUpload();
-    unset($att);
-    ?>
+$att = new attach($this);
+$att->doUpload();
+unset($att);
+?>
 </div>
 <?php
 $output = ob_get_contents();
 ob_end_clean();
-echo $this->Header() . $output . $this->Footer(); ?>
+echo $this->Header().$output.$this->Footer(); ?>

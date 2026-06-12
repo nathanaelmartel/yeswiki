@@ -13,6 +13,8 @@ use YesWiki\Core\Service\TemplateEngine;
 
 /**
  * @deprecated Use EntryManager::create
+ *
+ * @param mixed $data
  */
 function baz_insertion_fiche($data)
 {
@@ -23,6 +25,8 @@ function baz_insertion_fiche($data)
 
 /**
  * @deprecated Use EntryManager::update
+ *
+ * @param mixed $data
  */
 function baz_mise_a_jour_fiche($data)
 {
@@ -31,6 +35,8 @@ function baz_mise_a_jour_fiche($data)
 
 /**
  * @deprecated Use EntryManager::delete
+ *
+ * @param mixed $idFiche
  */
 function baz_suppression($idFiche)
 {
@@ -39,6 +45,8 @@ function baz_suppression($idFiche)
 
 /**
  * @deprecated Use EntryManager::getOne
+ *
+ * @param mixed $idFiche
  */
 function baz_valeurs_fiche($idFiche)
 {
@@ -47,6 +55,17 @@ function baz_valeurs_fiche($idFiche)
 
 /**
  * @deprecated Use SearchManager::search
+ *
+ * @param mixed $tableau_criteres
+ * @param mixed $tri
+ * @param mixed $id
+ * @param mixed $categorie_fiche
+ * @param mixed $statut
+ * @param mixed $personne
+ * @param mixed $nb_limite
+ * @param mixed $motcles
+ * @param mixed $q
+ * @param mixed $facettesearch
  */
 function baz_requete_recherche_fiches(
     $tableau_criteres = '',
@@ -60,7 +79,7 @@ function baz_requete_recherche_fiches(
     $q = '',
     $facettesearch = 'OR'
 ) {
-    if ($id === '') {
+    if ('' === $id) {
         $id = [];
     }
 
@@ -80,6 +99,8 @@ function baz_requete_recherche_fiches(
 
 /**
  * @deprecated Use EntryManager::validate
+ *
+ * @param mixed $data
  */
 function validateForm($data)
 {
@@ -94,6 +115,10 @@ function validateForm($data)
 
 /**
  * @deprecated
+ *
+ * @param mixed $pages
+ * @param mixed $params
+ * @param mixed $formtab
  */
 function searchResultstoArray($pages, $params, $formtab = '')
 {
@@ -110,6 +135,8 @@ function searchResultstoArray($pages, $params, $formtab = '')
 
 /**
  * @deprecated Use EntryManager::formatDataBeforeSave
+ *
+ * @param mixed $data
  */
 function baz_requete_bazar_fiche($data)
 {
@@ -118,6 +145,8 @@ function baz_requete_bazar_fiche($data)
 
 /**
  * @deprecated Use FormManager::getOne, FormManager::getMany or FormManager::getAll
+ *
+ * @param mixed $idformulaire
  */
 function baz_valeurs_formulaire($idformulaire = [])
 {
@@ -125,15 +154,18 @@ function baz_valeurs_formulaire($idformulaire = [])
 
     if (is_array($idformulaire) and count($idformulaire) > 0) {
         return $formManager->getMany($idformulaire);
-    } elseif ($idformulaire != '' and !is_array($idformulaire)) {
-        return $formManager->getOne($idformulaire);
-    } else {
-        return $formManager->getAll();
     }
+    if ('' != $idformulaire and !is_array($idformulaire)) {
+        return $formManager->getOne($idformulaire);
+    }
+
+    return $formManager->getAll();
 }
 
 /**
  * @deprecated Use FormManager::prepareData
+ *
+ * @param mixed $form
  */
 function bazPrepareFormData($form)
 {
@@ -142,6 +174,8 @@ function bazPrepareFormData($form)
 
 /**
  * @deprecated Use FormManager::parseTemplate
+ *
+ * @param mixed $template
  */
 function formulaire_valeurs_template_champs($template)
 {
@@ -158,6 +192,10 @@ function baz_nextId()
 
 /**
  * @deprecated Use BazarField::canEdit
+ *
+ * @param mixed $mode
+ * @param mixed $tableau_template
+ * @param mixed $valeurs_fiche
  */
 function testACLsiSaisir($mode, $tableau_template, $valeurs_fiche)
 {
@@ -169,24 +207,26 @@ function testACLsiSaisir($mode, $tableau_template, $valeurs_fiche)
         $tag = '';
     }
     $mode_creation = '';
-    if ($tag == '') {
+    if ('' == $tag) {
         $mode_creation = 'creation';
     }
 
-    return $mode == 'saisie' && !empty($acl) && !$GLOBALS['wiki']->CheckACL($acl, null, true, $tag, $mode_creation);
+    return 'saisie' == $mode && !empty($acl) && !$GLOBALS['wiki']->CheckACL($acl, null, true, $tag, $mode_creation);
 }
 
 /**
  * @deprecated Use ListManager::getOne or ListManager::getAll
+ *
+ * @param mixed $idliste
  */
 function baz_valeurs_liste($idliste = '')
 {
     $idliste = trim($idliste);
-    if ($idliste != '') {
+    if ('' != $idliste) {
         return $GLOBALS['wiki']->services->get(ListManager::class)->getOne($idliste);
-    } else {
-        return $GLOBALS['wiki']->services->get(ListManager::class)->getAll();
     }
+
+    return $GLOBALS['wiki']->services->get(ListManager::class)->getAll();
 }
 
 /**
@@ -194,15 +234,17 @@ function baz_valeurs_liste($idliste = '')
  */
 function baz_gestion_listes()
 {
-    if ($_GET['action'] == BAZ_ACTION_MODIFIER_LISTE) {
+    if (BAZ_ACTION_MODIFIER_LISTE == $_GET['action']) {
         return $GLOBALS['wiki']->services->get(ListController::class)->update($_GET['idliste']);
-    } elseif ($_GET['action'] == BAZ_ACTION_NOUVELLE_LISTE) {
-        return $GLOBALS['wiki']->services->get(ListController::class)->create();
-    } elseif ($_GET['action'] == BAZ_ACTION_SUPPRIMER_LISTE) {
-        return $GLOBALS['wiki']->services->get(ListController::class)->delete($_GET['idliste']);
-    } else {
-        return $GLOBALS['wiki']->services->get(ListController::class)->displayAll();
     }
+    if (BAZ_ACTION_NOUVELLE_LISTE == $_GET['action']) {
+        return $GLOBALS['wiki']->services->get(ListController::class)->create();
+    }
+    if (BAZ_ACTION_SUPPRIMER_LISTE == $_GET['action']) {
+        return $GLOBALS['wiki']->services->get(ListController::class)->delete($_GET['idliste']);
+    }
+
+    return $GLOBALS['wiki']->services->get(ListController::class)->displayAll();
 }
 
 /**
@@ -210,41 +252,53 @@ function baz_gestion_listes()
  */
 function baz_gestion_formulaire()
 {
-    if ($_GET['action'] === 'modif') {
+    if ('modif' === $_GET['action']) {
         return $GLOBALS['wiki']->services->get(FormController::class)->update($_GET['idformulaire']);
-    } elseif ($_GET['action'] === 'new') {
-        return $GLOBALS['wiki']->services->get(FormController::class)->create();
-    } elseif ($_GET['action'] === 'empty') {
-        return $GLOBALS['wiki']->services->get(FormController::class)->clear($_GET['idformulaire']);
-    } elseif ($_GET['action'] === 'delete') {
-        return $GLOBALS['wiki']->services->get(FormController::class)->delete($_GET['idformulaire']);
-    } else {
-        return $GLOBALS['wiki']->services->get(FormController::class)->displayAll();
     }
+    if ('new' === $_GET['action']) {
+        return $GLOBALS['wiki']->services->get(FormController::class)->create();
+    }
+    if ('empty' === $_GET['action']) {
+        return $GLOBALS['wiki']->services->get(FormController::class)->clear($_GET['idformulaire']);
+    }
+    if ('delete' === $_GET['action']) {
+        return $GLOBALS['wiki']->services->get(FormController::class)->delete($_GET['idformulaire']);
+    }
+
+    return $GLOBALS['wiki']->services->get(FormController::class)->displayAll();
 }
 
 /**
  * @deprecated Use FormController::create or FormController::update
+ *
+ * @param mixed $mode
+ * @param mixed $form
  */
 function baz_formulaire_des_formulaires($mode, $form = '')
 {
-    if ($form !== '') {
+    if ('' !== $form) {
         return $GLOBALS['wiki']->services->get(FormController::class)->update($form['bn_id_nature']);
-    } else {
-        return $GLOBALS['wiki']->services->get(FormController::class)->create();
     }
+
+    return $GLOBALS['wiki']->services->get(FormController::class)->create();
 }
 
 /**
  * @deprecated Use FormController::selectForm, FormController::create or FormController::update
+ *
+ * @param mixed $mode
+ * @param mixed $url
+ * @param mixed $valeurs
  */
 function baz_formulaire($mode, $url = '', $valeurs = '')
 {
     switch ($mode) {
         case BAZ_CHOISIR_TYPE_FICHE:
             return $GLOBALS['wiki']->services->get(EntryController::class)->selectForm();
+
         case BAZ_ACTION_NOUVEAU:
             return $GLOBALS['wiki']->services->get(EntryController::class)->create($_GET['id_typeannonce'] ?? $_GET['id'] ?? $_POST['id_typeannonce']);
+
         case BAZ_ACTION_MODIFIER:
             return $GLOBALS['wiki']->services->get(EntryController::class)->update($_GET['id_fiche'] ?? $_POST['id_typeannonce']);
     }
@@ -252,12 +306,17 @@ function baz_formulaire($mode, $url = '', $valeurs = '')
 
 /**
  * @deprecated Use FormController::create or FormController::update
+ *
+ * @param mixed $mode
+ * @param mixed $url
+ * @param mixed $valeurs
  */
 function baz_afficher_formulaire_fiche($mode, $url = '', $valeurs = '')
 {
     switch ($mode) {
         case BAZ_ACTION_NOUVEAU:
             return $GLOBALS['wiki']->services->get(EntryController::class)->create($_GET['id_typeannonce'] ?? $_GET['id'] ?? $_POST['id_typeannonce']);
+
         case BAZ_ACTION_MODIFIER:
             return $GLOBALS['wiki']->services->get(EntryController::class)->update($_GET['id_fiche'] ?? $_POST['id_typeannonce']);
     }
@@ -265,6 +324,9 @@ function baz_afficher_formulaire_fiche($mode, $url = '', $valeurs = '')
 
 /**
  * @deprecated Use Guard::isAllowed
+ *
+ * @param mixed $demande
+ * @param mixed $id
  */
 function baz_a_le_droit($demande = 'saisie_fiche', $id = '')
 {
@@ -273,6 +335,10 @@ function baz_a_le_droit($demande = 'saisie_fiche', $id = '')
 
 /**
  * @deprecated Use EntryController::view
+ *
+ * @param mixed $danslappli
+ * @param mixed $idfiche
+ * @param mixed $form
  */
 function baz_voir_fiche($danslappli, $idfiche, $form = '')
 {
@@ -282,8 +348,9 @@ function baz_voir_fiche($danslappli, $idfiche, $form = '')
         return $GLOBALS['wiki']->services->get(TemplateEngine::class)
             ->render('@templates/alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('PERFORMABLE_ERROR') . "<br/>" . $GLOBALS['wiki']->dumpThrowable ($t)
-            ]);
+                'message' => _t('PERFORMABLE_ERROR').'<br/>'.$GLOBALS['wiki']->dumpThrowable($t),
+            ])
+        ;
     }
 
     return $output;
@@ -291,6 +358,8 @@ function baz_voir_fiche($danslappli, $idfiche, $form = '')
 
 /**
  * @deprecated Use WikiAction::formatArguments
+ *
+ * @param mixed $wiki
  */
 function getAllParameters($wiki)
 {
@@ -299,6 +368,8 @@ function getAllParameters($wiki)
 
 /**
  * @deprecated Use WikiAction::formatArguments
+ *
+ * @param mixed $wiki
  */
 function getAllParameters_carto($wiki)
 {
@@ -307,6 +378,10 @@ function getAllParameters_carto($wiki)
 
 /**
  * @deprecated Call BazarListeAction
+ *
+ * @param mixed $entries
+ * @param mixed $params
+ * @param mixed $info_nb
  */
 function displayResultList($entries, $params = [], $info_nb = true)
 {
@@ -317,6 +392,9 @@ function displayResultList($entries, $params = [], $info_nb = true)
 
 /**
  * @deprecated Call BazarListeAction
+ *
+ * @param mixed $typeannonce
+ * @param mixed $categorienature
  */
 function baz_rechercher($typeannonce = '', $categorienature = '')
 {

@@ -37,8 +37,6 @@ class TagsManager
                 $this->tripleStore->delete($page, 'http://outils-reseaux.org/_vocabulary/tag', $tab['value'], '', '');
             }
         }
-
-        return;
     }
 
     public function save($page, $liste_tags)
@@ -60,7 +58,7 @@ class TagsManager
         // on ajoute le tag s il n existe pas déjà
         foreach ($tags as $tag) {
             trim($tag);
-            if ($tag != '') {
+            if ('' != $tag) {
                 if (!$this->tripleStore->exist($page, 'http://outils-reseaux.org/_vocabulary/tag', htmlspecialchars($tag), '', '')) {
                     $this->tripleStore->create($page, 'http://outils-reseaux.org/_vocabulary/tag', htmlspecialchars($tag), '', '');
                 }
@@ -77,63 +75,60 @@ class TagsManager
                 $this->tripleStore->delete($page, 'http://outils-reseaux.org/_vocabulary/tag', $tag, '', '');
             }
         }
-
-        return;
     }
 
     public function getAll($page = '')
     {
-        if ($page == '') {
+        if ('' == $page) {
             // TODO use tripleStore service
-            $sql = 'SELECT DISTINCT value FROM' . $this->dbService->prefixTable('triples') . 'WHERE property="http://outils-reseaux.org/_vocabulary/tag"';
+            $sql = 'SELECT DISTINCT value FROM'.$this->dbService->prefixTable('triples').'WHERE property="http://outils-reseaux.org/_vocabulary/tag"';
 
             return $this->dbService->loadAll($sql);
-        } else {
-            return $this->tripleStore->getAll($this->wiki->GetPageTag(), 'http://outils-reseaux.org/_vocabulary/tag', '', '');
         }
+
+        return $this->tripleStore->getAll($this->wiki->GetPageTag(), 'http://outils-reseaux.org/_vocabulary/tag', '', '');
     }
 
     public function getPagesByTags($tags = '', $type = '', $nb = '', $tri = '')
     {
         if (!empty($tags)) {
-            $req = ' AND EXISTS (select resource FROM ' . $this->dbService->prefixTable('triples') . ' WHERE resource=tag';
+            $req = ' AND EXISTS (select resource FROM '.$this->dbService->prefixTable('triples').' WHERE resource=tag';
             $tags = trim($tags);
             $tab_tags = explode(',', $tags);
             $nbdetags = count($tab_tags);
             $tags = implode(',', $tab_tags);
-            $tags = '"' . str_replace(',', '","', _convert($this->dbService->escape(addslashes($tags)), YW_CHARSET, true)) . '"';
-            $req .= ' AND value IN (' . $tags . ') ';
+            $tags = '"'.str_replace(',', '","', _convert($this->dbService->escape(addslashes($tags)), YW_CHARSET, true)).'"';
+            $req .= ' AND value IN ('.$tags.') ';
             $req .= ' AND property="http://outils-reseaux.org/_vocabulary/tag"';
             $req .= ' GROUP BY resource ';
-            $req .= ' HAVING COUNT(resource)=' . $nbdetags . ') ';
+            $req .= ' HAVING COUNT(resource)='.$nbdetags.') ';
 
             // gestion du tri de l'affichage
-            if ($tri == 'alpha') {
+            if ('alpha' == $tri) {
                 $req .= ' ORDER BY tag ASC ';
-            } elseif ($tri == 'date') {
+            } elseif ('date' == $tri) {
                 $req .= ' ORDER BY time DESC ';
             }
 
-            $requete = 'SELECT * FROM ' . $this->dbService->prefixTable('pages') . " WHERE latest = 'Y' and comment_on = '' " . $req;
+            $requete = 'SELECT * FROM '.$this->dbService->prefixTable('pages')." WHERE latest = 'Y' and comment_on = '' ".$req;
 
             return $this->dbService->loadAll($requete);
-        } else {
-            // recuperation des pages wikis
-            $sql = 'SELECT * FROM ' . $this->dbService->prefixTable('pages');
-            if (!empty($taglist)) {
-                $sql .= ' INNER JOIN ' . $this->dbService->prefixTable('triples') . ' as tags ON tag=tags.resource';
-            }
-            $sql .= ' WHERE latest="Y" AND comment_on="" AND tag NOT LIKE "LogDesActionsAdministratives%" ';
-
-            if ($type == 'wiki') {
-                $sql .= ' AND tag NOT IN (SELECT resource FROM ' . $this->dbService->prefixTable('triples') . 'WHERE property="http://outils-reseaux.org/_vocabulary/type") ';
-            } elseif ($type == 'bazar') {
-                $sql .= ' AND tag IN (SELECT resource FROM ' . $this->dbService->prefixTable('triples') . 'WHERE property="http://outils-reseaux.org/_vocabulary/type" AND value="fiche_bazar")';
-            }
-
-            $sql .= ' ORDER BY tag ASC';
-
-            return $this->dbService->loadAll($sql);
         }
+        // recuperation des pages wikis
+        $sql = 'SELECT * FROM '.$this->dbService->prefixTable('pages');
+        if (!empty($taglist)) {
+            $sql .= ' INNER JOIN '.$this->dbService->prefixTable('triples').' as tags ON tag=tags.resource';
+        }
+        $sql .= ' WHERE latest="Y" AND comment_on="" AND tag NOT LIKE "LogDesActionsAdministratives%" ';
+
+        if ('wiki' == $type) {
+            $sql .= ' AND tag NOT IN (SELECT resource FROM '.$this->dbService->prefixTable('triples').'WHERE property="http://outils-reseaux.org/_vocabulary/type") ';
+        } elseif ('bazar' == $type) {
+            $sql .= ' AND tag IN (SELECT resource FROM '.$this->dbService->prefixTable('triples').'WHERE property="http://outils-reseaux.org/_vocabulary/type" AND value="fiche_bazar")';
+        }
+
+        $sql .= ' ORDER BY tag ASC';
+
+        return $this->dbService->loadAll($sql);
     }
 }

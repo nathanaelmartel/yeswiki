@@ -11,11 +11,10 @@ use YesWiki\Wiki;
  */
 class SelectEntryField extends EnumField
 {
+    protected const FIELD_DISPLAY_METHOD = 3;
     public $isDistantJson;
     protected $displayMethod;
     protected $baseUrl;
-
-    protected const FIELD_DISPLAY_METHOD = 3;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -30,6 +29,19 @@ class SelectEntryField extends EnumField
             $this->options = null;
             $this->baseUrl = null;
         }
+    }
+
+    public function getOptions()
+    {
+        return $this->getEntriesOptions();
+    }
+
+    /**
+     * check if the current class is EnumEntry.
+     */
+    public function isEnumEntryField(): bool
+    {
+        return true;
     }
 
     protected function renderInput($entry)
@@ -47,21 +59,21 @@ class SelectEntryField extends EnumField
             return '';
         }
 
-        if ($this->displayMethod === 'fiche') {
+        if ('fiche' === $this->displayMethod) {
             if ($this->isDistantJson) {
                 // TODO display the entry in an iframe ?
                 return '';
-            } else {
-                // TODO add documentation
-                return $this->getService(EntryController::class)->view($value);
             }
+
+            // TODO add documentation
+            return $this->getService(EntryController::class)->view($value);
         }
 
         if ($this->isDistantJson) {
             if (!empty($this->optionsUrls[$value])) {
                 $entryUrl = $this->optionsUrls[$value];
             } else {
-                $entryUrl = $baseUrl . $value;
+                $entryUrl = $baseUrl.$value;
             }
         } else {
             $entryUrl = $this->services->get(Wiki::class)->Href('', $value);
@@ -72,18 +84,5 @@ class SelectEntryField extends EnumField
             'label' => $this->getOptions()[$value],
             'entryUrl' => $entryUrl,
         ]);
-    }
-
-    public function getOptions()
-    {
-        return $this->getEntriesOptions();
-    }
-
-    /**
-     * check if the current class is EnumEntry.
-     */
-    public function isEnumEntryField(): bool
-    {
-        return true;
     }
 }

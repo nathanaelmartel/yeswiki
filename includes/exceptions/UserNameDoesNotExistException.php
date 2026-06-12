@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class UserNameDoesNotExistException extends \Exception
-{
-}
+class UserNameDoesNotExistException extends \Exception {}

@@ -2,27 +2,21 @@
 
 namespace YesWiki\Core\Service;
 
-use DateInterval;
-use DateTimeImmutable;
-use DateTimeZone;
-use Exception;
-
 class DateService
 {
     public function __construct(
-    ) {
-    }
+    ) {}
 
-    public function getDateTimeWithRightTimeZone(string $date): DateTimeImmutable
+    public function getDateTimeWithRightTimeZone(string $date): \DateTimeImmutable
     {
-        $dateObj = new DateTimeImmutable($date);
+        $dateObj = new \DateTimeImmutable($date);
         if (!$dateObj) {
-            throw new Exception("date '$date' can not be converted to DateImmutable !");
+            throw new \Exception("date '{$date}' can not be converted to DateImmutable !");
         }
         // retrieve right TimeZone from parameters
-        $defaultTimeZone = new DateTimeZone(date_default_timezone_get());
+        $defaultTimeZone = new \DateTimeZone(date_default_timezone_get());
         if (!$defaultTimeZone) {
-            $defaultTimeZone = new DateTimeZone('GMT');
+            $defaultTimeZone = new \DateTimeZone('GMT');
         }
         $newDate = $dateObj->setTimeZone($defaultTimeZone);
         $anchor = '+00:00';
@@ -32,12 +26,12 @@ class DateService
             // be careful to offset time because time is changed by setTimeZone
             $offSetAbs = abs($offsetToGmt);
 
-            return ($offsetToGmt == 0)
+            return (0 == $offsetToGmt)
             ? $newDate
             : (
                 $offsetToGmt > 0
-                ? $newDate->sub(new DateInterval("PT{$offSetAbs}S"))
-                : $newDate->add(new DateInterval("PT{$offSetAbs}S"))
+                ? $newDate->sub(new \DateInterval("PT{$offSetAbs}S"))
+                : $newDate->add(new \DateInterval("PT{$offSetAbs}S"))
             );
         }
 

@@ -25,7 +25,7 @@ class TabsController extends YesWikiController
     {
         $output = "\n{$this->closeATab($mode)}\n";
         $params = $this->getParams($mode, false);
-        if ($params['counter'] === false) {
+        if (false === $params['counter']) {
             $output .= $this->closeTabs($mode);
         } else {
             $output .= $this->openATab($mode);
@@ -45,8 +45,8 @@ class TabsController extends YesWikiController
     {
         $showFirst = false;
         $selectedtab = 1;
-        if ($data instanceof TabsField && in_array($mode, ['view', 'form'])) {
-            if ($mode == 'view') {
+        if ($data instanceof Tabsfield && in_array($mode, ['view', 'form'])) {
+            if ('view' == $mode) {
                 $titles = $data->getViewTitles();
                 $this->tabsService->setViewTitles($data);
             } else {
@@ -54,7 +54,7 @@ class TabsController extends YesWikiController
                 $this->tabsService->setFormTitles($data);
             }
             $showFirst = true;
-        } elseif ($mode === 'action' && is_array($data) && !empty($data['titles'])) {
+        } elseif ('action' === $mode && is_array($data) && !empty($data['titles'])) {
             $titles = $data['titles'];
             $this->tabsService->setActionTitles($data);
             $selectedtab = $data['selectedtab'] ?? 1;
@@ -66,7 +66,7 @@ class TabsController extends YesWikiController
             'titles' => $titles,
             'selectedtab' => $selectedtab,
             'slugs' => $this->tabsService->getSlugs($mode),
-        ]) . ($showFirst ? $this->openATab($mode) : '');
+        ]).($showFirst ? $this->openATab($mode) : '');
     }
 
     /**
@@ -78,20 +78,20 @@ class TabsController extends YesWikiController
     {
         $params = $this->getParams($mode, false);
         $output = '';
-        if ($params['isClosed'] === true) {
+        if (true === $params['isClosed']) {
             return '';
         }
         // close not opened tabs
-        if ($params['counter'] !== false) {
-            for ($i = $params['counter'] - 1; $i < count($params['titles']); $i++) {
-                if ($params['tabOpened'] === false) {
-                    $output .= "\n    " . $this->openATab($mode);
+        if (false !== $params['counter']) {
+            for ($i = $params['counter'] - 1; $i < count($params['titles']); ++$i) {
+                if (false === $params['tabOpened']) {
+                    $output .= "\n    ".$this->openATab($mode);
                 }
-                $output .= "\n    " . $this->closeATab($mode);
+                $output .= "\n    ".$this->closeATab($mode);
                 $params = $this->getParams($mode, false);
             }
         }
-        if ($params['counter'] === false && $params['isClosed'] === false) {
+        if (false === $params['counter'] && false === $params['isClosed']) {
             $this->tabsService->registerClose($mode);
             $output .= "\n</div><!-- close all tabs -->";
         }
@@ -107,7 +107,7 @@ class TabsController extends YesWikiController
     public function openATab(string $mode = 'action'): string
     {
         $params = $this->getParams($mode, false);
-        if ($params['counter'] === false || $params['tabOpened'] === true) {
+        if (false === $params['counter'] || true === $params['tabOpened']) {
             return '';
         }
         $this->tabsService->openTab($mode);
@@ -125,7 +125,7 @@ class TabsController extends YesWikiController
     public function closeATab(string $mode = 'action'): string
     {
         $params = $this->getParams($mode, true);
-        if ($params['counter'] === false) {
+        if (false === $params['counter']) {
             return '';
         }
 
@@ -134,10 +134,10 @@ class TabsController extends YesWikiController
 
     protected function getParams(string $mode, bool $increment = true): array
     {
-        return ($mode === 'form')
+        return ('form' === $mode)
             ? $this->tabsService->getFormData($increment)
             : (
-                ($mode === 'view')
+                ('view' === $mode)
                 ? $this->tabsService->getViewData($increment)
                 : $this->tabsService->getActionData($increment)
             );

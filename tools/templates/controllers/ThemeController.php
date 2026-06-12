@@ -6,7 +6,6 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use YesWiki\Core\Service\ThemeManager;
 use YesWiki\Core\YesWikiController;
 use YesWiki\Security\Controller\SecurityController;
-use Zebra_Image;
 
 class ThemeController extends YesWikiController
 {
@@ -42,7 +41,7 @@ class ThemeController extends YesWikiController
             $presets[$key] = $key;
         }
         foreach ($presetsData['customCSSPresets'] as $key => $content) {
-            $presets[ThemeManager::CUSTOM_CSS_PRESETS_PREFIX . $key] = $key;
+            $presets[ThemeManager::CUSTOM_CSS_PRESETS_PREFIX.$key] = $key;
         }
         $dataTemplates = array_map(function ($t) {
             return array_key_exists('presets', $t)
@@ -83,11 +82,11 @@ class ThemeController extends YesWikiController
     public function showFormThemeSelector($mode = 'selector', $formclass = ''): string
     {
         // en mode edition on recupere aussi les images de fond
-        if ($mode == 'edit') {
+        if ('edit' == $mode) {
             $id = 'form_graphical_options';
             $backgrounds = $this->prepareBackgrounds();
-            $bgselector =
-            !empty($backgrounds)
+            $bgselector
+            = !empty($backgrounds)
             ? $this->render('@templates/background-selector.twig', [
                 'backgrounds' => $backgrounds,
                 'favoriteBackgroundImage' => $this->themeManager->getFavoriteBackgroundImage(),
@@ -100,13 +99,13 @@ class ThemeController extends YesWikiController
 
         // page list
         $tablistWikinames = $this->wiki->LoadAll(
-            'SELECT DISTINCT tag FROM ' . $this->wiki->GetConfigValue('table_prefix') . 'pages WHERE latest="Y"'
+            'SELECT DISTINCT tag FROM '.$this->wiki->GetConfigValue('table_prefix').'pages WHERE latest="Y"'
         );
         $listWikinames = [];
         foreach ($tablistWikinames as $tag) {
             $listWikinames[] = $tag['tag'];
         }
-        $listWikinames = '["' . implode('","', $listWikinames) . '"]';
+        $listWikinames = '["'.implode('","', $listWikinames).'"]';
 
         $ts = [
             'TEMPLATE_CHOOSE_FONT',
@@ -127,7 +126,7 @@ class ThemeController extends YesWikiController
             'class' => $formclass,
             'bgselector' => $bgselector,
             'listWikinames' => $listWikinames,
-            'showAdminActions' => ($this->wiki->UserIsAdmin()),
+            'showAdminActions' => $this->wiki->UserIsAdmin(),
             'themeSelectorTranslation' => array_map('_t', $ts),
             'customCSSPresetsPath' => ThemeManager::CUSTOM_CSS_PRESETS_PATH,
             'customCSSPresetsPrefix' => ThemeManager::CUSTOM_CSS_PRESETS_PREFIX,
@@ -135,7 +134,7 @@ class ThemeController extends YesWikiController
             'preferedLanguage' => $GLOBALS['prefered_language'],
             'languagesList' => $GLOBALS['languages_list'],
             'page' => $this->wiki->page,
-            'updateUrl' => ($mode !== 'edit'),
+            'updateUrl' => ('edit' !== $mode),
         ]);
 
         return $selecteur;
@@ -152,25 +151,25 @@ class ThemeController extends YesWikiController
         while ($dir && ($file = readdir($dir)) !== false) {
             $imgextension = strtolower(substr($file, -4, 4));
             // les jpg sont les fonds d'ecrans, ils doivent etre mis en miniature
-            if ($imgextension == '.jpg') {
-                if (!is_file($backgroundsdir . '/thumbs/' . $file)) {
-                    $imgTrans = new Zebra_Image();
+            if ('.jpg' == $imgextension) {
+                if (!is_file($backgroundsdir.'/thumbs/'.$file)) {
+                    $imgTrans = new \Zebra_Image();
                     $imgTrans->auto_handle_exif_orientation = true;
                     $imgTrans->preserve_aspect_ratio = true;
                     $imgTrans->enlarge_smaller_images = true;
                     $imgTrans->preserve_time = true;
                     $imgTrans->handle_exif_orientation_tag = true;
-                    $imgTrans->source_path = $backgroundsdir . '/' . $file;
-                    $imgTrans->target_path = $backgroundsdir . '/thumbs/' . $file;
+                    $imgTrans->source_path = $backgroundsdir.'/'.$file;
+                    $imgTrans->target_path = $backgroundsdir.'/thumbs/'.$file;
                     if ($imgTrans->resize(intval(100), intval(75), ZEBRA_IMAGE_NOT_BOXED, '#FFFFFF')) {
                         $backgrounds[] = $imgTrans->target_path;
                     }
                 } else {
-                    $backgrounds[] = $backgroundsdir . '/thumbs/' . $file;
+                    $backgrounds[] = $backgroundsdir.'/thumbs/'.$file;
                 }
-            } elseif ($imgextension == '.png') {
+            } elseif ('.png' == $imgextension) {
                 // les png sont les images a repeter en mosaique
-                $backgrounds[] = $backgroundsdir . '/' . $file;
+                $backgrounds[] = $backgroundsdir.'/'.$file;
             }
         }
         if ($dir) {

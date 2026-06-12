@@ -17,7 +17,7 @@ class RefactorEnumFieldPropertyName extends YesWikiMigration
             foreach ($form['template'] as $fieldArray) {
                 $field = $fieldFactory->create($fieldArray);
                 if ($field instanceof EnumField) {
-                    $fieldArray[EnumField::FIELD_NAME] = $field->getType() . $field->getLinkedObjectName() . $field->getName();
+                    $fieldArray[EnumField::FIELD_NAME] = $field->getType().$field->getLinkedObjectName().$field->getName();
                 }
                 $newTemplate[] = $fieldArray;
             }

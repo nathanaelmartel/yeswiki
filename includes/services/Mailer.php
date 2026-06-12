@@ -100,25 +100,6 @@ class Mailer
         }
     }
 
-    private function getAdminsList(): array
-    {
-        $adminsAcl = $this->wiki->GetGroupACL(ADMIN_GROUP);
-        $admins = [];
-        foreach (explode("\n", $adminsAcl) as $line) {
-            $line = trim($line);
-            if (!empty($line) &&
-                substr($line, 0, 1) != '#' &&
-                substr($line, 0, 1) != '@') {
-                $adminUser = $this->wiki->LoadUser($line);
-                if (!empty($adminUser)) {
-                    $admins[] = $adminUser;
-                }
-            }
-        }
-
-        return $admins;
-    }
-
     public function sendEmailFromAdmin(string $address, string $subject, string $text, string $html = '')
     {
         include_once 'includes/email.inc.php';
@@ -221,7 +202,26 @@ class Mailer
     // TODO when PR #967 merged, refactor this part with YesWiki::getBaseUrl
     public function getBaseUrl(): string
     {
-        return preg_replace('/(\\/wakka\\.php\\?wiki=|\\/\\?wiki=|\\/\\?|\\/)$/m', '', $this->params->get('base_url'));
+        return preg_replace('/(\/wakka\.php\?wiki=|\/\?wiki=|\/\?|\/)$/m', '', $this->params->get('base_url'));
+    }
+
+    private function getAdminsList(): array
+    {
+        $adminsAcl = $this->wiki->GetGroupACL(ADMIN_GROUP);
+        $admins = [];
+        foreach (explode("\n", $adminsAcl) as $line) {
+            $line = trim($line);
+            if (!empty($line)
+                && '#' != substr($line, 0, 1)
+                && '@' != substr($line, 0, 1)) {
+                $adminUser = $this->wiki->LoadUser($line);
+                if (!empty($adminUser)) {
+                    $admins[] = $adminUser;
+                }
+            }
+        }
+
+        return $admins;
     }
 
     /**
@@ -231,12 +231,12 @@ class Mailer
      */
     private function sanitizeLinksIfNeeded(string $text): string
     {
-        if ($this->params->get('contact_mail_func') === 'smtp'
+        if ('smtp' === $this->params->get('contact_mail_func')
             && $this->params->has('contact_use_long_wiki_urls_in_emails')
             && $this->params->get('contact_use_long_wiki_urls_in_emails')
         ) {
             $baseUrl = $this->getBaseUrl();
-            $text = preg_replace('/(' . preg_quote("href=\"{$baseUrl}/?", '/') . ')(?=' . WN_CAMEL_CASE_EVOLVED_WITH_SLASH . '(?:&|\\"))/u', '$1wiki=', $text);
+            $text = preg_replace('/('.preg_quote("href=\"{$baseUrl}/?", '/').')(?='.WN_CAMEL_CASE_EVOLVED_WITH_SLASH.'(?:&|\"))/u', '$1wiki=', $text);
         }
 
         return $text;

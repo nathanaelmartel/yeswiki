@@ -8,6 +8,8 @@ class __GreetingAction extends YesWikiAction
 {
     /**
      * method to prepare args, optionnal.
+     *
+     * @param mixed $args
      */
     public function formatArguments($args)
     {
@@ -15,12 +17,10 @@ class __GreetingAction extends YesWikiAction
         // else notify the parameter is missing
         return [
             'message' => (!empty($args['message'])
-                ? $args['message'] . ' ' . _t('HELLOWORD_CALLBACK_MSG')
+                ? $args['message'].' '._t('HELLOWORD_CALLBACK_MSG')
                 : _t('HELLOWORD_NO_MSG_PARAM')),
         ];
     }
 
-    public function run()
-    {
-    }
+    public function run() {}
 }

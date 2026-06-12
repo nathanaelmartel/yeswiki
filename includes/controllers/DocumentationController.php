@@ -9,7 +9,7 @@ use YesWiki\Core\YesWikiController;
 class DocumentationController extends YesWikiController
 {
     /**
-     * @Route("/doc",options={"acl":{"public"}})
+     * @Route("/doc", options={"acl": {"public"}})
      */
     public function show()
     {

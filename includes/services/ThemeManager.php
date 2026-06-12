@@ -61,13 +61,6 @@ class ThemeManager implements EventSubscriberInterface
     protected $utils;
     protected $wiki;
 
-    public static function getSubscribedEvents()
-    {
-        return [
-            'page.created' => 'saveMetadataIfNeeded',
-        ];
-    }
-
     public function __construct(
         Wiki $wiki,
         TemplateEngine $twig,
@@ -103,6 +96,13 @@ class ThemeManager implements EventSubscriberInterface
         $this->utils = $utils;
     }
 
+    public static function getSubscribedEvents()
+    {
+        return [
+            'page.created' => 'saveMetadataIfNeeded',
+        ];
+    }
+
     /* function imported from tooles/templates/libs/templates.functions.php
      * to load templates and generate an error if needed
      *
@@ -112,7 +112,7 @@ class ThemeManager implements EventSubscriberInterface
     public function loadTemplates($metadata = []): ?array
     {
         // Premier cas le template par défaut est forcé : on ajoute ce qui est présent dans le fichier de configuration, ou le theme par defaut précisé ci dessus
-        if ($this->params->has('hide_action_template') && $this->params->get('hide_action_template') == '1') {
+        if ($this->params->has('hide_action_template') && '1' == $this->params->get('hide_action_template')) {
             $this->setFavorite('theme', $this->getConfigAsStringOrDefault('favorite_theme', THEME_PAR_DEFAUT));
             $this->setFavorite('style', $this->getConfigAsStringOrDefault('favorite_style', CSS_PAR_DEFAUT));
             $this->setFavorite('squelette', $this->getConfigAsStringOrDefault('favorite_squelette', SQUELETTE_PAR_DEFAUT));
@@ -131,20 +131,22 @@ class ThemeManager implements EventSubscriberInterface
                     if (preg_match('/\//', $path, $matches)) {
                         exit('ERROR: Suspicious path traversal attempt.');
                     }
+
                     switch ($val) {
                         case 'theme':
-                            $customThemePath = basename(realpath(getcwd() . '/custom/themes/' . $requestVal));
-                            $classicThemePath = basename(realpath(getcwd() . '/themes/' . $requestVal));
+                            $customThemePath = basename(realpath(getcwd().'/custom/themes/'.$requestVal));
+                            $classicThemePath = basename(realpath(getcwd().'/themes/'.$requestVal));
                             $requested[$val] = !empty($customThemePath) ? $customThemePath : $classicThemePath;
+
                             break;
 
                         case 'squelette':
-                            $customPath = basename(realpath(getcwd() . '/custom/themes/' . $requested['theme'] . '/squelettes/' . $requestVal));
-                            $classicPath = basename(realpath(getcwd() . '/themes/' . $requested['theme'] . '/squelettes/' . $requestVal));
+                            $customPath = basename(realpath(getcwd().'/custom/themes/'.$requested['theme'].'/squelettes/'.$requestVal));
+                            $classicPath = basename(realpath(getcwd().'/themes/'.$requested['theme'].'/squelettes/'.$requestVal));
                             $requested[$val] = null;
-                            if (!empty($customPath) && file_exists(getcwd() . '/custom/themes/' . $requested['theme'] . '/squelettes/' . $customPath)) {
+                            if (!empty($customPath) && file_exists(getcwd().'/custom/themes/'.$requested['theme'].'/squelettes/'.$customPath)) {
                                 $requested[$val] = $customPath;
-                            } elseif (file_exists(getcwd() . '/themes/' . $requested['theme'] . '/squelettes/' . $classicPath)) {
+                            } elseif (file_exists(getcwd().'/themes/'.$requested['theme'].'/squelettes/'.$classicPath)) {
                                 $requested[$val] = $classicPath;
                             }
                             if (!preg_match('/\.tpl\.html$/i', $requested[$val] ?? '', $matches)) {
@@ -155,12 +157,12 @@ class ThemeManager implements EventSubscriberInterface
 
                         default:
                             // ugly append of "s" to get the path of styleS, presetS and squeletteS
-                            $customPath = basename(realpath(getcwd() . '/custom/themes/' . $requested['theme'] . '/' . $val . 's/' . $requestVal));
-                            $classicPath = basename(realpath(getcwd() . '/themes/' . $requested['theme'] . '/' . $val . 's/' . $requestVal));
+                            $customPath = basename(realpath(getcwd().'/custom/themes/'.$requested['theme'].'/'.$val.'s/'.$requestVal));
+                            $classicPath = basename(realpath(getcwd().'/themes/'.$requested['theme'].'/'.$val.'s/'.$requestVal));
                             $requested[$val] = null;
-                            if (!empty($customPath) && file_exists(getcwd() . '/custom/themes/' . $requested['theme'] . '/' . $val . 's/' . $customPath)) {
+                            if (!empty($customPath) && file_exists(getcwd().'/custom/themes/'.$requested['theme'].'/'.$val.'s/'.$customPath)) {
                                 $requested[$val] = $customPath;
-                            } elseif (file_exists(getcwd() . '/themes/' . $requested['theme'] . '/' . $val . 's/' . $classicPath)) {
+                            } elseif (file_exists(getcwd().'/themes/'.$requested['theme'].'/'.$val.'s/'.$classicPath)) {
                                 $requested[$val] = $classicPath;
                             }
 
@@ -178,14 +180,14 @@ class ThemeManager implements EventSubscriberInterface
                 if (!empty($requested['preset'])
                         && (
                             (
-                                ($isCustom = (substr($requested['preset'], 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX)) == self::CUSTOM_CSS_PRESETS_PREFIX))
-                                && is_file(self::CUSTOM_CSS_PRESETS_PATH . '/' . substr($requested['preset'], strlen(self::CUSTOM_CSS_PRESETS_PREFIX)))
+                                ($isCustom = (self::CUSTOM_CSS_PRESETS_PREFIX == substr($requested['preset'], 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX))))
+                                && is_file(self::CUSTOM_CSS_PRESETS_PATH.'/'.substr($requested['preset'], strlen(self::CUSTOM_CSS_PRESETS_PREFIX)))
                             )
                             || (
                                 !$isCustom
                                 && (
-                                    is_file('custom/themes/' . $requested['theme'] . '/presets/' . $requested['preset'])
-                                    || is_file('themes/' . $requested['theme'] . '/presets/' . $requested['preset'])
+                                    is_file('custom/themes/'.$requested['theme'].'/presets/'.$requested['preset'])
+                                    || is_file('themes/'.$requested['theme'].'/presets/'.$requested['preset'])
                                 )
                             )
                         )
@@ -194,14 +196,14 @@ class ThemeManager implements EventSubscriberInterface
                 }
 
                 $bgimg = $request->get('bgimg');
-                if (!empty($bgimg) && is_file('files/backgrounds/' . $bgimg)) {
+                if (!empty($bgimg) && is_file('files/backgrounds/'.$bgimg)) {
                     $this->setFavorite('background_image', $bgimg);
                 } else {
                     $this->setFavorite('background_image', BACKGROUND_IMAGE_PAR_DEFAUT);
                 }
             } else {
                 // si les metas sont présentes on les utilise
-                if (isset($metadata['theme']) && isset($metadata['style']) && isset($metadata['squelette'])) {
+                if (isset($metadata['theme'], $metadata['style'], $metadata['squelette'])) {
                     $this->setFavorite('theme', $metadata['theme']);
                     $this->setFavorite('style', $metadata['style']);
                     $this->setFavorite('squelette', $metadata['squelette']);
@@ -235,21 +237,21 @@ class ThemeManager implements EventSubscriberInterface
 
         // Test existence du template, on utilise le template par defaut sinon==============================
         if (
-            (!file_exists('custom/themes/' . $this->favorites['theme'] . '/squelettes/' . $this->favorites['squelette'])
-                and !file_exists('themes/' . $this->favorites['theme'] . '/squelettes/' . $this->favorites['squelette']))
-            || (!file_exists('custom/themes/' . $this->favorites['theme'] . '/styles/' . $this->favorites['style'])
-                && !file_exists('themes/' . $this->favorites['theme'] . '/styles/' . $this->favorites['style']))
+            (!file_exists('custom/themes/'.$this->favorites['theme'].'/squelettes/'.$this->favorites['squelette'])
+                and !file_exists('themes/'.$this->favorites['theme'].'/squelettes/'.$this->favorites['squelette']))
+            || (!file_exists('custom/themes/'.$this->favorites['theme'].'/styles/'.$this->favorites['style'])
+                && !file_exists('themes/'.$this->favorites['theme'].'/styles/'.$this->favorites['style']))
         ) {
             if (
-                $this->favorites['theme'] != THEME_PAR_DEFAUT
+                THEME_PAR_DEFAUT != $this->favorites['theme']
                 || (
-                    $this->favorites['theme'] == THEME_PAR_DEFAUT && (!file_exists('themes/' . THEME_PAR_DEFAUT . '/squelettes/' . $this->favorites['squelette'])
-                        or !file_exists('themes/' . THEME_PAR_DEFAUT . '/styles/' . $this->favorites['style']))
+                    THEME_PAR_DEFAUT == $this->favorites['theme'] && (!file_exists('themes/'.THEME_PAR_DEFAUT.'/squelettes/'.$this->favorites['squelette'])
+                        or !file_exists('themes/'.THEME_PAR_DEFAUT.'/styles/'.$this->favorites['style']))
                 )
             ) {
                 if (
-                    file_exists('themes/' . THEME_PAR_DEFAUT . '/squelettes/' . SQUELETTE_PAR_DEFAUT)
-                    && file_exists('themes/' . THEME_PAR_DEFAUT . '/styles/' . CSS_PAR_DEFAUT)
+                    file_exists('themes/'.THEME_PAR_DEFAUT.'/squelettes/'.SQUELETTE_PAR_DEFAUT)
+                    && file_exists('themes/'.THEME_PAR_DEFAUT.'/styles/'.CSS_PAR_DEFAUT)
                 ) {
                     $GLOBALS['template-error']['type'] = 'theme-not-found';
                     $GLOBALS['template-error']['theme'] = $this->favorites['theme'];
@@ -268,9 +270,9 @@ class ThemeManager implements EventSubscriberInterface
         // test l'existence du preset
         if (!empty($this->favorites['preset'])
                 && (
-                    ($isCutom = substr($this->favorites['preset'], 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX)) == self::CUSTOM_CSS_PRESETS_PREFIX)
-                    && !file_exists(self::CUSTOM_CSS_PRESETS_PATH . DIRECTORY_SEPARATOR
-                        . substr($this->favorites['preset'], strlen(self::CUSTOM_CSS_PRESETS_PREFIX)))
+                    ($isCutom = self::CUSTOM_CSS_PRESETS_PREFIX == substr($this->favorites['preset'], 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX)))
+                    && !file_exists(self::CUSTOM_CSS_PRESETS_PATH.DIRECTORY_SEPARATOR
+                        .substr($this->favorites['preset'], strlen(self::CUSTOM_CSS_PRESETS_PREFIX)))
                 )
         ) {
             unset($this->favorites['preset']);
@@ -312,33 +314,33 @@ class ThemeManager implements EventSubscriberInterface
         $this->squelette = $squelette;
 
         // test folder
-        $themePath = 'themes/' . $this->theme;
-        $filePath = $themePath . '/squelettes/' . $this->squelette;
+        $themePath = 'themes/'.$this->theme;
+        $filePath = $themePath.'/squelettes/'.$this->squelette;
 
-        if (!((!$this->useFallbackTheme && file_exists('custom/' . $themePath)) || file_exists($themePath))) {
+        if (!((!$this->useFallbackTheme && file_exists('custom/'.$themePath)) || file_exists($themePath))) {
             $this->errorMessage = $this->twig->render('@templates\alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('THEME_MANAGER_THEME_FOLDER') . $this->theme . _t('THEME_MANAGER_NOT_FOUND'),
+                'message' => _t('THEME_MANAGER_THEME_FOLDER').$this->theme._t('THEME_MANAGER_NOT_FOUND'),
             ]);
 
             return false;
         }
 
-        if (!((!$this->useFallbackTheme && file_exists('custom/' . $filePath)) || file_exists($filePath))) {
+        if (!((!$this->useFallbackTheme && file_exists('custom/'.$filePath)) || file_exists($filePath))) {
             $this->errorMessage = $this->twig->render('@templates\alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('THEME_MANAGER_SQUELETTE_FILE') . $this->squelette . _t('THEME_MANAGER_NOT_FOUND'),
+                'message' => _t('THEME_MANAGER_SQUELETTE_FILE').$this->squelette._t('THEME_MANAGER_NOT_FOUND'),
             ]);
 
             return false;
         }
-        $filePath = (!$this->useFallbackTheme && file_exists('custom/' . $filePath)) ? 'custom/' . $filePath : $filePath;
+        $filePath = (!$this->useFallbackTheme && file_exists('custom/'.$filePath)) ? 'custom/'.$filePath : $filePath;
 
         $fileContent = file_get_contents($filePath);
-        if ($fileContent === false) {
+        if (false === $fileContent) {
             $this->errorMessage = $this->twig->render('@templates\alert-message.twig', [
                 'type' => 'danger',
-                'message' => _t('THEME_MANAGER_ERROR_GETTING_FILE') . $filePath,
+                'message' => _t('THEME_MANAGER_ERROR_GETTING_FILE').$filePath,
             ]);
 
             return false;
@@ -350,7 +352,7 @@ class ThemeManager implements EventSubscriberInterface
         $templateCut = explode('{WIKINI_PAGE}', $fileContent);
         $this->templateHeader = $templateCut[0] ?? '';
         // ADD flash message just before page content
-        $this->templateHeader .= \Tamtamchik\SimpleFlash\Flash::display();
+        $this->templateHeader .= Flash::display();
         $this->templateFooter = (count($templateCut) > 0) ? $templateCut[1] : '';
 
         return true;
@@ -365,18 +367,18 @@ class ThemeManager implements EventSubscriberInterface
     {
         if ($this->fileLoaded || $this->loadTheme()) {
             return $this->renderActions($this->templateHeader);
-        } else {
-            return '';
         }
+
+        return '';
     }
 
     public function renderFooter(): string
     {
         if ($this->fileLoaded || $this->loadTheme()) {
             return $this->renderActions($this->templateFooter);
-        } else {
-            return '';
         }
+
+        return '';
     }
 
     public function getTemplates(): array
@@ -409,44 +411,9 @@ class ThemeManager implements EventSubscriberInterface
         return $this->favorites['background_image'];
     }
 
-    protected function setFavorite(string $key, $newVal)
-    {
-        $this->favorites[$key] = (empty($newVal) || !is_string($newVal))
-            ? ''
-            : $newVal;
-    }
-
     public function getUseFallbackTheme(): bool
     {
         return $this->useFallbackTheme;
-    }
-
-    protected function getConfigAsStringOrDefault(string $key, string $default): string
-    {
-        return ($this->params->has($key) && !empty($this->params->get($key))
-            && is_string($this->params->get($key)))
-            ? $this->params->get($key)
-            : $default;
-    }
-
-    private function renderActions(string $text): ?string
-    {
-        if ($act = preg_match_all('/(\\{\\{)(.*?)(\\}\\})/is', $text, $matches)) {
-            $i = 0;
-            $j = 0;
-            foreach ($matches as $valeur) {
-                foreach ($valeur as $val) {
-                    if (isset($matches[2][$j]) && $matches[2][$j] != '') {
-                        $action = $matches[2][$j];
-                        $text = str_replace('{{' . $action . '}}', $this->performer->run('action', 'formatter', ['text' => '{{' . $action . '}}']), $text);
-                    }
-                    $j++;
-                }
-                $i++;
-            }
-        }
-
-        return $text;
     }
 
     /**
@@ -458,9 +425,9 @@ class ThemeManager implements EventSubscriberInterface
     {
         $path = self::CUSTOM_CSS_PRESETS_PATH;
         $tab = [];
-        $cssFiles = glob($path . DIRECTORY_SEPARATOR . '*.css');
+        $cssFiles = glob($path.DIRECTORY_SEPARATOR.'*.css');
         foreach ($cssFiles as $filepath) {
-            $filename = pathinfo($filepath)['filename'] . '.css';
+            $filename = pathinfo($filepath)['filename'].'.css';
             $css = file_get_contents($filepath);
             if (!empty($css)) {
                 $tab[$filename] = $css;
@@ -484,15 +451,15 @@ class ThemeManager implements EventSubscriberInterface
         if (!$this->wiki->UserIsAdmin()) {
             return ['status' => false, 'message' => 'User is not admin'];
         }
-        if (!file_exists($path . DIRECTORY_SEPARATOR . $filename)) {
-            return ['status' => false, 'message' => 'File ' . $filename . ' is not existing !'];
+        if (!file_exists($path.DIRECTORY_SEPARATOR.$filename)) {
+            return ['status' => false, 'message' => 'File '.$filename.' is not existing !'];
         }
-        unlink($path . DIRECTORY_SEPARATOR . $filename);
-        if (!file_exists($path . DIRECTORY_SEPARATOR . $filename)) {
+        unlink($path.DIRECTORY_SEPARATOR.$filename);
+        if (!file_exists($path.DIRECTORY_SEPARATOR.$filename)) {
             return ['status' => true, 'message' => ''];
         }
 
-        return ['status' => false, 'message' => 'Not possible to delete ' . $filename];
+        return ['status' => false, 'message' => 'Not possible to delete '.$filename];
     }
 
     /**
@@ -521,26 +488,26 @@ class ThemeManager implements EventSubscriberInterface
 
         $fileContent = ":root {\r\n";
         foreach (self::POST_DATA_KEYS as $key) {
-            $fileContent .= '  --' . $key . ': ' . $post[$key] . ";\r\n";
+            $fileContent .= '  --'.$key.': '.$post[$key].";\r\n";
         }
         $fileContent .= "}\r\n";
 
-        if (file_exists($path . DIRECTORY_SEPARATOR . $filename) && !$this->wiki->UserIsAdmin()) {
+        if (file_exists($path.DIRECTORY_SEPARATOR.$filename) && !$this->wiki->UserIsAdmin()) {
             return ['status' => false, 'message' => 'File already existing but user not admin', 'errorCode' => 2];
         }
         // check if folder exists
         if (!is_dir($path)) {
             if (!mkdir($path)) {
-                return ['status' => false, 'message' => $path . ' not existing and not possible to create it', 'errorCode' => 3];
+                return ['status' => false, 'message' => $path.' not existing and not possible to create it', 'errorCode' => 3];
             }
         }
         // create or update
-        file_put_contents($path . DIRECTORY_SEPARATOR . $filename, $fileContent);
-        $data = (file_exists($path . DIRECTORY_SEPARATOR . $filename))
-            ? ['status' => true, 'message' => $filename . ' created/updated', 'errorCode' => null]
-            : ['status' => false, 'message' => $filename . ' not created', 'errorCode' => 4];
+        file_put_contents($path.DIRECTORY_SEPARATOR.$filename, $fileContent);
+        $data = (file_exists($path.DIRECTORY_SEPARATOR.$filename))
+            ? ['status' => true, 'message' => $filename.' created/updated', 'errorCode' => null]
+            : ['status' => false, 'message' => $filename.' not created', 'errorCode' => 4];
 
-        $filePath = self::CUSTOM_CSS_PRESETS_PATH . DIRECTORY_SEPARATOR . $filename;
+        $filePath = self::CUSTOM_CSS_PRESETS_PATH.DIRECTORY_SEPARATOR.$filename;
         if ($data['status'] && file_exists($filePath)) {
             // append font data
 
@@ -551,30 +518,16 @@ class ThemeManager implements EventSubscriberInterface
             if ($mainTitleFontFamily != $mainTextFontFamily) {
                 $newFontString = empty($mainTitleFontFamily) ? '' : $this->installAndGetCSSForFont($mainTitleFontFamily);
                 if (!empty($newFontString)) {
-                    $fontString .= "\n$newFontString";
+                    $fontString .= "\n{$newFontString}";
                 }
             }
 
             if (!empty($fontString)) {
-                file_put_contents($filePath, "\n$fontString\n", FILE_APPEND);
+                file_put_contents($filePath, "\n{$fontString}\n", FILE_APPEND);
             }
         }
 
         return $data;
-    }
-
-    /**
-     * check post to add custom CSS Preset.
-     */
-    private function checkPOSTToAddCustomCSSPreset(array $post): bool
-    {
-        foreach (self::POST_DATA_KEYS as $key) {
-            if (empty($post[$key])) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -604,7 +557,7 @@ class ThemeManager implements EventSubscriberInterface
         $favoritePreset = $this->getFavoritePreset();
         if (!empty($favoritePreset)) {
             $presetName = $favoritePreset;
-            if (substr($presetName, 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX)) == self::CUSTOM_CSS_PRESETS_PREFIX) {
+            if (self::CUSTOM_CSS_PRESETS_PREFIX == substr($presetName, 0, strlen(self::CUSTOM_CSS_PRESETS_PREFIX))) {
                 $presetName = substr($presetName, strlen(self::CUSTOM_CSS_PRESETS_PREFIX));
                 if (in_array($presetName, array_keys($customCSSPresets))) {
                     $currentCSSValues = $this->extractPropValuesFromPreset($customCSSPresets[$presetName]);
@@ -630,78 +583,58 @@ class ThemeManager implements EventSubscriberInterface
     }
 
     /**
-     * extract data from preset.
-     *
-     * @return string data to put in html
+     * save metadata for new page if needed.
      */
-    private function extractDataFromPreset(string $presetContent): string
+    public function saveMetadataIfNeeded(Event $event)
     {
-        $data = '';
-        $values = $this->extractPropValuesFromPreset($presetContent);
-        foreach ($values as $prop => $value) {
-            $data .= ' data-' . $prop . '="' . str_replace('"', '\'', $value) . '"';
-        }
-        if (
-            !empty($data)
-            && !empty($values['primary-color'])
-            && !empty($values['main-text-fontsize']
-            && !empty($values['main-text-fontfamily']))
-        ) {
-            $data .= ' style="';
-            $data .= 'color:' . $values['primary-color'] . ';';
-            $data .= 'font-family:' . str_replace('"', '\'', $values['main-text-fontfamily']) . ';';
-            $data .= 'font-size:' . $values['main-text-fontsize'] . ';';
-            $data .= '"';
-        }
+        $data = $event->getData();
+        $request = $this->wiki->request;
+        $post = $request->request;
+        $query = $request->query;
+        if (!empty($data['data']['tag'])
+            && !empty($post->get('newpage'))
+            && $post->has('theme')) {
+            $tag = $data['data']['tag'];
+            $previousMetadata = $this->pageManager->getMetadata($tag);
 
-        return $data;
-    }
+            $wikiParam = $query->get('wiki');
+            $tagIsCurrentPage = (
+                !empty($wikiParam)
+                && is_string($wikiParam)
+                && explode('/', $wikiParam, 2)[0] === $tag
+            ) || explode('/', array_key_first($query->all()), 2)[0] === $tag;
 
-    /**
-     * extract properties values from preset contents.
-     */
-    private function extractPropValuesFromPreset(string $presetContent): array
-    {
-        // extract root part
-        $matches = [];
-        $results = [];
-        $error = false;
-        if (preg_match('/^:root\s*{((?:.|\n)*)}\s*[^{]*/', $presetContent, $matches)) {
-            $vars = $matches[1];
-
-            if (preg_match_all('/\s*--([0-9a-z\-]*):\s*([^;]*);\s*/', $vars, $matches)) {
-                foreach ($matches[0] as $index => $val) {
-                    $newmatch = [];
-                    if (preg_match('/[a-z\-]*color[a-z0-9\-]*/', $matches[1][$index], $newmatch)) {
-                        if (!preg_match('/^#[A-Fa-f0-9]*$/', $matches[2][$index], $newmatch)) {
-                            $error = true;
-                        }
+            if (empty($previousMetadata) // only if no previous metadata
+                && $tagIsCurrentPage) {
+                $metadata = [
+                    'theme' => $post->get('theme'),
+                    'style' => $post->get('style') ?? CSS_PAR_DEFAUT,
+                    'squelette' => $post->get('squelette') ?? SQUELETTE_PAR_DEFAUT,
+                    'bgimg' => $post->get('bgimg') ?? null,
+                ];
+                foreach (ThemeManager::SPECIAL_METADATA as $metadataName) {
+                    if (!empty($post->get($metadataName))) {
+                        $metadata[$metadataName] = $post->get($metadataName);
                     }
-                    $results[$matches[1][$index]] = $matches[2][$index];
                 }
+                $this->pageManager->setMetadata($tag, $metadata);
             }
         }
-
-        return $error ? [] : $results;
     }
 
-    /**
-     * install font and get css.
-     *
-     * @return string $css
-     */
-    private function installAndGetCSSForFont(string $fontFamily): string
+    protected function setFavorite(string $key, $newVal)
     {
-        $css = '';
-        $fontFamily = $this->cleanFont($fontFamily);
-        if (!empty($fontFamily)) {
-            $newCss = $this->getFontFiles($fontFamily);
-            if (!empty($newCss)) {
-                $css .= "\n$newCss";
-            }
-        }
+        $this->favorites[$key] = (empty($newVal) || !is_string($newVal))
+            ? ''
+            : $newVal;
+    }
 
-        return $css;
+    protected function getConfigAsStringOrDefault(string $key, string $default): string
+    {
+        return ($this->params->has($key) && !empty($this->params->get($key))
+            && is_string($this->params->get($key)))
+            ? $this->params->get($key)
+            : $default;
     }
 
     protected function getFontFiles(string $fontFamily): string
@@ -726,7 +659,7 @@ class ThemeManager implements EventSubscriberInterface
     protected function getFontDescription(string $fontFamily, string $userAgent): array
     {
         $data = [];
-        $ch = curl_init("https://fonts.googleapis.com/css?family=$fontFamily&subset=latin-ext");
+        $ch = curl_init("https://fonts.googleapis.com/css?family={$fontFamily}&subset=latin-ext");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
@@ -734,7 +667,7 @@ class ThemeManager implements EventSubscriberInterface
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         $headers = ['Accept: text/css,*/*;q=0.1'];
         if (!empty(self::USER_AGENTS[$userAgent])) {
-            $headers[] = 'User-Agent: ' . self::USER_AGENTS[$userAgent];
+            $headers[] = 'User-Agent: '.self::USER_AGENTS[$userAgent];
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         $result = curl_exec($ch);
@@ -781,8 +714,8 @@ class ThemeManager implements EventSubscriberInterface
 
     protected function parseFontFace(string $css, string $subset, array &$data)
     {
-        $formattedSubSet = empty($subset) ? '' : "\/\*\s*" . preg_quote($subset, '/') . "\s*\*\/\s*";
-        if (preg_match("/$formattedSubSet@font-face \{([^}]*)src: url\((https:\/\/fonts\.gstatic\.com\/[A-Za-z0-9_\-.\/]+)\)(?: format\('([A-Za-z0-9 \-_]+)'\))?([^}]*)\}/", $css, $match)) {
+        $formattedSubSet = empty($subset) ? '' : '\\/\\*\\s*'.preg_quote($subset, '/').'\\s*\\*\\/\\s*';
+        if (preg_match("/{$formattedSubSet}@font-face \\{([^}]*)src: url\\((https:\\/\\/fonts\\.gstatic\\.com\\/[A-Za-z0-9_\\-.\\/]+)\\)(?: format\\('([A-Za-z0-9 \\-_]+)'\\))?([^}]*)\\}/", $css, $match)) {
             $format = empty($match[3]) ? 'eot' : $match[3];
             $data[$subset] = [
                 'url' => [
@@ -798,7 +731,7 @@ class ThemeManager implements EventSubscriberInterface
             if (preg_match('/font-weight: ([A-Za-z0-9 ]+);/', $match[1], $weightMatch)) {
                 $data[$subset]['weight'] = $weightMatch[1];
             }
-            if (preg_match("/unicode-range: ([A-Za-z0-9 \+,\-]+);/", $match[4], $rangeMatch)) {
+            if (preg_match('/unicode-range: ([A-Za-z0-9 \\+,\\-]+);/', $match[4], $rangeMatch)) {
                 $data[$subset]['unicode-range'] = $rangeMatch[1];
             }
         }
@@ -853,7 +786,7 @@ class ThemeManager implements EventSubscriberInterface
                             'eot',
                             $eotUrl
                         );
-                        $eotUrl = "\n  src: url('$eotUrl');";
+                        $eotUrl = "\n  src: url('{$eotUrl}');";
                     }
                     foreach (['woff2', 'woff', 'truetype'] as $name) {
                         $varName = "{$name}Url";
@@ -867,32 +800,32 @@ class ThemeManager implements EventSubscriberInterface
                                 $name,
                                 $var
                             );
-                            ${$varName} = ",\n        url('$var') format('$name')";
+                            ${$varName} = ",\n        url('{$var}') format('{$name}')";
                         }
                     }
                     $unicodeRange = $val['unicode-range'] ?? '';
                     if (!empty($unicodeRange)) {
-                        $unicodeRange = "\n  unicode-range: $unicodeRange;";
+                        $unicodeRange = "\n  unicode-range: {$unicodeRange};";
                     }
 
                     if (!empty($charset)) {
-                        $css .=
-                        <<<CSS
+                        $css
+                        .= <<<CSS
 
-                        /* $charset */
+                            /* {$charset} */
 
+                            CSS;
+                    }
+
+                    $css
+                    .= <<<CSS
+                        @font-face {
+                          font-family: '{$raw['family']}';
+                          font-style: {$raw['style']};
+                          font-weight: {$raw['weight']};{$eotUrl}
+                          src: local(''){$woff2Url}{$woffUrl}{$truetypeUrl};{$unicodeRange}
+                        }
                         CSS;
-                    }
-
-                    $css .=
-                    <<<CSS
-                    @font-face {
-                      font-family: '{$raw['family']}';
-                      font-style: {$raw['style']};
-                      font-weight: {$raw['weight']};$eotUrl
-                      src: local('')$woff2Url$woffUrl$truetypeUrl;$unicodeRange
-                    }
-                    CSS;
                 }
             }
         }
@@ -903,29 +836,37 @@ class ThemeManager implements EventSubscriberInterface
     protected function importFontFile(string $family, string $style, string $weight, string $charset, string $format, string $url): string
     {
         $folderSystemName = sanitizeFilename($family);
-        if (!is_dir(self::CUSTOM_FONT_PATH . "/$folderSystemName")) {
-            mkdir(self::CUSTOM_FONT_PATH . "/$folderSystemName", 0777, true);
+        if (!is_dir(self::CUSTOM_FONT_PATH."/{$folderSystemName}")) {
+            mkdir(self::CUSTOM_FONT_PATH."/{$folderSystemName}", 0o777, true);
         }
 
         switch ($format) {
             case 'eot':
                 $ext = '.eot';
+
                 break;
+
             case 'woff2':
                 $ext = '.woff2';
+
                 break;
+
             case 'woff':
                 $ext = '.woff';
+
                 break;
+
             case 'truetype':
                 $ext = '.ttf';
+
                 break;
 
             default:
                 $ext = '';
+
                 break;
         }
-        $fileName = sanitizeFilename("$family-$style-$weight-$charset") . $ext;
+        $fileName = sanitizeFilename("{$family}-{$style}-{$weight}-{$charset}").$ext;
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -937,52 +878,121 @@ class ThemeManager implements EventSubscriberInterface
         $errorNb = curl_errno($ch);
         curl_close($ch);
         if (!$errorNb && !empty($result)) {
-            if (file_put_contents(self::CUSTOM_FONT_PATH . "/$folderSystemName/$fileName", $result)
-                && file_exists(self::CUSTOM_FONT_PATH . "/$folderSystemName/$fileName")) {
-                return '../../' . self::CUSTOM_FONT_PATH . "/$folderSystemName/$fileName";
+            if (file_put_contents(self::CUSTOM_FONT_PATH."/{$folderSystemName}/{$fileName}", $result)
+                && file_exists(self::CUSTOM_FONT_PATH."/{$folderSystemName}/{$fileName}")) {
+                return '../../'.self::CUSTOM_FONT_PATH."/{$folderSystemName}/{$fileName}";
             }
         }
 
         return $url;
     }
 
-    /**
-     * save metadata for new page if needed.
-     */
-    public function saveMetadataIfNeeded(Event $event)
+    private function renderActions(string $text): ?string
     {
-        $data = $event->getData();
-        $request = $this->wiki->request;
-        $post = $request->request;
-        $query = $request->query;
-        if (!empty($data['data']['tag'])
-            && !empty($post->get('newpage'))
-            && $post->has('theme')) {
-            $tag = $data['data']['tag'];
-            $previousMetadata = $this->pageManager->getMetadata($tag);
-
-            $wikiParam = $query->get('wiki');
-            $tagIsCurrentPage = (
-                !empty($wikiParam)
-                && is_string($wikiParam)
-                && explode('/', $wikiParam, 2)[0] === $tag
-            ) || explode('/', array_key_first($query->all()), 2)[0] === $tag;
-
-            if (empty($previousMetadata) // only if no previous metadata
-                && $tagIsCurrentPage) {
-                $metadata = [
-                    'theme' => $post->get('theme'),
-                    'style' => $post->get('style') ?? CSS_PAR_DEFAUT,
-                    'squelette' => $post->get('squelette') ?? SQUELETTE_PAR_DEFAUT,
-                    'bgimg' => $post->get('bgimg') ?? null,
-                ];
-                foreach (ThemeManager::SPECIAL_METADATA as $metadataName) {
-                    if (!empty($post->get($metadataName))) {
-                        $metadata[$metadataName] = $post->get($metadataName);
+        if ($act = preg_match_all('/(\{\{)(.*?)(\}\})/is', $text, $matches)) {
+            $i = 0;
+            $j = 0;
+            foreach ($matches as $valeur) {
+                foreach ($valeur as $val) {
+                    if (isset($matches[2][$j]) && '' != $matches[2][$j]) {
+                        $action = $matches[2][$j];
+                        $text = str_replace('{{'.$action.'}}', $this->performer->run('action', 'formatter', ['text' => '{{'.$action.'}}']), $text);
                     }
+                    ++$j;
                 }
-                $this->pageManager->setMetadata($tag, $metadata);
+                ++$i;
             }
         }
+
+        return $text;
+    }
+
+    /**
+     * check post to add custom CSS Preset.
+     */
+    private function checkPOSTToAddCustomCSSPreset(array $post): bool
+    {
+        foreach (self::POST_DATA_KEYS as $key) {
+            if (empty($post[$key])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * extract data from preset.
+     *
+     * @return string data to put in html
+     */
+    private function extractDataFromPreset(string $presetContent): string
+    {
+        $data = '';
+        $values = $this->extractPropValuesFromPreset($presetContent);
+        foreach ($values as $prop => $value) {
+            $data .= ' data-'.$prop.'="'.str_replace('"', '\'', $value).'"';
+        }
+        if (
+            !empty($data)
+            && !empty($values['primary-color'])
+            && !empty($values['main-text-fontsize']
+            && !empty($values['main-text-fontfamily']))
+        ) {
+            $data .= ' style="';
+            $data .= 'color:'.$values['primary-color'].';';
+            $data .= 'font-family:'.str_replace('"', '\'', $values['main-text-fontfamily']).';';
+            $data .= 'font-size:'.$values['main-text-fontsize'].';';
+            $data .= '"';
+        }
+
+        return $data;
+    }
+
+    /**
+     * extract properties values from preset contents.
+     */
+    private function extractPropValuesFromPreset(string $presetContent): array
+    {
+        // extract root part
+        $matches = [];
+        $results = [];
+        $error = false;
+        if (preg_match('/^:root\s*{((?:.|\n)*)}\s*[^{]*/', $presetContent, $matches)) {
+            $vars = $matches[1];
+
+            if (preg_match_all('/\s*--([0-9a-z\-]*):\s*([^;]*);\s*/', $vars, $matches)) {
+                foreach ($matches[0] as $index => $val) {
+                    $newmatch = [];
+                    if (preg_match('/[a-z\-]*color[a-z0-9\-]*/', $matches[1][$index], $newmatch)) {
+                        if (!preg_match('/^#[A-Fa-f0-9]*$/', $matches[2][$index], $newmatch)) {
+                            $error = true;
+                        }
+                    }
+                    $results[$matches[1][$index]] = $matches[2][$index];
+                }
+            }
+        }
+
+        return $error ? [] : $results;
+    }
+
+    /**
+     * install font and get css.
+     *
+     * @return string $css
+     */
+    private function installAndGetCSSForFont(string $fontFamily): string
+    {
+        $css = '';
+        $fontFamily = $this->cleanFont($fontFamily);
+        if (!empty($fontFamily)) {
+            $newCss = $this->getFontFiles($fontFamily);
+            if (!empty($newCss)) {
+                $css .= "\n{$newCss}";
+            }
+        }
+
+        return $css;
     }
 }

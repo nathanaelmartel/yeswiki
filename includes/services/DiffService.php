@@ -59,33 +59,33 @@ class DiffService
         return $firstHtmlDiff->build();
     }
 
-    private function formatPageWithOnlySimpleActions($page)
-    {
-        $actionsToKeep = [
-            'grid', 'section', 'col', 'button', 'configuration', 'end', 'label', 'nav', 'panel',
-            'progressbar', 'accordion', 'currentpage', 'titrepage', 'valeur', 'lang', 'tocjs',
-        ];
-        $regexpr = "/(\{\{";
-        foreach ($actionsToKeep as $action) {
-            $regexpr .= "(?!$action)";
-        }
-        $regexpr .= ".*?\}\})/s";
-        // move all complex actions (bazarliste etc...) into pre html so they are not fomatted
-        $code = preg_replace($regexpr, '""<pre class="ignored-action">$1</pre>""', $page['body']);
-
-        return $this->wiki->Format($code, 'wakka', $page['tag']);
-    }
-
     public function formatJsonCodeIntoHtmlTable($page)
     {
         $result = json_decode($page['body'], true) ?? [];
         ksort($result);
         $html = "<table class='entry-code'><tbody>";
         foreach ($result as $key => $value) {
-            $html .= "<tr><td class='key'><pre>$key</pre></td><td><pre>" . (is_scalar($value) ? $value : json_encode($value)) . '</pre></td></tr>';
+            $html .= "<tr><td class='key'><pre>{$key}</pre></td><td><pre>".(is_scalar($value) ? $value : json_encode($value)).'</pre></td></tr>';
         }
         $html .= '</tbody></table>';
 
         return $html;
+    }
+
+    private function formatPageWithOnlySimpleActions($page)
+    {
+        $actionsToKeep = [
+            'grid', 'section', 'col', 'button', 'configuration', 'end', 'label', 'nav', 'panel',
+            'progressbar', 'accordion', 'currentpage', 'titrepage', 'valeur', 'lang', 'tocjs',
+        ];
+        $regexpr = '/(\\{\\{';
+        foreach ($actionsToKeep as $action) {
+            $regexpr .= "(?!{$action})";
+        }
+        $regexpr .= '.*?\\}\\})/s';
+        // move all complex actions (bazarliste etc...) into pre html so they are not fomatted
+        $code = preg_replace($regexpr, '""<pre class="ignored-action">$1</pre>""', $page['body']);
+
+        return $this->wiki->Format($code, 'wakka', $page['tag']);
     }
 }

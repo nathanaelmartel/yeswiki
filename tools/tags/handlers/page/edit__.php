@@ -16,10 +16,10 @@ if (!$params->get('hide_keywords') && $this->HasAccess('write') && $this->HasAcc
         $tagspagecourante = '';
     }
     $html = '
-	<i class="fas fa-tags"></i> <strong>' . _t('TAGS_TAGS') . '</strong>
-	<input class="yeswiki-input-pagetag" name="pagetags" type="text" value="' . htmlspecialchars(stripslashes($tagspagecourante)) . '" placeholder="' . _t('TAGS_ADD_TAGS') . '">
+	<i class="fas fa-tags"></i> <strong>'._t('TAGS_TAGS').'</strong>
+	<input class="yeswiki-input-pagetag" name="pagetags" type="text" value="'.htmlspecialchars(stripslashes($tagspagecourante)).'" placeholder="'._t('TAGS_ADD_TAGS').'">
     <input type="hidden" class="antispam" name="antispam" value="0">';
 
     $target = '<div class="tags-container">';
-    $plugin_output_new = str_replace($target, $target . $html, $plugin_output_new);
+    $plugin_output_new = str_replace($target, $target.$html, $plugin_output_new);
 }

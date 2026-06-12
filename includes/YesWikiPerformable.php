@@ -72,6 +72,7 @@ abstract class YesWikiPerformable
      * @param string $templatePath path to twig template. you can use full path
      *                             like tools/bazar/template/myfile.twig, or namespace like @bazar/myfile.twig
      * @param array  $data         An array with data to pass to the template
+     * @param mixed  $method
      *
      * @return string HTML
      */
@@ -82,7 +83,7 @@ abstract class YesWikiPerformable
         // add some addition globals
         $vUserManager = $this->wiki->services->get(UserManager::class);
         $userName = (!isset($_SESSION['user']) || empty($_SESSION['user']['name'])) ? '' : $_SESSION['user']['name'];
-        $this->twig->addGlobal('user', new class ($vUserManager, $userName) {
+        $this->twig->addGlobal('user', new class($vUserManager, $userName) {
             public string $name;
             private UserManager $userManager;
             private bool $entryResolved = false;
@@ -100,11 +101,12 @@ abstract class YesWikiPerformable
                     $this->entry = $this->userManager->getAssociatedEntry() ?? [];
                     $this->entryResolved = true;
                 }
+
                 return $this->entry;
             }
         });
 
-        return $this->twig->$method($templatePath, $data);
+        return $this->twig->{$method}($templatePath, $data);
     }
 
     public function renderInSquelette($templatePath, $data = [])
@@ -119,7 +121,7 @@ abstract class YesWikiPerformable
      *
      * @param class-string<T> $className
      *
-     * @return T|null
+     * @return null|T
      */
     protected function getService($className)
     {
@@ -149,7 +151,7 @@ abstract class YesWikiPerformable
     protected function formatBoolean($param, $default = true, string $index = '')
     {
         if (is_array($param)) {
-            if ($index != '' && isset($param[$index])) {
+            if ('' != $index && isset($param[$index])) {
                 $param = $param[$index];
             } else {
                 return $default;
@@ -157,22 +159,24 @@ abstract class YesWikiPerformable
         }
         if (is_bool($param)) {
             return $param;
-        } elseif (in_array($param, [0, '0', 'no', 'non', 'false'], true)) {
-            return false;
-        } elseif (empty($param)) {
-            return $default;
-        } else {
-            return true;
         }
+        if (in_array($param, [0, '0', 'no', 'non', 'false'], true)) {
+            return false;
+        }
+        if (empty($param)) {
+            return $default;
+        }
+
+        return true;
     }
 
     protected function formatArray($param)
     {
         if (is_array($param)) {
             return $param;
-        } else {
-            return !empty($param) ? array_map('trim', explode(',', $param)) : [];
         }
+
+        return !empty($param) ? array_map('trim', explode(',', $param)) : [];
     }
 
     /**

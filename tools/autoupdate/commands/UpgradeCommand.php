@@ -24,14 +24,15 @@ class UpgradeCommand extends Command
         $this
             ->setName('upgrade')
             ->addArgument('package', InputArgument::OPTIONAL, 'Specific extension or theme', 'yeswiki')
-            ->setDescription('Upgrade the wiki, or a specific extension if package name is provided');
+            ->setDescription('Upgrade the wiki, or a specific extension if package name is provided')
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $package = $input->getArgument('package');
 
-        $output->writeln("Starting Upgrading $package");
+        $output->writeln("Starting Upgrading {$package}");
 
         $updateService = $this->wiki->services->get(AutoUpdateService::class);
         $updateService->initRepository();

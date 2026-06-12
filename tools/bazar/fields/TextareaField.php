@@ -2,8 +2,6 @@
 
 namespace YesWiki\Bazar\Field;
 
-use DateTime;
-use DateTimeZone;
 use Psr\Container\ContainerInterface;
 use YesWiki\Core\Service\DbService;
 use YesWiki\Core\Service\HtmlPurifierService;
@@ -13,9 +11,9 @@ use YesWiki\Core\Service\HtmlPurifierService;
  */
 class TextareaField extends BazarField
 {
-    protected $numRows;
-    protected $syntax;
-    protected $placeholder;
+    public const SYNTAX_WIKI = 'wiki-textarea';
+    public const SYNTAX_HTML = 'html';
+    public const SYNTAX_PLAIN = 'nohtml';
 
     protected const FIELD_NUM_ROWS = 4;
     protected const FIELD_MAX_CHARS = 6;
@@ -23,10 +21,9 @@ class TextareaField extends BazarField
     protected const FIELD_PLACEHOLDER = 15;
 
     protected const ACCEPTED_TAGS = '<h1><h2><h3><h4><h5><h6><hr><hr/><br><br/><span><blockquote><i><u><b><strong><ol><ul><li><small><div><p><a><table><tr><th><td><img><figure><caption><iframe>';
-
-    public const SYNTAX_WIKI = 'wiki-textarea';
-    public const SYNTAX_HTML = 'html';
-    public const SYNTAX_PLAIN = 'nohtml';
+    protected $numRows;
+    protected $syntax;
+    protected $placeholder;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -40,9 +37,44 @@ class TextareaField extends BazarField
         $this->maxChars = $values[self::FIELD_MAX_CHARS];
 
         // Retro-compatibility
-        if ($this->syntax === 'wiki') {
+        if ('wiki' === $this->syntax) {
             $this->syntax = self::SYNTAX_WIKI;
         }
+    }
+
+    public function formatValuesBeforeSave($entry)
+    {
+        $value = $this->getValue($entry);
+
+        if (self::SYNTAX_HTML === $this->syntax) {
+            $value = strip_tags($value, self::ACCEPTED_TAGS);
+            $value = $this->sanitizeBase64Img($value, $entry);
+            $value = $this->sanitizeHTML($value);
+        } elseif (self::SYNTAX_WIKI === $this->syntax) {
+            $value = $this->sanitizeAttach($value, $entry);
+            $value = $this->sanitizeHTMLInWikiCode($value);
+        } else {
+            $value = $this->sanitizeHTML($value);
+        }
+
+        return [$this->propertyName => $value];
+    }
+
+    // GETTERS. Needed to use them in the Twig syntax
+
+    public function getNumRows()
+    {
+        return $this->numRows;
+    }
+
+    public function getPlaceholder()
+    {
+        return $this->placeholder;
+    }
+
+    public function getSyntax()
+    {
+        return $this->syntax;
     }
 
     protected function renderInput($entry)
@@ -50,23 +82,23 @@ class TextareaField extends BazarField
         $output = '';
         $wiki = $this->getWiki();
         // If HTML syntax, load editor's JS and CSS
-        if ($this->syntax === self::SYNTAX_HTML) {
+        if (self::SYNTAX_HTML === $this->syntax) {
             $wiki->AddJavascriptFile('tools/bazar/libs/vendor/summernote/summernote.min.js');
             $wiki->AddCSSFile('tools/bazar/libs/vendor/summernote/summernote.css');
 
-            $langKey = strtolower($GLOBALS['prefered_language']) . '-' . strtoupper($GLOBALS['prefered_language']);
-            $langFile = 'tools/bazar/libs/vendor/summernote/lang/summernote-' . $langKey . '.js';
+            $langKey = strtolower($GLOBALS['prefered_language']).'-'.strtoupper($GLOBALS['prefered_language']);
+            $langFile = 'tools/bazar/libs/vendor/summernote/lang/summernote-'.$langKey.'.js';
             if (file_exists($langFile)) {
                 $wiki->AddJavascriptFile($langFile);
-                $langOptions = 'lang: "' . $langKey . '",';
+                $langOptions = 'lang: "'.$langKey.'",';
             } else {
                 $langOptions = '';
             }
 
             $script = '$(document).ready(function() {
               $(".summernote").summernote({
-                ' . $langOptions . '
-                height: ' . $this->numRows * 30 . ',    // set editor height
+                '.$langOptions.'
+                height: '.$this->numRows * 30 .',    // set editor height
                 minHeight: 100, // set minimum height of editor
                 maxHeight: 350,                // set maximum height of editor
                 focus: false,                   // set focus to editable area after initializing summernote
@@ -101,32 +133,14 @@ class TextareaField extends BazarField
 
         $tempTag = !isset($entry['id_fiche']) ? ($wiki->config['temp_tag_for_entry_creation'] ?? null) : null;
         if ($tempTag) {
-            $tempTag .= '_' . bin2hex(random_bytes(10));
+            $tempTag .= '_'.bin2hex(random_bytes(10));
         }
 
-        return $output . $this->render('@bazar/inputs/textarea.twig', [
+        return $output.$this->render('@bazar/inputs/textarea.twig', [
             'value' => $this->getValue($entry),
             'entryId' => $entry['id_fiche'] ?? null,
             'tempTag' => $tempTag,
         ]);
-    }
-
-    public function formatValuesBeforeSave($entry)
-    {
-        $value = $this->getValue($entry);
-
-        if ($this->syntax === self::SYNTAX_HTML) {
-            $value = strip_tags($value, self::ACCEPTED_TAGS);
-            $value = $this->sanitizeBase64Img($value, $entry);
-            $value = $this->sanitizeHTML($value);
-        } elseif ($this->syntax === self::SYNTAX_WIKI) {
-            $value = $this->sanitizeAttach($value, $entry);
-            $value = $this->sanitizeHTMLInWikiCode($value);
-        } else {
-            $value = $this->sanitizeHTML($value);
-        }
-
-        return [$this->propertyName => $value];
     }
 
     protected function renderStatic($entry)
@@ -154,16 +168,19 @@ class TextareaField extends BazarField
 
                 $GLOBALS['wiki']->tag = $oldPage;
                 $GLOBALS['wiki']->page = $oldPageArray;
+
                 break;
 
             case self::SYNTAX_PLAIN:
                 $value = nl2br(htmlentities($value, ENT_QUOTES, YW_CHARSET));
+
                 break;
 
             case self::SYNTAX_HTML:
                 // if the user type "", it's replaced by '' otherwise it crashes the output because it's interpretated
                 // by wakka as a beginning of HTML code
                 $value = str_replace('""', '\'\'', $value);
+
                 break;
         }
 
@@ -172,29 +189,12 @@ class TextareaField extends BazarField
         ]);
     }
 
-    // GETTERS. Needed to use them in the Twig syntax
-
-    public function getNumRows()
-    {
-        return $this->numRows;
-    }
-
-    public function getPlaceholder()
-    {
-        return $this->placeholder;
-    }
-
-    public function getSyntax()
-    {
-        return $this->syntax;
-    }
-
     private function sanitizeAttach(string $text, array $entry): string
     {
         $wiki = $this->getWiki();
         $temp_tag_for_entry_creation = $wiki->config['temp_tag_for_entry_creation'];
 
-        if (preg_match_all("/({{attach[^}]*file=\")(({$temp_tag_for_entry_creation}_[A-Fa-f0-9]+)\/([^\"]*))(\"[^}]*}})/m", $text, $matches)) {
+        if (preg_match_all("/({{attach[^}]*file=\")(({$temp_tag_for_entry_creation}_[A-Fa-f0-9]+)\\/([^\"]*))(\"[^}]*}})/m", $text, $matches)) {
             if (!class_exists('attach')) {
                 include 'tools/attach/libs/attach.lib.php';
             }
@@ -225,10 +225,10 @@ class TextareaField extends BazarField
                 $newFileName = $attach->GetFullFilename(true);
                 $dirRealPath = realpath(dirname($previousFileName));
                 if (rename(
-                    $dirRealPath . DIRECTORY_SEPARATOR . basename($previousFileName),
-                    $dirRealPath . DIRECTORY_SEPARATOR . basename($newFileName)
+                    $dirRealPath.DIRECTORY_SEPARATOR.basename($previousFileName),
+                    $dirRealPath.DIRECTORY_SEPARATOR.basename($newFileName)
                 )) {
-                    $text = str_replace($matches[0][$key], $matches[1][$key] . $matches[4][$key] . $matches[5][$key], $text);
+                    $text = str_replace($matches[0][$key], $matches[1][$key].$matches[4][$key].$matches[5][$key], $text);
                 }
                 unset($attach);
                 $wiki->tag = $previousTag;
@@ -243,7 +243,7 @@ class TextareaField extends BazarField
     {
         $wiki = $this->getWiki();
         $regExpSearch = '(<img(?>\s*style="[^"]*")?\s*)src="data:image\/(gif|jpeg|png|jpg|svg|webp);base64,([^"]*)"\s*[^>]*(?>(?<=data-filename=")[^"]*")?[^>]*>';
-        if (preg_match_all("/$regExpSearch/", $text, $matches)) {
+        if (preg_match_all("/{$regExpSearch}/", $text, $matches)) {
             if (!class_exists('attach')) {
                 include 'tools/attach/libs/attach.lib.php';
             }
@@ -255,12 +255,12 @@ class TextareaField extends BazarField
                 $imageContent = base64_decode($matches[3][$index]);
                 $fileName = $matches[4][$index];
                 if (empty(trim($fileName))) {
-                    $fileName = bin2hex(random_bytes(10)) . '.' . $imageType;
+                    $fileName = bin2hex(random_bytes(10)).'.'.$imageType;
                 }
                 if (preg_match('/^(.*)(\.[A-Za-z0-9]+)$/m', $fileName, $matchesForFile)) {
                     $fileNameWithoutExtension = $matchesForFile[1];
                     $fileExtension = $matchesForFile[2];
-                    $fileName = $this->sanitizeFileName($fileNameWithoutExtension) . $fileExtension;
+                    $fileName = $this->sanitizeFileName($fileNameWithoutExtension).$fileExtension;
                 } else {
                     $fileName = $this->sanitizeFileName($fileName);
                 }
@@ -284,7 +284,7 @@ class TextareaField extends BazarField
                     file_put_contents($newFilePath, $imageContent);
 
                     $newText = $matches[1][$index];
-                    $newText .= "src=\"$newFilePath\">";
+                    $newText .= "src=\"{$newFilePath}\">";
 
                     $text = str_replace($textToReplace, $newText, $text);
                 }
@@ -301,15 +301,14 @@ class TextareaField extends BazarField
     {
         $dbTz = $this->getService(DbService::class)->getDbTimeZone();
         $sqlTimeFormat = 'Y-m-d H:i:s';
-        $entryCreationTime = !empty($entry['date_maj_fiche'])
+
+        return !empty($entry['date_maj_fiche'])
             ? $entry['date_creation_fiche']
             : (
                 !empty($dbTz)
-                ? (new DateTime())->setTimezone(new DateTimeZone($dbTz))->format($sqlTimeFormat)
+                ? (new \DateTime())->setTimezone(new \DateTimeZone($dbTz))->format($sqlTimeFormat)
                 : date($sqlTimeFormat)
             );
-
-        return $entryCreationTime;
     }
 
     /**
@@ -327,10 +326,10 @@ class TextareaField extends BazarField
      */
     private function sanitizeHTMLInWikiCode(string $value)
     {
-        $preformattedDirtyHTML = str_replace(['@@', '""'], ['\\@\\@\\', '@@'], $value);
+        $preformattedDirtyHTML = str_replace(['@@', '""'], ['\@\@\\', '@@'], $value);
         $preformattedCleanHTML = $this->getService(HtmlPurifierService::class)->cleanHTML($preformattedDirtyHTML);
 
-        return str_replace(['""', '@@', '\\@\\@\\'], ['\'\'', '""', '@@'], $preformattedCleanHTML);
+        return str_replace(['""', '@@', '\@\@\\'], ['\'\'', '""', '@@'], $preformattedCleanHTML);
     }
 
     /**

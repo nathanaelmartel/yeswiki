@@ -13,9 +13,8 @@ use YesWiki\Bazar\Field\BazarField;
  */
 class AlertField extends BazarField
 {
-    protected $alertText;
-
     protected const FIELD_ALERT_TEXT = 1;
+    protected $alertText;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -24,18 +23,18 @@ class AlertField extends BazarField
         $this->alertText = $values[self::FIELD_ALERT_TEXT];
     }
 
-    protected function renderInput($entry)
-    {
-        // No input need to be displayed for this example field
-        return null;
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         // Here you can perform operations on each create/update operation
 
         // Return the values you want to be saved in the entry
         return ['alert' => _t('HELLOWORLD_FIELD_ALERT')];
+    }
+
+    protected function renderInput($entry)
+    {
+        // No input need to be displayed for this example field
+        return null;
     }
 
     protected function renderStatic($entry)

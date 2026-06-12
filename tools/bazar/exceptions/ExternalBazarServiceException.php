@@ -2,6 +2,4 @@
 
 namespace YesWiki\Bazar\Exception;
 
-class ExternalBazarServiceException extends \Exception
-{
-}
+class ExternalBazarServiceException extends \Exception {}

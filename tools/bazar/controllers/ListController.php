@@ -40,8 +40,8 @@ class ListController extends YesWikiController
                 $list = json_decode($listRaw, true);
                 $this->listManager->create($list['title'], $list['nodes']);
             }
-            echo '<div class="alert alert-success">' . _t('BAZ_LIST_IMPORT_SUCCESSFULL') . '.</div>';
-            echo '<div class="alert alert-success">' . _t('BAZ_LIST_IMPORT_SUCCESSFULL') . '.</div>';
+            echo '<div class="alert alert-success">'._t('BAZ_LIST_IMPORT_SUCCESSFULL').'.</div>';
+            echo '<div class="alert alert-success">'._t('BAZ_LIST_IMPORT_SUCCESSFULL').'.</div>';
         }
 
         $lists = $this->listManager->getAll();
@@ -84,11 +84,6 @@ class ListController extends YesWikiController
         ]);
     }
 
-    private function shouldPostMessageOnSubmit()
-    {
-        return $this->getRequest()->query->get('onsubmit') === 'postmessage';
-    }
-
     public function update($id)
     {
         $list = $this->listManager->getOne($id);
@@ -128,5 +123,10 @@ class ListController extends YesWikiController
         $this->wiki->Redirect(
             $this->wiki->href('', '', [BAZ_VARIABLE_VOIR => BAZ_VOIR_LISTES], false)
         );
+    }
+
+    private function shouldPostMessageOnSubmit()
+    {
+        return 'postmessage' === $this->getRequest()->query->get('onsubmit');
     }
 }

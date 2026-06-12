@@ -1,6 +1,5 @@
 <?php
 
-
 namespace YesWiki\Login;
 
 use Tamtamchik\SimpleFlash\Flash;
@@ -22,7 +21,7 @@ class LoginAction extends YesWikiAction
 
     public function formatArguments($arg)
     {
-        $noSignupButton = (isset($arg['signupurl']) && $arg['signupurl'] === '0') || $this->wiki->GetConfigValue('noSignupButton', false);
+        $noSignupButton = (isset($arg['signupurl']) && '0' === $arg['signupurl']) || $this->wiki->GetConfigValue('noSignupButton', false);
         $incomingurl = !empty($arg['incomingurl'])
             ? $this->wiki->generateLink($arg['incomingurl'])
             : $this->getIncomingUrlFromRequest();
@@ -39,7 +38,7 @@ class LoginAction extends YesWikiAction
             'profileurl' => empty($arg['profileurl'])
                 ? $this->wiki->Href('', 'ParametresUtilisateur')
                 : (
-                    $arg['profileurl'] == 'WikiName'
+                    'WikiName' == $arg['profileurl']
                     ? 'WikiName'
                     : $this->wiki->generateLink($arg['profileurl'])
                 ),
@@ -56,26 +55,26 @@ class LoginAction extends YesWikiAction
 
             'userpage' => !empty($arg['userpage'])
                 ? (
-                    $arg['userpage'] == 'user'
+                    'user' == $arg['userpage']
                     ? 'user'
                     : $this->wiki->generateLink($arg['userpage'])
                 )
                 : (
-                    ($this->getRequest()->get('action') == 'logout')
+                    ('logout' == $this->getRequest()->get('action'))
                     ? preg_replace('/(&|\\\?)$/m', '', preg_replace('/(&|\\\?)action=logout(&)?/', '$1', $incomingurl))
                     : $incomingurl
                 ),
 
-            'lostpasswordurl' => !boolval($this->params->get('contact_disable_email_for_password')) ? (!empty($arg['lostpasswordurl']) ? $this->wiki->generateLink($arg['lostpasswordurl']) :
+            'lostpasswordurl' => !boolval($this->params->get('contact_disable_email_for_password')) ? (!empty($arg['lostpasswordurl']) ? $this->wiki->generateLink($arg['lostpasswordurl'])
             // TODO : check page name for other languages
-            $this->wiki->Href('', 'MotDePassePerdu')) : '',
+            : $this->wiki->Href('', 'MotDePassePerdu')) : '',
 
             'class' => !empty($arg['class']) ? $arg['class'] : '',
             'btnclass' => !empty($arg['btnclass']) ? $arg['btnclass'] : '',
             'nobtn' => $this->formatBoolean($arg, false, 'nobtn'),
-            'template' => (empty($arg['template']) ||
-                empty(basename($arg['template'])) ||
-                !$this->templateEngine->hasTemplate('@login/' . basename($arg['template'])))
+            'template' => (empty($arg['template'])
+                || empty(basename($arg['template']))
+                || !$this->templateEngine->hasTemplate('@login/'.basename($arg['template'])))
                 ? 'default.twig'
                 : basename($arg['template']),
         ];
@@ -95,12 +94,16 @@ class LoginAction extends YesWikiAction
             // no action if not in the good context
             $action = '';
         }
+
         switch ($action) {
             case 'logout':
                 $this->logout();
+
                 break;
+
             case 'login':
                 $this->login();
+
                 break;
 
             case 'checklogged':
@@ -125,9 +128,9 @@ class LoginAction extends YesWikiAction
         unset($queryParams['context']);
 
         $newQuery = http_build_query($queryParams);
-        $clean = ($urlParts['path'] ?? '') . ($newQuery !== '' ? '?' . $newQuery : '');
+        $clean = ($urlParts['path'] ?? '').('' !== $newQuery ? '?'.$newQuery : '');
 
-        return $request->getScheme() . '://' . $request->getHttpHost() . $clean;
+        return $request->getScheme().'://'.$request->getHttpHost().$clean;
     }
 
     private function renderForm(string $action): string
@@ -141,14 +144,14 @@ class LoginAction extends YesWikiAction
             if (!empty($pageMenuUser)) {
                 $pageMenuUserContent = $this->wiki->Format('{{include page="PageMenuUser"}}');
             }
-            if ($this->arguments['profileurl'] == 'WikiName') {
+            if ('WikiName' == $this->arguments['profileurl']) {
                 $this->arguments['profileurl'] = $this->wiki->Href('edit', $user['name']);
             }
-        } elseif ($action == 'checklogged') {
+        } elseif ('checklogged' == $action) {
             $error = _t('LOGIN_COOKIES_ERROR');
         }
 
-        $output = $this->render("@login/{$this->arguments['template']}", [
+        return $this->render("@login/{$this->arguments['template']}", [
             'connected' => $connected,
             'user' => $user['name'] ?? $this->getRequest()->request->get('name', ''),
             'email' => $user['email'] ?? $this->getRequest()->request->get('email', ''),
@@ -164,8 +167,6 @@ class LoginAction extends YesWikiAction
             'error' => $error,
             'context' => $this->arguments['context'],
         ]);
-
-        return $output;
     }
 
     private function login()
@@ -174,6 +175,7 @@ class LoginAction extends YesWikiAction
         if (empty($incomingurl)) {
             $incomingurl = $this->arguments['incomingurl'];
         }
+
         try {
             $post = $this->getRequest()->request;
             $emailFallback = $post->get('email', '');
@@ -216,7 +218,7 @@ class LoginAction extends YesWikiAction
             $this->authController->login($user, $remember);
 
             // si l'on veut utiliser la page d'accueil correspondant au nom d'utilisateur
-            if ((($post->get('userpage') == 'user') || $this->arguments['userpage'] == 'user') && $this->pageManager->getOne($user['name'])) {
+            if ((('user' == $post->get('userpage')) || 'user' == $this->arguments['userpage']) && $this->pageManager->getOne($user['name'])) {
                 $this->wiki->Redirect($this->wiki->Href('', $user['name']));
             } else {
                 $this->wiki->Redirect($this->arguments['loggedinurl']);

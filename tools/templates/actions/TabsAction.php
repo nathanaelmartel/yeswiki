@@ -11,7 +11,7 @@ class TabsAction extends YesWikiAction
 
         return [
             'titles' => $titles,
-            'btnsize' => (isset($arg['btnsize']) && $arg['btnsize'] === 'std')
+            'btnsize' => (isset($arg['btnsize']) && 'std' === $arg['btnsize'])
               ? ''
               : 'btn-xs',
             'btncolor' => (!empty($arg['btncolor']) && in_array($arg['btncolor'], ['btn-primary', 'btn-secondary-1', 'btn-secondary-2'], true))
@@ -27,7 +27,7 @@ class TabsAction extends YesWikiAction
     {
         return $this->getService(TabsController::class)->openTabs('action', array_merge(
             $this->arguments,
-            ['btnClass' => $this->arguments['btncolor'] . ' ' . $this->arguments['btnsize']]
+            ['btnClass' => $this->arguments['btncolor'].' '.$this->arguments['btnsize']]
         ));
     }
 

@@ -11,6 +11,18 @@ use YesWiki\Wiki;
 
 abstract class BazarField implements \JsonSerializable
 {
+    // Default values
+    protected const FIELD_TYPE = 0;
+    protected const FIELD_NAME = 1;
+    protected const FIELD_LABEL = 2;
+    protected const FIELD_SIZE = 3;
+    protected const FIELD_MAX_CHARS = 4;
+    protected const FIELD_DEFAULT = 5;
+    protected const FIELD_REQUIRED = 8;
+    protected const FIELD_SEARCHABLE = 9;
+    protected const FIELD_HINT = 10;
+    protected const FIELD_READ_ACCESS = 11;
+    protected const FIELD_WRITE_ACCESS = 12;
     protected $services;
 
     protected $type;         // 0
@@ -27,19 +39,6 @@ abstract class BazarField implements \JsonSerializable
     // How the field is identified in the Bazar entry
     protected $propertyName;
 
-    // Default values
-    protected const FIELD_TYPE = 0;
-    protected const FIELD_NAME = 1;
-    protected const FIELD_LABEL = 2;
-    protected const FIELD_SIZE = 3;
-    protected const FIELD_MAX_CHARS = 4;
-    protected const FIELD_DEFAULT = 5;
-    protected const FIELD_REQUIRED = 8;
-    protected const FIELD_SEARCHABLE = 9;
-    protected const FIELD_HINT = 10;
-    protected const FIELD_READ_ACCESS = 11;
-    protected const FIELD_WRITE_ACCESS = 12;
-
     public function __construct(array $values, ContainerInterface $services)
     {
         $this->services = $services;
@@ -50,7 +49,7 @@ abstract class BazarField implements \JsonSerializable
         $this->size = $values[self::FIELD_SIZE];
         $this->maxChars = $values[self::FIELD_MAX_CHARS];
         $this->default = $values[self::FIELD_DEFAULT];
-        $this->required = $values[self::FIELD_REQUIRED] == 1;
+        $this->required = 1 == $values[self::FIELD_REQUIRED];
         $this->searchable = $values[self::FIELD_SEARCHABLE];
         $this->hint = $values[self::FIELD_HINT];
         $this->readAccess = str_replace(',', "\n", $values[self::FIELD_READ_ACCESS]);
@@ -90,9 +89,7 @@ abstract class BazarField implements \JsonSerializable
         return [$this->propertyName => ['_mode_' => 'single', '_type_' => 'string']];
     }
 
-    /*
-    *	indicates if id_fiche must be set before to format the value
-    */
+    // indicates if id_fiche must be set before to format the value
 
     public function requireIDFiche()
     {
@@ -102,10 +99,10 @@ abstract class BazarField implements \JsonSerializable
     /**
      * Render the edit view of the field. Check ACLS first.
      *
-     * @param array|null  $entry
-     * @param string|null $userNameForRendering username to render the field, if empty uses connected user
+     * @param null|array  $entry
+     * @param null|string $userNameForRendering username to render the field, if empty uses connected user
      *
-     * @return string|null $html
+     * @return null|string $html
      */
     public function renderStaticIfPermitted($entry, ?string $userNameForRendering = null)
     {
@@ -142,12 +139,10 @@ abstract class BazarField implements \JsonSerializable
             // We can : let's return the formatted given value
 
             return $this->formatValuesBeforeSave($entry);
-        } else {
-            // We cannot : let's return the previous value or the default value
-
-            return [$this->propertyName => $this->getValue($entry) ?? $this->default];
         }
+        // We cannot : let's return the previous value or the default value
 
+        return [$this->propertyName => $this->getValue($entry) ?? $this->default];
         // We cannot : let's return nothing
 
         return [];
@@ -162,49 +157,17 @@ abstract class BazarField implements \JsonSerializable
         return empty($this->propertyName) ? [] : [$this->propertyName => $this->getValue($entry)];
     }
 
-    // Render the show view of the field
-    protected function renderStatic($entry)
-    {
-        $value = $this->getValue($entry);
-
-        return ($value) ? $this->render("@bazar/fields/{$this->type}.twig", [
-            'value' => $this->getValue($entry),
-        ]) : '';
-    }
-
-    // each field should implement this method instead of the renderInputIfPermitted
-    // so we are sure same safety checks are done for all fields
-    protected function renderInput($entry)
-    {
-        return $this->render("@bazar/inputs/{$this->type}.twig", [
-            'value' => $this->getValue($entry),
-        ]);
-    }
-
-    // SHORTCUTS
-
-    protected function getService($class)
-    {
-        return $this->services->get($class);
-    }
-
-    protected function getValue($entry)
-    {
-        // TODO see if it is necessary to look for $_REQUEST
-        return $entry[$this->propertyName] ?? $_REQUEST[$this->propertyName] ?? $this->default;
-    }
-
     public function isEmpty($pValue)
     {
-        return is_null($pValue) || (is_array($pValue) && count(array_keys($pValue)) == 0) || (is_string($pValue) && trim($pValue) == '');
+        return is_null($pValue) || (is_array($pValue) && 0 == count(array_keys($pValue))) || (is_string($pValue) && '' == trim($pValue));
     }
 
     // HELPERS
     /**
      * Return true if we are if reading is allowed for the field.
      *
-     * @param array|null  $entry
-     * @param string|null $userNameForRendering username to render the field, if empty uses connected user
+     * @param null|array  $entry
+     * @param null|string $userNameForRendering username to render the field, if empty uses connected user
      *
      * @return bool
      */
@@ -216,7 +179,7 @@ abstract class BazarField implements \JsonSerializable
         return empty($readAcl) || $this->getService(AclService::class)->check($readAcl, $userNameForRendering, true, $isCreation ? '' : $entry['id_fiche']);
     }
 
-    /* Return true if editing is allowed for the field */
+    // Return true if editing is allowed for the field
     public function canEdit($entry)
     {
         $writeAcl = empty($this->writeAccess) ? '' : $this->writeAccess;
@@ -225,15 +188,6 @@ abstract class BazarField implements \JsonSerializable
         $isCreation = !isset($entry) || !is_array($entry) || !isset($entry['id_fiche']);
 
         return empty($writeAcl) || $this->getService(AclService::class)->check($writeAcl, null, true, $isCreation ? '' : $entry['id_fiche'], $isCreation ? 'creation' : 'edit');
-    }
-
-    protected function render($templatePath, $data = [])
-    {
-        $data = array_merge([
-            'field' => $this,
-        ], $data); // Data given as param takes predominance
-
-        return $this->services->get(TemplateEngine::class)->render($templatePath, $data);
     }
 
     // GETTERS
@@ -314,6 +268,47 @@ abstract class BazarField implements \JsonSerializable
             'read_acl' => $this->getReadAccess(),
             'write_acl' => $this->getWriteAccess(),
         ];
+    }
+
+    // Render the show view of the field
+    protected function renderStatic($entry)
+    {
+        $value = $this->getValue($entry);
+
+        return ($value) ? $this->render("@bazar/fields/{$this->type}.twig", [
+            'value' => $this->getValue($entry),
+        ]) : '';
+    }
+
+    // each field should implement this method instead of the renderInputIfPermitted
+    // so we are sure same safety checks are done for all fields
+    protected function renderInput($entry)
+    {
+        return $this->render("@bazar/inputs/{$this->type}.twig", [
+            'value' => $this->getValue($entry),
+        ]);
+    }
+
+    // SHORTCUTS
+
+    protected function getService($class)
+    {
+        return $this->services->get($class);
+    }
+
+    protected function getValue($entry)
+    {
+        // TODO see if it is necessary to look for $_REQUEST
+        return $entry[$this->propertyName] ?? $_REQUEST[$this->propertyName] ?? $this->default;
+    }
+
+    protected function render($templatePath, $data = [])
+    {
+        $data = array_merge([
+            'field' => $this,
+        ], $data); // Data given as param takes predominance
+
+        return $this->services->get(TemplateEngine::class)->render($templatePath, $data);
     }
 
     /**

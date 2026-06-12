@@ -47,11 +47,9 @@ class AssetsManager
         if (!isset($GLOBALS['css'])) {
             $GLOBALS['css'] = '';
         }
-        if (!empty($style) && !strpos($GLOBALS['css'], '<style>' . "\n" . $style . '</style>')) {
-            $GLOBALS['css'] .= '  <style>' . "\n" . $style . '</style>' . "\n";
+        if (!empty($style) && !strpos($GLOBALS['css'], '<style>'."\n".$style.'</style>')) {
+            $GLOBALS['css'] .= '  <style>'."\n".$style.'</style>'."\n";
         }
-
-        return;
     }
 
     public function AddCSSFile($file, $conditionstart = '', $conditionend = '', $attrs = '')
@@ -65,8 +63,6 @@ class AssetsManager
         if ($code && !strpos($GLOBALS['css'], $code)) {
             $GLOBALS['css'] .= $code;
         }
-
-        return;
     }
 
     // this one can be used to directly include a css file within HTML with "echo $this->LinkCSSFile()"
@@ -74,20 +70,20 @@ class AssetsManager
     public function LinkCSSFile($file, $conditionstart = '', $conditionend = '', $attrs = '')
     {
         $file = $this->mapFilePath($file);
-        $isUrl = strpos($file, 'http://') === 0 || strpos($file, 'https://') === 0;
+        $isUrl = 0 === strpos($file, 'http://') || 0 === strpos($file, 'https://');
 
         if ($isUrl || !empty($file) && file_exists($file)) {
             $href = $isUrl ? $file : "{$this->wiki->getBaseUrl()}/{$file}";
             $revision = $this->wiki->GetConfigValue('yeswiki_release', null);
 
             return <<<HTML
-                $conditionstart
-                <link rel="stylesheet" href="{$href}?v={$revision}" $attrs>
-                $conditionend
-            HTML;
-        } else {
-            return '';
+                    {$conditionstart}
+                    <link rel="stylesheet" href="{$href}?v={$revision}" {$attrs}>
+                    {$conditionend}
+                HTML;
         }
+
+        return '';
     }
 
     public function AddJavascript($script, $module = false)
@@ -95,11 +91,9 @@ class AssetsManager
         if (!isset($GLOBALS['js'])) {
             $GLOBALS['js'] = '';
         }
-        if (!empty($script) && !strpos($GLOBALS['js'], $script . '</script>')) {
-            $GLOBALS['js'] .= '  <script' . ($module ? ' type="module"' : '') . '>' . "\n" . $script . '</script>' . "\n";
+        if (!empty($script) && !strpos($GLOBALS['js'], $script.'</script>')) {
+            $GLOBALS['js'] .= '  <script'.($module ? ' type="module"' : '').'>'."\n".$script.'</script>'."\n";
         }
-
-        return;
     }
 
     public function AddJavascriptFile($file, $first = false, $module = false)
@@ -109,14 +103,14 @@ class AssetsManager
         }
 
         $revision = $this->wiki->GetConfigValue('yeswiki_release', null);
-        $initChar = (strpos($file, '?') !== false) ? '&' : '?';
-        $rev = ($revision) ? $initChar . 'v=' . $revision : '';
+        $initChar = (false !== strpos($file, '?')) ? '&' : '?';
+        $rev = ($revision) ? $initChar.'v='.$revision : '';
 
         $file = $this->mapFilePath($file);
 
         if (!empty($file) && file_exists($file)) {
             // include local files
-            $code = "<script src='{$this->wiki->getBaseUrl()}/$file$rev'";
+            $code = "<script src='{$this->wiki->getBaseUrl()}/{$file}{$rev}'";
             if (!str_contains($GLOBALS['js'], $code) || $first) {
                 if (!$first) {
                     $code .= ' defer';
@@ -124,22 +118,20 @@ class AssetsManager
                 if ($module) {
                     $code .= " type='module'";
                 }
-                $code .= '></script>' . "\n";
+                $code .= '></script>'."\n";
                 if ($first) {
-                    $GLOBALS['js'] = $code . $GLOBALS['js'];
+                    $GLOBALS['js'] = $code.$GLOBALS['js'];
                 } else {
                     $GLOBALS['js'] .= $code;
                 }
             }
-        } elseif (strpos($file, 'http://') === 0 || strpos($file, 'https://') === 0) {
+        } elseif (0 === strpos($file, 'http://') || 0 === strpos($file, 'https://')) {
             // include external files
-            $code = "<script defer src='$file.$rev'></script>";
+            $code = "<script defer src='{$file}.{$rev}'></script>";
             if (!str_contains($GLOBALS['js'], $code)) {
-                $GLOBALS['js'] .= $code . "\n";
+                $GLOBALS['js'] .= $code."\n";
             }
         }
-
-        return;
     }
 
     private function mapFilePath($file)
@@ -150,7 +142,7 @@ class AssetsManager
         }
 
         // Handle production environement
-        if ($this->wiki->GetConfigValue('debug') != 'yes') {
+        if ('yes' != $this->wiki->GetConfigValue('debug')) {
             if (array_key_exists($file, self::PRODUCTION_PATH_MAPPING)) {
                 $file = self::PRODUCTION_PATH_MAPPING[$file];
             }

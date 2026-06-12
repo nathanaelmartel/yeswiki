@@ -6,9 +6,7 @@ use YesWiki\Core\Entity\ConfigurationFile;
 
 class ConfigurationService
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function getConfiguration(string $filePath): ConfigurationFile
     {
@@ -27,7 +25,7 @@ class ConfigurationService
         }
         $content = $this->getContentToWrite($config, $arrayName);
 
-        return file_put_contents($file, $content) !== false;
+        return false !== file_put_contents($file, $content);
     }
 
     /**
@@ -35,7 +33,7 @@ class ConfigurationService
      */
     public function getContentToWrite(ConfigurationFile $config, string $arrayName = 'wakkaConfig'): string
     {
-        $content = "<?php\n\n\$$arrayName = ";
+        $content = "<?php\n\n\${$arrayName} = ";
 
         $content .= $this->customVarExport($config->_parameters, true);
         $content .= ";\n";
@@ -55,19 +53,18 @@ class ConfigurationService
         $expression = $this->sanitizeToScalar($expression);
         $export = var_export($expression, true);
         $patterns = [
-            "/array \(/" => '[',
-            "/^([ ]*)\)(,?)$/m" => '$1]$2',
-            "/=>[ ]?\n[ ]+\[/" => '=> [',
-            "/([ ]*)(\'[^\']+\') => ([\[\'])/" => '$1$2 => $3',
+            '/array \\(/' => '[',
+            '/^([ ]*)\\)(,?)$/m' => '$1]$2',
+            "/=>[ ]?\n[ ]+\\[/" => '=> [',
+            "/([ ]*)(\\'[^\\']+\\') => ([\\[\\'])/" => '$1$2 => $3',
         ];
         $export = preg_replace(array_keys($patterns), array_values($patterns), $export);
-        if ((bool)$return) {
+        if ((bool) $return) {
             return $export;
-        } else {
-            echo $export;
-
-            return null;
         }
+        echo $export;
+
+        return null;
     }
 
     /**
@@ -86,7 +83,7 @@ class ConfigurationService
         } elseif (is_null($value) || is_string($value) || is_bool($value) || is_int($value) || is_float($value)) {
             return $value;
         } else {
-            return (string)$value;
+            return (string) $value;
         }
     }
 }

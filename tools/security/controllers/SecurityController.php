@@ -43,7 +43,7 @@ class SecurityController extends YesWikiController
     {
         $message = [
             'type' => 'info',
-            'message' => _t('WIKI_IN_HIBERNATION') . '<br/>',
+            'message' => _t('WIKI_IN_HIBERNATION').'<br/>',
         ];
 
         return $this->templateEngine->render('@templates/alert-message-with-back.twig', $message);
@@ -64,43 +64,6 @@ class SecurityController extends YesWikiController
     }
 
     /**
-     * check if PasswordForEditing mode is activated.
-     */
-    private function isPasswordForEditingModeActivated(): bool
-    {
-        return $this->params->has('password_for_editing') &&
-            !empty($this->params->get('password_for_editing')) &&
-            !$this->getService(AuthController::class)->getLoggedUser(); // AuthController not loaded in construct to prevent circular references
-    }
-
-    /**
-     * check if password for editing is correct.
-     */
-    private function hasRightPasswordForExisting(): bool
-    {
-        $val = $this->wiki->request->request->get('password_for_editing');
-        return isset($val) && $val == $this->params->get('password_for_editing');
-    }
-
-    /**
-     * render form to ask right password for editing.
-     */
-    private function renderNotGrantedPasswordForEditing(): string
-    {
-        return $this->templateEngine->render(
-            '@security/wrong-password-for-editing.twig',
-            [
-                'wrongPassword' => $this->wiki->request->request->has('password_for_editing'),
-                'passwordForEditingMessage' => ($this->params->has('password_for_editing_message') &&
-                    !empty($this->params->get('password_for_editing_message')))
-                    ? $this->params->get('password_for_editing_message') : null,
-                'time' => $this->wiki->request->get('time'),
-                'handler' => testUrlInIframe() ? 'editiframe' : 'edit',
-            ]
-        );
-    }
-
-    /**
      * check captcha before save edit.
      *
      * @param string $mode 'page' or 'entry'
@@ -111,8 +74,8 @@ class SecurityController extends YesWikiController
     {
         if (!$this->wiki->UserIsAdmin() && $this->params->get('use_captcha')) {
             $post = $this->wiki->request->request;
-            if (($mode != 'entry' && $post->get('submit') == self::EDIT_PAGE_SUBMIT_VALUE)
-                || ($mode == 'entry' && !empty($post->get('bf_titre')))) {
+            if (('entry' != $mode && self::EDIT_PAGE_SUBMIT_VALUE == $post->get('submit'))
+                || ('entry' == $mode && !empty($post->get('bf_titre')))) {
                 /**
                  * @var string $error message if error
                  */
@@ -128,12 +91,11 @@ class SecurityController extends YesWikiController
                 // clean if error
                 if (!empty($error)) {
                     $_POST['submit'] = '';
-                    if ($mode == 'entry') {
+                    if ('entry' == $mode) {
                         unset($_POST['bf_titre']);
                     }
                 }
-                unset($_POST['captcha']);
-                unset($_POST['captcha_hash']);
+                unset($_POST['captcha'], $_POST['captcha_hash']);
             }
         }
 
@@ -142,8 +104,6 @@ class SecurityController extends YesWikiController
 
     /**
      * render captcha if needed.
-     *
-     * @param string &$output
      */
     public function renderCaptcha(string &$output)
     {
@@ -154,7 +114,7 @@ class SecurityController extends YesWikiController
                 foreach ($matches[0] as $key => $match) {
                     $output = str_replace(
                         $match,
-                        $champsCaptcha . $matches[1][$key],
+                        $champsCaptcha.$matches[1][$key],
                         $output
                     );
                 }
@@ -185,58 +145,6 @@ class SecurityController extends YesWikiController
     }
 
     /**
-     * Sanitize raw input values.
-     *
-     * @$pRawInputFiltered : the original value returned by PHP filter input
-     * @$pSanitizedFormat : the format to check
-     * supported format string, int, bool
-     * if the format is not specified, the function return the original $pRawInputFiltered
-     */
-    private function sanitize($pRawInputFiltered, $pSanitizedFormat, $pEmulateFilterSanitizeString)
-    {
-        /**
-         * @var mixed $result
-         */
-        $result = null;
-        switch ($pSanitizedFormat) {
-            case 'string':
-                $result = (
-                    in_array($pRawInputFiltered, [false, null], true)
-                    || !is_scalar($pRawInputFiltered)
-                )
-                    ? ''
-                    : (
-                        $pEmulateFilterSanitizeString
-                        ? htmlspecialchars(strip_tags(strval($pRawInputFiltered)))
-                        : strval($pRawInputFiltered)
-                    );
-                break;
-            case 'int':
-                $result = (
-                    in_array($pRawInputFiltered, [false, null], true)
-                    || !is_scalar($pRawInputFiltered)
-                )
-                    ? 0
-                    : intval($pRawInputFiltered);
-                break;
-            case 'bool':
-                $result = in_array($pRawInputFiltered, [false, null, 0, 'false', '0'], true)
-                    ? false
-                    : (
-                        in_array($pRawInputFiltered, [true, 'true', 1], true)
-                        ? true
-                        : boolval($pRawInputFiltered)
-                    );
-                break;
-            default:
-                $result = $pRawInputFiltered;
-                break;
-        }
-
-        return $result;
-    }
-
-    /**
      * retrieve input using filter to prevent injection from other php script
      * emulate $filter = FILTER_SANITIZE_STRING because deprecated since php8.1.
      *
@@ -258,6 +166,7 @@ class SecurityController extends YesWikiController
          * @var int $sanitizedFilter
          */
         $sanitizedFilter = $emulateFilterSanitizeString ? FILTER_UNSAFE_RAW : $filter;
+
         /**
          * @var string $sanitizedFormat
          */
@@ -271,7 +180,7 @@ class SecurityController extends YesWikiController
         if (is_array($options) && ($options['flags'] & FILTER_REQUIRE_ARRAY || $options['flags'] & FILTER_FORCE_ARRAY)) {
             $vSanitizedArray = [];
 
-            if ($rawInputFiltered === false || $rawInputFiltered === null) {
+            if (false === $rawInputFiltered || null === $rawInputFiltered) {
                 return null;
             }
 
@@ -280,8 +189,111 @@ class SecurityController extends YesWikiController
             }
 
             return $vSanitizedArray;
-        } else {
-            return $this->sanitize($rawInputFiltered, $sanitizedFormat, $emulateFilterSanitizeString);
         }
+
+        return $this->sanitize($rawInputFiltered, $sanitizedFormat, $emulateFilterSanitizeString);
+    }
+
+    /**
+     * check if PasswordForEditing mode is activated.
+     */
+    private function isPasswordForEditingModeActivated(): bool
+    {
+        return $this->params->has('password_for_editing')
+            && !empty($this->params->get('password_for_editing'))
+            && !$this->getService(AuthController::class)->getLoggedUser(); // AuthController not loaded in construct to prevent circular references
+    }
+
+    /**
+     * check if password for editing is correct.
+     */
+    private function hasRightPasswordForExisting(): bool
+    {
+        $val = $this->wiki->request->request->get('password_for_editing');
+
+        return isset($val) && $val == $this->params->get('password_for_editing');
+    }
+
+    /**
+     * render form to ask right password for editing.
+     */
+    private function renderNotGrantedPasswordForEditing(): string
+    {
+        return $this->templateEngine->render(
+            '@security/wrong-password-for-editing.twig',
+            [
+                'wrongPassword' => $this->wiki->request->request->has('password_for_editing'),
+                'passwordForEditingMessage' => ($this->params->has('password_for_editing_message')
+                    && !empty($this->params->get('password_for_editing_message')))
+                    ? $this->params->get('password_for_editing_message') : null,
+                'time' => $this->wiki->request->get('time'),
+                'handler' => testUrlInIframe() ? 'editiframe' : 'edit',
+            ]
+        );
+    }
+
+    /**
+     * Sanitize raw input values.
+     *
+     * @$pRawInputFiltered : the original value returned by PHP filter input
+     *
+     * @$pSanitizedFormat : the format to check
+     * supported format string, int, bool
+     * if the format is not specified, the function return the original $pRawInputFiltered
+     *
+     * @param mixed $pRawInputFiltered
+     * @param mixed $pSanitizedFormat
+     * @param mixed $pEmulateFilterSanitizeString
+     */
+    private function sanitize($pRawInputFiltered, $pSanitizedFormat, $pEmulateFilterSanitizeString)
+    {
+        /**
+         * @var mixed $result
+         */
+        $result = null;
+
+        switch ($pSanitizedFormat) {
+            case 'string':
+                $result = (
+                    in_array($pRawInputFiltered, [false, null], true)
+                    || !is_scalar($pRawInputFiltered)
+                )
+                    ? ''
+                    : (
+                        $pEmulateFilterSanitizeString
+                        ? htmlspecialchars(strip_tags(strval($pRawInputFiltered)))
+                        : strval($pRawInputFiltered)
+                    );
+
+                break;
+
+            case 'int':
+                $result = (
+                    in_array($pRawInputFiltered, [false, null], true)
+                    || !is_scalar($pRawInputFiltered)
+                )
+                    ? 0
+                    : intval($pRawInputFiltered);
+
+                break;
+
+            case 'bool':
+                $result = in_array($pRawInputFiltered, [false, null, 0, 'false', '0'], true)
+                    ? false
+                    : (
+                        in_array($pRawInputFiltered, [true, 'true', 1], true)
+                        ? true
+                        : boolval($pRawInputFiltered)
+                    );
+
+                break;
+
+            default:
+                $result = $pRawInputFiltered;
+
+                break;
+        }
+
+        return $result;
     }
 }

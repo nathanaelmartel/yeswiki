@@ -8,11 +8,10 @@ use YesWiki\Wiki;
 
 abstract class RadioField extends EnumField
 {
+    protected const FIELD_DISPLAY_METHOD = 7;
     protected $displayMethod; // empty, tags
     protected $displayFilterLimit; // number of items without filter ; false if no limit
     protected $wiki;
-
-    protected const FIELD_DISPLAY_METHOD = 7;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -32,7 +31,9 @@ abstract class RadioField extends EnumField
                 ]);
 
                 return $htmlReturn;
+
                 break;
+
             default:
                 $options = $this->getOptions();
                 if ($this->displayFilterLimit && (count($options) > $this->displayFilterLimit)) {

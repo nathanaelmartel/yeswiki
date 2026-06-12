@@ -9,9 +9,8 @@ use Psr\Container\ContainerInterface;
  */
 class ExternalImageField extends ImageField
 {
-    protected $JSONFormAddress;
-
     public const FIELD_JSON_FORM_ADDR = 13; // replace nothing
+    protected $JSONFormAddress;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -22,14 +21,14 @@ class ExternalImageField extends ImageField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         return null;
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
     }
 
     protected function renderStatic($entry)
@@ -37,11 +36,11 @@ class ExternalImageField extends ImageField
         // inspired from parent but with different href
         $value = $this->getValue($entry);
 
-        if (isset($value) && $value != '') {
+        if (isset($value) && '' != $value) {
             return $this->render('@bazar/fields/external-image.twig', [
                 'attachClass' => $this->getAttach(),
                 'baseUrl' => $entry['external-data']['baseUrl'],
-                'imageFullPath' => $this->getBasePath() . $value,
+                'imageFullPath' => $this->getBasePath().$value,
                 'fieldName' => $this->name,
                 'thumbnailHeight' => $this->thumbnailHeight,
                 'thumbnailWidth' => $this->thumbnailHeight,

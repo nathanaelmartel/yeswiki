@@ -28,6 +28,7 @@ if (!function_exists('send_mail')) {
 
 class UserManager implements UserProviderInterface, PasswordUpgraderInterface
 {
+    public const KEY_VOCABULARY = 'http://outils-reseaux.org/_vocabulary/key';
     protected $wiki;
     protected $dbService;
     protected $passwordHasherFactory;
@@ -37,8 +38,6 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
 
     private $getOneByNameCacheResults;
     private array $associatedEntryCache = [];
-
-    public const KEY_VOCABULARY = 'http://outils-reseaux.org/_vocabulary/key';
 
     public function __construct(
         Wiki $wiki,
@@ -70,7 +69,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         if (!is_string($password) && array_key_exists($name, $this->getOneByNameCacheResults)) {
             $result = $this->getOneByNameCacheResults[$name];
         } else {
-            $result = $this->dbService->loadSingle('select * from' . $this->dbService->prefixTable('users') . "where name = '" . $this->dbService->escape($name) . "' " . (!is_string($password) ? '' : "and password = '" . $this->dbService->escape($password) . "'") . ' limit 1');
+            $result = $this->dbService->loadSingle('select * from'.$this->dbService->prefixTable('users')."where name = '".$this->dbService->escape($name)."' ".(!is_string($password) ? '' : "and password = '".$this->dbService->escape($password)."'").' limit 1');
             if (!is_string($password)) {
                 $this->getOneByNameCacheResults[$name] = $result;
             }
@@ -81,7 +80,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
 
     public function getOneByEmail($mail, $password = null): ?User
     {
-        return $this->arrayToUser($this->dbService->loadSingle('select * from' . $this->dbService->prefixTable('users') . "where email = '" . $this->dbService->escape($mail) . "' " . (!is_string($password) ? '' : "and password = '" . $this->dbService->escape($password) . "'") . ' limit 1'));
+        return $this->arrayToUser($this->dbService->loadSingle('select * from'.$this->dbService->prefixTable('users')."where email = '".$this->dbService->escape($mail)."' ".(!is_string($password) ? '' : "and password = '".$this->dbService->escape($password)."'").' limit 1'));
     }
 
     public function getAll($dbFields = ['name', 'password', 'email', 'motto', 'revisioncount', 'changescount', 'doubleclickedit', 'signuptime', 'show_comments']): array
@@ -98,7 +97,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
             function ($userAsArray) {
                 return $this->arrayToUser($userAsArray, true);
             },
-            $this->dbService->loadAll("select $selectDefinition from {$prefix}users order by name")
+            $this->dbService->loadAll("select {$selectDefinition} from {$prefix}users order by name")
         );
     }
 
@@ -107,7 +106,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
      * @param string email (optionnal if parameters by array)
      * @param string plainPassword (optionnal if parameters by array)
      *
-     * @throws UserNameAlreadyUsedException|UserEmailAlreadyUsedException|\Exception
+     * @throws \Exception|UserEmailAlreadyUsedException|UserNameAlreadyUsedException
      */
     public function create($wikiNameOrUser, string $email = '', string $plainPassword = '')
     {
@@ -177,16 +176,16 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         $hashedPassword = $passwordHasher->hash($plainPassword);
 
         return $this->dbService->query(
-            'INSERT INTO ' . $this->dbService->prefixTable('users') . 'SET ' .
-                'signuptime = now(), ' .
-                "name = '" . $this->dbService->escape($user['name']) . "', " .
-                "motto = '" . (empty($user['motto']) ? '' : $this->dbService->escape($user['motto'])) . "', " .
-                (empty($user['changescount']) ? '' : "changescount = '" . $this->dbService->escape($user['changescount']) . "', ") .
-                (empty($user['doubleclickedit']) ? '' : "doubleclickedit = '" . $this->dbService->escape($user['doubleclickedit']) . "', ") .
-                (empty($user['revisioncount']) ? '' : "revisioncount = '" . $this->dbService->escape($user['revisioncount']) . "', ") .
-                (empty($user['show_comments']) ? '' : "show_comments = '" . $this->dbService->escape($user['show_comments']) . "', ") .
-                "email = '" . $this->dbService->escape($user['email']) . "', " .
-                "password = '" . $this->dbService->escape($hashedPassword) . "'"
+            'INSERT INTO '.$this->dbService->prefixTable('users').'SET '
+                .'signuptime = now(), '
+                ."name = '".$this->dbService->escape($user['name'])."', "
+                ."motto = '".(empty($user['motto']) ? '' : $this->dbService->escape($user['motto']))."', "
+                .(empty($user['changescount']) ? '' : "changescount = '".$this->dbService->escape($user['changescount'])."', ")
+                .(empty($user['doubleclickedit']) ? '' : "doubleclickedit = '".$this->dbService->escape($user['doubleclickedit'])."', ")
+                .(empty($user['revisioncount']) ? '' : "revisioncount = '".$this->dbService->escape($user['revisioncount'])."', ")
+                .(empty($user['show_comments']) ? '' : "show_comments = '".$this->dbService->escape($user['show_comments'])."', ")
+                ."email = '".$this->dbService->escape($user['email'])."', "
+                ."password = '".$this->dbService->escape($hashedPassword)."'"
         );
     }
 
@@ -203,7 +202,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
     {
         // Generate the password recovery key
         $passwordHasher = $this->passwordHasherFactory->getPasswordHasher($user);
-        $plainKey = $user['name'] . '_' . $user['email'] . random_bytes(16) . date('Y-m-d H:i:s');
+        $plainKey = $user['name'].'_'.$user['email'].random_bytes(16).date('Y-m-d H:i:s');
         $hashedKey = $passwordHasher->hash($plainKey);
         // Erase the previous triples in the trible table
         $this->tripleStore->delete($user['name'], self::KEY_VOCABULARY, null, '', '');
@@ -220,16 +219,16 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         // Send the email
         if (!boolval($this->wiki->config['contact_disable_email_for_password'])) {
             $pieces = parse_url($this->params->get('base_url'));
-            $domain = isset($pieces['host']) ? $pieces['host'] : '';
+            $domain = $pieces['host'] ?? '';
 
-            $message = _t('LOGIN_DEAR') . ' ' . $user['name'] . ",\n";
-            $message .= _t('LOGIN_CLICK_FOLLOWING_LINK') . ' :' . "\n";
-            $message .= '-----------------------' . "\n";
-            $message .= $link . "\n";
-            $message .= '-----------------------' . "\n";
-            $message .= _t('LOGIN_THE_TEAM') . ' ' . $domain . "\n";
+            $message = _t('LOGIN_DEAR').' '.$user['name'].",\n";
+            $message .= _t('LOGIN_CLICK_FOLLOWING_LINK').' :'."\n";
+            $message .= '-----------------------'."\n";
+            $message .= $link."\n";
+            $message .= '-----------------------'."\n";
+            $message .= _t('LOGIN_THE_TEAM').' '.$domain."\n";
 
-            $subject = _t('LOGIN_PASSWORD_LOST_FOR') . ' ' . $domain;
+            $subject = _t('LOGIN_PASSWORD_LOST_FOR').' '.$domain;
 
             send_mail($this->params->get('BAZ_ADRESSE_MAIL_ADMIN'), $this->params->get('BAZ_ADRESSE_MAIL_ADMIN'), $user['email'], $subject, $message);
         }
@@ -267,9 +266,10 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         if (isset($newValues['email'])) {
             if (empty($newValues['email'])) {
                 throw new \Exception("\$newValues['email'] parameter of UserManager->update should not be empty!");
-            } elseif ($user['email'] == $newValues['email']) {
+            }
+            if ($user['email'] == $newValues['email']) {
                 $authorizedKeys = array_filter($authorizedKeys, function ($item) {
-                    return $item != 'email';
+                    return 'email' != $item;
                 });
             } elseif (!empty($this->getOneByEmail($newValues['email']))) {
                 throw new UserEmailAlreadyUsedException();
@@ -282,7 +282,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
                 ', ',
                 array_map(
                     function ($key) use ($newValues) {
-                        return "`$key` = \"{$this->dbService->escape($newValues[$key])}\" ";
+                        return "`{$key}` = \"{$this->dbService->escape($newValues[$key])}\" ";
                     },
                     $authorizedKeys
                 )
@@ -310,14 +310,15 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
             throw new \Exception(_t('WIKI_IN_HIBERNATION'));
         }
         unset($this->getOneByNameCacheResults[$user['name']]);
-        $query = "DELETE FROM {$this->dbService->prefixTable('users')} " .
-            " WHERE `name` = \"{$this->dbService->escape($user['name'])}\";";
+        $query = "DELETE FROM {$this->dbService->prefixTable('users')} "
+            ." WHERE `name` = \"{$this->dbService->escape($user['name'])}\";";
+
         try {
             if (!$this->dbService->query($query)) {
-                throw new DeleteUserException(_t('USER_DELETE_QUERY_FAILED') . '.');
+                throw new DeleteUserException(_t('USER_DELETE_QUERY_FAILED').'.');
             }
         } catch (\Exception $ex) {
-            throw new DeleteUserException(_t('USER_DELETE_QUERY_FAILED') . '.');
+            throw new DeleteUserException(_t('USER_DELETE_QUERY_FAILED').'.');
         }
     }
 
@@ -327,7 +328,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
      */
     public function groupsWhereIsMember(User $user, bool $adminCheck = true)
     {
-        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX . '%', null, '%' . $user['name'] . '%', 'LIKE', '=', 'LIKE');
+        $group_list = $this->tripleStore->getMatching(GROUP_PREFIX.'%', null, '%'.$user['name'].'%', 'LIKE', '=', 'LIKE');
         $prefix_len = strlen(GROUP_PREFIX);
         $list = [];
         foreach ($group_list as $group) {
@@ -340,7 +341,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
     /** Tells if a user is member of the specified group.
      *
      * @param string      $groupName    The name of the group for which we are testing membership
-     * @param string|null $username     if null check current user
+     * @param null|string $username     if null check current user
      * @param array       $formerGroups former groups list to avoid loops
      *
      * @return bool True if the $user is member of $groupName, false otherwise
@@ -359,6 +360,8 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
 
     /**
      * get the entry that is linked to the username.
+     *
+     * @param mixed $user
      */
     public function getAssociatedEntry($user = '')
     {
@@ -398,7 +401,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         return $found;
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ implements  PasswordUpgraderInterface ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ implements  PasswordUpgraderInterface ~~~~~~~~~~~~~~~~~~
 
     /**
      * Upgrades the hashed password of a user, typically for using a better hash algorithm.
@@ -419,25 +422,26 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         if (!$this->supportsClass(get_class($user))) {
             throw new UnsupportedUserException();
         }
+
         try {
             $previousPassword = $user['password'];
             $user->setPassword($newHashedPassword);
-            $query =
-                'UPDATE ' . $this->dbService->prefixTable('users') . 'SET ' .
-                'password = "' . $this->dbService->escape($newHashedPassword) . '"' .
-                ' WHERE name = "' . $this->dbService->escape($user['name']) . '" ' .
-                'AND email= "' . $this->dbService->escape($user['email']) . '" ' .
-                'AND password= "' . $this->dbService->escape($previousPassword) . '";';
+            $query
+                = 'UPDATE '.$this->dbService->prefixTable('users').'SET '
+                .'password = "'.$this->dbService->escape($newHashedPassword).'"'
+                .' WHERE name = "'.$this->dbService->escape($user['name']).'" '
+                .'AND email= "'.$this->dbService->escape($user['email']).'" '
+                .'AND password= "'.$this->dbService->escape($previousPassword).'";';
             $this->dbService->query($query);
         } catch (\Throwable $th) {
             // only throw error in debug mode
-            if ($this->wiki->GetConfigValue('debug') == 'yes') {
+            if ('yes' == $this->wiki->GetConfigValue('debug')) {
                 throw $th;
             }
         }
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ implements  UserProviderInterface ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ implements  UserProviderInterface ~~~~~~~~~~~~~~~~~~
 
     /**
      * Refreshes the user.
@@ -489,7 +493,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         return $this->loadUserByIdentifier($username);
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ end of implements ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ end of implements ~~~~~~~~~~~~~~~~~~
     /**
      * @return User
      *
@@ -500,7 +504,7 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
         return $this->getOneByName($username);
     }
 
-    /* ~~~~~~~~~~~~~~~~~~ DEPRECATED ~~~~~~~~~~~~~~~~~~ */
+    // ~~~~~~~~~~~~~~~~~~ DEPRECATED ~~~~~~~~~~~~~~~~~~
 
     /**
      * @deprecated Use AuthController::getLoggedUser
@@ -520,6 +524,9 @@ class UserManager implements UserProviderInterface, PasswordUpgraderInterface
 
     /**
      * @deprecated Use AuthController::login
+     *
+     * @param mixed $user
+     * @param mixed $remember
      */
     public function login($user, $remember = 0)
     {

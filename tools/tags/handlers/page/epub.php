@@ -4,23 +4,24 @@ error_reporting(0);
 
 $metadatas = $this->GetMetaDatas($this->GetPageTag());
 
-if (isset($metadatas['ebook-title']) && isset($metadatas['ebook-description']) && isset($metadatas['ebook-author']) && isset($metadatas['ebook-biblio-author']) && isset($metadatas['ebook-cover-image'])) {
+if (isset($metadatas['ebook-title'], $metadatas['ebook-description'], $metadatas['ebook-author'], $metadatas['ebook-biblio-author'], $metadatas['ebook-cover-image'])) {
     // ePub uses XHTML 1.1, preferably strict.
-    $content_start =
-    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-    . "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"\n"
-    . "    \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
-    . "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
-    . '<head>'
-    . "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n"
-    . "<link rel=\"stylesheet\" type=\"text/css\" href=\"styles.css\" />\n"
-    . '<title>' . $metadatas['ebook-title'] . "</title>\n"
-    . "</head>\n"
-    . "<body>\n";
+    $content_start
+    = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+    ."<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"\n"
+    ."    \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
+    ."<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
+    .'<head>'
+    ."<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n"
+    ."<link rel=\"stylesheet\" type=\"text/css\" href=\"styles.css\" />\n"
+    .'<title>'.$metadatas['ebook-title']."</title>\n"
+    ."</head>\n"
+    ."<body>\n";
 
     $bookEnd = "</body>\n</html>\n";
 
     include_once 'tools/tags/libs/tags.functions.php';
+
     include_once 'tools/tags/libs/vendor/PHPePub/EPub.php';
 
     $book = new EPub();
@@ -50,7 +51,7 @@ if (isset($metadatas['ebook-title']) && isset($metadatas['ebook-description']) &
     $book->setCoverImage('Cover.jpg', file_get_contents($metadatas['ebook-cover-image']), 'image/jpeg');
 
     // Titre et courte description de l'ouvrage
-    $cover = $content_start . '<h1>' . $metadatas['ebook-title'] . '</h1>' . "\n" . '<h2>' . _t('TAGS_BY') . ': ' . $metadatas['ebook-author'] . '</h2>' . "\n" . $metadatas['ebook-description'] . $bookEnd;
+    $cover = $content_start.'<h1>'.$metadatas['ebook-title'].'</h1>'."\n".'<h2>'._t('TAGS_BY').': '.$metadatas['ebook-author'].'</h2>'."\n".$metadatas['ebook-description'].$bookEnd;
     $book->addChapter(_t('TAGS_ABOUT_THIS_EBOOK'), 'Cover.html', $cover);
 
     // on recupere les include pour faire les chapitres
@@ -59,11 +60,11 @@ if (isset($metadatas['ebook-title']) && isset($metadatas['ebook-description']) &
         $page = $this->LoadPage($pageWiki);
         $url = explode('wakka.php', $this->config['base_url']);
         if (YW_CHARSET != 'UTF-8') {
-            $contentpage = mb_convert_encoding($content_start . str_replace('<img loading="lazy" src="' . $url[0], '<img loading="lazy" src="', $this->Format('{{include page="' . $pageWiki . '" class="' . $matches[2][$nb] . '"}}')) . $bookEnd, 'UTF-8', 'ISO-8859-1');
+            $contentpage = mb_convert_encoding($content_start.str_replace('<img loading="lazy" src="'.$url[0], '<img loading="lazy" src="', $this->Format('{{include page="'.$pageWiki.'" class="'.$matches[2][$nb].'"}}')).$bookEnd, 'UTF-8', 'ISO-8859-1');
         } else {
-            $contentpage = $content_start . str_replace('<img loading="lazy" src="' . $url[0], '<img loading="lazy" src="', $this->Format('{{include page="' . $pageWiki . '" class="' . $matches[2][$nb] . '"}}')) . $bookEnd;
+            $contentpage = $content_start.str_replace('<img loading="lazy" src="'.$url[0], '<img loading="lazy" src="', $this->Format('{{include page="'.$pageWiki.'" class="'.$matches[2][$nb].'"}}')).$bookEnd;
         }
-        $book->addChapter(get_title_from_body($page), $pageWiki . '.html', $contentpage, false, EPub::EXTERNAL_REF_ADD);
+        $book->addChapter(get_title_from_body($page), $pageWiki.'.html', $contentpage, false, EPub::EXTERNAL_REF_ADD);
     }
 
     $book->finalize(); // Finalize the book, and build the archive.
@@ -76,5 +77,5 @@ if (isset($metadatas['ebook-title']) && isset($metadatas['ebook-description']) &
     // Send the book to the client. ".epub" will be appended if missing.
     $zipData = $book->sendBook($this->getPageTag());
 } else {
-    echo $this->Header() . '<div class="alert alert-danger">' . _t('TAGS_NO_EBOOK_METADATAS') . '</div>' . $this->Footer();
+    echo $this->Header().'<div class="alert alert-danger">'._t('TAGS_NO_EBOOK_METADATAS').'</div>'.$this->Footer();
 }

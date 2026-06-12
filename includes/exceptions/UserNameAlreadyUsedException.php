@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class UserNameAlreadyUsedException extends \Exception
-{
-}
+class UserNameAlreadyUsedException extends \Exception {}

@@ -11,7 +11,9 @@ use YesWiki\Core\YesWikiController;
 class ApiController extends YesWikiController
 {
     /**
-     * @Route("/api/hello/{name}", options={"acl":{"public"}})
+     * @Route("/api/hello/{name}", options={"acl": {"public"}})
+     *
+     * @param mixed $name
      */
     public function sayHello(Request $request, $name)
     {
@@ -21,12 +23,12 @@ class ApiController extends YesWikiController
     }
 
     /**
-     * @Route("/api/hello", options={"acl":{"public"}})
+     * @Route("/api/hello", options={"acl": {"public"}})
      */
     public function onlineDoc()
     {
         $output = $this->getDocumentation();
-        $output = $this->wiki->Header() . $output . $this->wiki->Footer();
+        $output = $this->wiki->Header().$output.$this->wiki->Footer();
 
         return new Response($output);
     }
@@ -43,10 +45,10 @@ class ApiController extends YesWikiController
         $urlHello = $this->wiki->Href('', 'api/hello/test');
         $urlHelloTest = $this->wiki->Href('', 'api/hello/{test}');
         $output .= 'The following code :<br />';
-        $output .= 'GET <code>' . $urlHelloTest . '</code><br />';
+        $output .= 'GET <code>'.$urlHelloTest.'</code><br />';
         $output .= 'gives :<br />';
         $output .= '<code>test</code><br />Example : <br />';
-        $output .= 'GET <code><a href="' . $urlHello . '">' . $urlHello . '</a></code><br />';
+        $output .= 'GET <code><a href="'.$urlHello.'">'.$urlHello.'</a></code><br />';
 
         return $output;
     }

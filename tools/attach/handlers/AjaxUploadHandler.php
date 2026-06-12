@@ -2,8 +2,6 @@
 
 namespace YesWiki\Attach;
 
-use Attach;
-use qqFileUploader;
 use YesWiki\Core\Service\AclService;
 use YesWiki\Core\Service\PageManager;
 use YesWiki\Core\YesWikiHandler;
@@ -31,8 +29,9 @@ class AjaxUploadHandler extends YesWikiHandler
         }
         $errorsMessage = '';
         ob_start();
+
         try {
-            $att = new attach($this->wiki);
+            $att = new \Attach($this->wiki);
 
             // list of valid extensions, ex. array("jpeg", "xml", "bmp")
             $allowedExtensions = array_keys($this->params->get('authorized-extensions'));
@@ -40,15 +39,15 @@ class AjaxUploadHandler extends YesWikiHandler
             // max file size in bytes
             $sizeLimit = $att->attachConfig['max_file_size'];
 
-            $uploader = new qqFileUploader($allowedExtensions, $sizeLimit, $this->hasTempTag);
+            $uploader = new \qqFileUploader($allowedExtensions, $sizeLimit, $this->hasTempTag);
             $result = $uploader->handleUpload($att->attachConfig['upload_path']);
         } catch (\Throwable $th) {
-            $errorsMessage .= $this->wiki->dumpThrowable ($th);
+            $errorsMessage .= $this->wiki->dumpThrowable($th);
         }
         $errorsMessage .= ob_get_contents();
         ob_end_clean();
         if (!empty($errorsMessage)) {
-            $result['error'] = ($result['error'] ?? '') . $errorsMessage;
+            $result['error'] = ($result['error'] ?? '').$errorsMessage;
         }
 
         return $this->formatOuput($result);
@@ -78,8 +77,7 @@ class AjaxUploadHandler extends YesWikiHandler
             !empty($page) // existing page
                 && $aclService->hasAccess('read', $tag) // page with cration of entries
                 && $this->hasTempTag
-        )
-        ;
+        );
     }
 
     private function formatOuput(array $ouput): string

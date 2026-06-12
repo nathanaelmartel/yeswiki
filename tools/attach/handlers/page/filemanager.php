@@ -16,11 +16,11 @@ ob_start();
         $att->doFilemanager();
         unset($att);
     } else {
-        echo $this->Format('//' . _t('FILEMANAGER_ACTION_NEED_ACCESS') . '//');
+        echo $this->Format('//'._t('FILEMANAGER_ACTION_NEED_ACCESS').'//');
     }
-    ?>
+?>
 </div>
 <?php
 $output = ob_get_contents();
 ob_end_clean();
-echo $this->Header() . $output . $this->Footer(); ?>
+echo $this->Header().$output.$this->Footer(); ?>

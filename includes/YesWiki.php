@@ -3,13 +3,21 @@
 namespace YesWiki;
 
 require_once 'includes/constants.php';
+
 require_once 'includes/urlutils.inc.php';
+
 require_once 'includes/email.inc.php';
+
 require_once 'includes/i18n.inc.php';
+
 require_once 'includes/YesWikiInit.php';
+
 require_once 'includes/YesWikiPerformable.php';
+
 require_once 'includes/objects/YesWikiAction.php';
+
 require_once 'includes/objects/YesWikiHandler.php';
+
 require_once 'includes/objects/YesWikiFormatter.php';
 
 use Symfony\Component\Config\FileLocator;
@@ -75,6 +83,8 @@ class Wiki
 
     /**
      * Constructor.
+     *
+     * @param mixed $config
      */
     public function __construct($config = [])
     {
@@ -95,14 +105,14 @@ class Wiki
 
     public function dumpThrowable($pThrowable)
     {
-        return htmlspecialchars($this->hideServerPath($pThrowable->getMessage())) . ' in <i>.' . htmlspecialchars($this->hideServerPath($pThrowable->getFile())) . '</i> on line <i>' . $pThrowable->getLine() . '</i>';
+        return htmlspecialchars($this->hideServerPath($pThrowable->getMessage())).' in <i>.'.htmlspecialchars($this->hideServerPath($pThrowable->getFile())).'</i> on line <i>'.$pThrowable->getLine().'</i>';
     }
 
     // Hide complete server path from exception
 
     public function hideServerPath($pPath)
     {
-        $vRootPath = realpath(__DIR__ . '/..');
+        $vRootPath = realpath(__DIR__.'/..');
 
         return str_replace($vRootPath, '', $pPath);
     }
@@ -110,9 +120,9 @@ class Wiki
     // MISC
     public function GetMicroTime()
     {
-        list($usec, $sec) = explode(' ', microtime());
+        [$usec, $sec] = explode(' ', microtime());
 
-        return (float)$usec + (float)$sec;
+        return (float) $usec + (float) $sec;
     }
 
     // VARIABLES
@@ -128,20 +138,21 @@ class Wiki
 
     public function GetMethod()
     {
-        if ($this->method == 'iframe') {
+        if ('iframe' == $this->method) {
             return 'show';
-        } elseif ($this->method == 'editiframe') {
-            return 'edit';
-        } else {
-            return $this->method;
         }
+        if ('editiframe' == $this->method) {
+            return 'edit';
+        }
+
+        return $this->method;
     }
 
     public function GetConfigValue($name, $default = null)
     {
         return isset($this->config[$name])
             ? is_array($this->config[$name]) ? $this->config[$name] : trim($this->config[$name])
-            : ($default != null ? $default : '');
+            : (null != $default ? $default : '');
     }
 
     public function GetWakkaName()
@@ -201,7 +212,7 @@ class Wiki
      */
     public function GetCurrentInclusion()
     {
-        return isset($this->inclusions[0]) ? $this->inclusions[0] : false;
+        return $this->inclusions[0] ?? false;
     }
 
     /**
@@ -233,6 +244,7 @@ class Wiki
      * @param array $
      *            La nouvelle pile d'inclusions.
      *            L'element 0 doit representer la derniere inclusion, l'element 1 son parent et ainsi de suite.
+     * @param mixed $pile
      *
      * @return array L'ancienne pile d'inclusions, avec les noms des pages en minuscules
      */
@@ -274,7 +286,7 @@ class Wiki
             // -- Determine quelle est la page :
             // -- passee en parametre (que se passe-t'il si elle n'existe pas ?)
             // -- ou la page en cours par defaut
-            $page = isset($page) ? $page : $this->GetPageTag();
+            $page ??= $this->GetPageTag();
 
             // -- Chargement de la page
             $result = $this->LoadPage($page);
@@ -292,9 +304,9 @@ class Wiki
 
             // Retourne 0 seulement si tout c'est bien passe
             return 0;
-        } else {
-            return 1;
         }
+
+        return 1;
     }
 
     /**
@@ -316,12 +328,12 @@ class Wiki
             "\n",
             "\r",
         ];
-        $replace = '\\n';
+        $replace = '\n';
         $content = str_replace($order, $replace, $content);
-        $contentToAppend = "\n" . date('Y-m-d H:i:s') . ' . . . . ' . $user . ' . . . . ' . $content . "\n";
-        $tag = $page ? $page : 'LogDesActionsAdministratives' . date('Ymd');
+        $contentToAppend = "\n".date('Y-m-d H:i:s').' . . . . '.$user.' . . . . '.$content."\n";
+        $tag = $page ? $page : 'LogDesActionsAdministratives'.date('Ymd');
         $result = $this->AppendContentToPage($contentToAppend, $tag, true);
-        if (empty($page) && $result === 0) {
+        if (empty($page) && 0 === $result) {
             try {
                 // keep only 10 revisions of this page
                 $pageManager = $this->services->get(PageManager::class);
@@ -348,8 +360,8 @@ class Wiki
                     // there are some versions to remove from DB
                     // let's build one big request, that's better...
                     $sql = <<<SQL
-                    DELETE FROM {$dbService->prefixTable('pages')} WHERE `id` IN ($formattedIds);
-                    SQL;
+                        DELETE FROM {$dbService->prefixTable('pages')} WHERE `id` IN ({$formattedIds});
+                        SQL;
 
                     // ... and send it !
                     $dbService->query($sql);
@@ -371,25 +383,25 @@ class Wiki
             // is purge active ?
             // let's search which pages versions we have to remove
             // this is necessary beacause even MySQL does not handel multi-tables deletes before version 4.0
-            $wnPages = $this->GetConfigValue('table_prefix') . 'pages';
+            $wnPages = $this->GetConfigValue('table_prefix').'pages';
             $daysFormatted = mysqli_real_escape_string($this->dblink, $days);
             $sql = <<<SQL
-            SELECT DISTINCT a.id FROM $wnPages a,$wnPages b
-                WHERE a.latest = 'N'
-                    AND b.latest = 'N'
-                    AND a.time < date_sub(now(), INTERVAL '$daysFormatted' DAY)
-                    AND a.tag = b.tag
-                    AND a.time < b.time
-                    AND b.time < date_sub(now(), INTERVAL '$daysFormatted' DAY);
-            SQL;
+                SELECT DISTINCT a.id FROM {$wnPages} a,{$wnPages} b
+                    WHERE a.latest = 'N'
+                        AND b.latest = 'N'
+                        AND a.time < date_sub(now(), INTERVAL '{$daysFormatted}' DAY)
+                        AND a.tag = b.tag
+                        AND a.time < b.time
+                        AND b.time < date_sub(now(), INTERVAL '{$daysFormatted}' DAY);
+                SQL;
             $ids = $this->LoadAll($sql);
 
             if (count($ids)) {
                 // there are some versions to remove from DB
                 // let's build one big request, that's better...
-                $sql = 'DELETE FROM ' . $wnPages . ' WHERE id IN (';
+                $sql = 'DELETE FROM '.$wnPages.' WHERE id IN (';
                 foreach ($ids as $key => $line) {
-                    $sql .= ($key ? ', ' : '') . $line['id']; // NB.: id is an int, no need of quotes
+                    $sql .= ($key ? ', ' : '').$line['id']; // NB.: id is an int, no need of quotes
                 }
                 $sql .= ')';
 
@@ -422,14 +434,13 @@ class Wiki
     {
         $url = explode('wakka.php', $this->config['base_url']);
         $url = explode('index.php', $url[0]);
-        $url = preg_replace(['/\/\?$/', '/\/$/'], '', $url[0]);
 
-        return $url;
+        return preg_replace(['/\/\?$/', '/\/$/'], '', $url[0]);
     }
 
     public function Redirect($url)
     {
-        header("Location: $url");
+        header("Location: {$url}");
         $this->exit();
     }
 
@@ -437,9 +448,9 @@ class Wiki
     {
         if ($this->isCli()) {
             throw new ExitException($message);
-        } else {
-            exit($message);
         }
+
+        exit($message);
     }
 
     // returns just PageName[/method].
@@ -449,22 +460,22 @@ class Wiki
             $tag = $this->tag;
         }
 
-        return $tag . ($method ? '/' . $method : '');
+        return $tag.($method ? '/'.$method : '');
     }
 
     // returns the full url to a page/method.
     public function Href($method = null, $tag = null, $params = null, $htmlspchars = true)
     {
-        if ($tag == null || !$tag = trim($tag)) {
+        if (null == $tag || !$tag = trim($tag)) {
             $tag = $this->tag;
         }
-        $href = $this->config['base_url'] . $this->MiniHref($method, $tag);
+        $href = $this->config['base_url'].$this->MiniHref($method, $tag);
         if ($params) {
             if (is_array($params)) {
                 $paramsArray = [];
                 foreach ($params as $key => $value) {
                     if (!empty($value) || in_array($value, [0, '0', ''], true)) {
-                        $paramsArray[] = "$key=" . urlencode($value);
+                        $paramsArray[] = "{$key}=".urlencode($value);
                     }
                 }
                 if (count($paramsArray) > 0) {
@@ -473,10 +484,10 @@ class Wiki
                     $params = '';
                 }
             }
-            $href .= ($this->config['rewrite_mode'] ? '?' : ($htmlspchars ? '&amp;' : '&')) . $params;
+            $href .= ($this->config['rewrite_mode'] ? '?' : ($htmlspchars ? '&amp;' : '&')).$params;
         }
-        if (isset($_GET['lang']) && $_GET['lang'] != '') {
-            $href .= '&lang=' . $GLOBALS['prefered_language'];
+        if (isset($_GET['lang']) && '' != $_GET['lang']) {
+            $href .= '&lang='.$GLOBALS['prefered_language'];
         }
 
         return $href;
@@ -495,18 +506,18 @@ class Wiki
     {
         if (empty($link)) {
             return null;
-        } else {
-            $linkParts = $this->extractLinkParts($link);
-            if ($linkParts) {
-                return $this->Href($linkParts['method'], $linkParts['tag'], $linkParts['params']);
-            } elseif (filter_var($link, FILTER_VALIDATE_URL)) {
-                // a valid url
-                return $link;
-            } else {
-                // for now let's be tolerant : it may be a relative url or an anchor
-                return $link;
-            }
         }
+        $linkParts = $this->extractLinkParts($link);
+        if ($linkParts) {
+            return $this->Href($linkParts['method'], $linkParts['tag'], $linkParts['params']);
+        }
+        if (filter_var($link, FILTER_VALIDATE_URL)) {
+            // a valid url
+            return $link;
+        }
+
+        // for now let's be tolerant : it may be a relative url or an anchor
+        return $link;
     }
 
     /**
@@ -518,12 +529,12 @@ class Wiki
      *
      * @param $link the link to parse
      *
-     * @return array|null if the link is recognize return the result array, otherwise nullhref
+     * @return null|array if the link is recognize return the result array, otherwise nullhref
      */
     public function extractLinkParts($link): ?array
     {
-        if (preg_match('/^(' . WN_CAMEL_CASE_EVOLVED . ')(?:\/(' . WN_CAMEL_CASE_EVOLVED . '))?(?:[?&]('
-            . RFC3986_URI_CHARS . '))?$/u', $link, $linkParts)) {
+        if (preg_match('/^('.WN_CAMEL_CASE_EVOLVED.')(?:\/('.WN_CAMEL_CASE_EVOLVED.'))?(?:[?&]('
+            .RFC3986_URI_CHARS.'))?$/u', $link, $linkParts)) {
             $tag = !empty($linkParts[1]) ? $linkParts[1] : null;
             $method = !empty($linkParts[2]) ? $linkParts[2] : null;
             $paramsStr = !empty($linkParts[3]) ? $linkParts[3] : null;
@@ -537,13 +548,18 @@ class Wiki
                 'method' => $method,
                 'params' => $params,
             ];
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     /**
      * @deprecated Use LinkTo instead
+     *
+     * @param mixed $tag
+     * @param mixed $method
+     * @param mixed $text
+     * @param mixed $track
      */
     public function ComposeLinkToPage($tag, $method = '', $text = '', $track = 1)
     {
@@ -552,6 +568,13 @@ class Wiki
 
     /**
      * @deprecated Use LinkTo instead
+     *
+     * @param mixed      $tag
+     * @param null|mixed $method
+     * @param null|mixed $params
+     * @param null|mixed $text
+     * @param mixed      $track
+     * @param mixed      $forcedLink
      */
     public function Link($tag, $method = null, $params = null, $text = null, $track = 1, $forcedLink = false)
     {
@@ -591,7 +614,7 @@ class Wiki
             $params = $options['params'] ?? $wikiLink['params'] ?? [];
 
             // Handle missing Tag
-            if ((empty($method) || $method == 'show') && !$this->LoadPage($tag)) {
+            if ((empty($method) || 'show' == $method) && !$this->LoadPage($tag)) {
                 $params = array_merge($params, $this->ParamsForNewPageLink());
                 $method = 'edit';
                 $options['data-missing-tag'] = true;
@@ -600,8 +623,7 @@ class Wiki
             // Tag and Method to be kept as HTML attributes
             $options['data-tag'] = $tag;
             $options['data-method'] = $method ?? 'show';
-            unset($options['method']);
-            unset($options['params']);
+            unset($options['method'], $options['params']);
 
             // Trackable
             if (!empty($options['track']) && $options['track']) {
@@ -613,7 +635,7 @@ class Wiki
             // General URL
             $link = $this->Href($method, $tag, $params, false);
         } elseif ((!isset($options['data-iframe'])
-                || strval($options['data-iframe']) != '0')
+                || '0' != strval($options['data-iframe']))
             && !empty($options['class'])
             && is_string($options['class'])
             && preg_match('/(^|\s)modalbox($|\s)/', $options['class'])
@@ -627,8 +649,8 @@ class Wiki
         }
 
         // Email addresses
-        if (preg_match("/^[\w.-]+\@[\w.-]+$/", $link)) {
-            $link = 'mailto:' . $link;
+        if (preg_match('/^[\\w.-]+\\@[\\w.-]+$/', $link)) {
+            $link = 'mailto:'.$link;
         }
 
         // Options to HTML attributes
@@ -641,7 +663,7 @@ class Wiki
                         ? $value
                         : json_encode($value);
 
-                    return "$key=\"$encodedValue\"";
+                    return "{$key}=\"{$encodedValue}\"";
                 },
                 array_keys($options)
             )
@@ -653,8 +675,8 @@ class Wiki
 
         // Generate HTML
         return <<<HTML
-        <a href="$link" $stringAttrs>$text</a>
-        HTML;
+            <a href="{$link}" {$stringAttrs}>{$text}</a>
+            HTML;
     }
 
     public function ParamsForNewPageLink()
@@ -689,7 +711,7 @@ class Wiki
 
     public function IsWikiName($text, $type = WN_CAMEL_CASE_EVOLVED)
     {
-        return preg_match('/^' . $type . '$/u', $text);
+        return preg_match('/^'.$type.'$/u', $text);
     }
 
     public function Header()
@@ -719,7 +741,7 @@ class Wiki
         if ($lines = file('interwiki.conf')) {
             foreach ($lines as $line) {
                 if ($line = trim($line)) {
-                    list($wikiName, $wikiUrl) = explode(' ', trim($line));
+                    [$wikiName, $wikiUrl] = explode(' ', trim($line));
                     $this->AddInterWiki($wikiName, $wikiUrl);
                 }
             }
@@ -744,7 +766,7 @@ class Wiki
         }
 
         // check if it's coming from another site
-        if ($referrer && !preg_match('/^' . preg_quote($this->GetConfigValue('base_url'), '/') . '/', $referrer)) {
+        if ($referrer && !preg_match('/^'.preg_quote($this->GetConfigValue('base_url'), '/').'/', $referrer)) {
             // avoid XSS (with urls like "javascript:alert()" and co)
             // by forcing http/https prefix
             // NB.: this does NOT exempt to htmlspecialchars() the collected URIs !
@@ -752,19 +774,19 @@ class Wiki
                 return;
             }
 
-            $this->Query('insert into ' . $this->config['table_prefix'] . 'referrers set ' . "page_tag = '" . mysqli_real_escape_string($this->dblink, $tag) . "', referrer = '" . mysqli_real_escape_string($this->dblink, $referrer) . "', " . 'time = now()');
+            $this->Query('insert into '.$this->config['table_prefix'].'referrers set '."page_tag = '".mysqli_real_escape_string($this->dblink, $tag)."', referrer = '".mysqli_real_escape_string($this->dblink, $referrer)."', ".'time = now()');
         }
     }
 
     public function LoadReferrers($tag = '')
     {
-        return $this->LoadAll('select referrer, count(referrer) as num from ' . $this->config['table_prefix'] . 'referrers ' . ($tag = trim($tag) ? "where page_tag = '" . mysqli_real_escape_string($this->dblink, $tag) . "'" : '') . ' group by referrer order by num desc');
+        return $this->LoadAll('select referrer, count(referrer) as num from '.$this->config['table_prefix'].'referrers '.($tag = trim($tag) ? "where page_tag = '".mysqli_real_escape_string($this->dblink, $tag)."'" : '').' group by referrer order by num desc');
     }
 
     public function PurgeReferrers()
     {
         if (($days = $this->GetConfigValue('referrers_purge_time')) && !$this->services->get(SecurityController::class)->isWikiHibernated()) {
-            $this->Query('delete from ' . $this->config['table_prefix'] . "referrers where time < date_sub(now(), interval '" . mysqli_real_escape_string($this->dblink, $days) . "' day)");
+            $this->Query('delete from '.$this->config['table_prefix']."referrers where time < date_sub(now(), interval '".mysqli_real_escape_string($this->dblink, $days)."' day)");
         }
     }
 
@@ -791,15 +813,15 @@ class Wiki
         $cmd = trim($action);
         $cmd = str_replace("\n", ' ', $cmd);
         // extract $action and $vars_temp ("raw" attributes)
-        if (!preg_match("/^([a-zA-Z0-9_-]+)\/?(.*)$/", $cmd, $matches)) {
-            return '<div class="alert alert-danger">' . _t('INVALID_ACTION') . ' &quot;' . htmlspecialchars($cmd, ENT_COMPAT, YW_CHARSET) . '&quot;</div>' . "\n";
+        if (!preg_match('/^([a-zA-Z0-9_-]+)\\/?(.*)$/', $cmd, $matches)) {
+            return '<div class="alert alert-danger">'._t('INVALID_ACTION').' &quot;'.htmlspecialchars($cmd, ENT_COMPAT, YW_CHARSET).'&quot;</div>'."\n";
         }
-        list(, $action, $vars_temp) = $matches;
+        [, $action, $vars_temp] = $matches;
 
         // match all attributes (key and value)
         // prepare an array for extract() to work with (in $this->IncludeBuffered())
         if (preg_match_all('/([a-zA-Z0-9_]*)="(.*)"/U', $vars_temp, $matches)) {
-            for ($a = 0; $a < count($matches[1]); $a++) {
+            for ($a = 0; $a < count($matches[1]); ++$a) {
                 $vars[$matches[1][$a]] = $matches[2][$a];
             }
         }
@@ -839,6 +861,7 @@ class Wiki
      * will be not used by users for an performable argument)
      * @param array vars the variables used as an execution context. 'plugin_output_new' represents the current output
      * (strange variable name, but it's used in everywhere, so let's keep it... !)
+     * @param mixed $___file
      *
      * @return array the execution context variables updated by the execution (with 'plugin_output_new for the current output)
      */
@@ -854,6 +877,7 @@ class Wiki
         $this->output = &$plugin_output_new;
 
         ob_start();
+
         try {
             include $___file;
         } catch (\Throwable $throwableToThrow) {
@@ -866,8 +890,8 @@ class Wiki
 
         // save the context variables into $updatedVars
         $updatedVars = get_defined_vars();
-        unset($updatedVars['___file']);
-        unset($updatedVars['throwableToThrow']);
+        unset($updatedVars['___file'], $updatedVars['throwableToThrow']);
+
         // add new variables added to $this->parameter in $updatedVars (already existing vars share the same ref)
         if (isset($this->parameter)) {
             $updatedVars = array_merge($updatedVars, $this->parameter);
@@ -885,8 +909,6 @@ class Wiki
      *
      * @param string $parameter nom du parametre
      * @param mixed  $value     valeur du parametre
-     *
-     * @return void
      */
     public function setParameter($parameter, $value)
     {
@@ -895,7 +917,7 @@ class Wiki
 
     public function GetParameter($parameter, $default = '')
     {
-        return isset($this->parameter[$parameter]) ? $this->parameter[$parameter] : $default;
+        return $this->parameter[$parameter] ?? $default;
     }
 
     // COMMENTS
@@ -916,13 +938,13 @@ class Wiki
     {
         // The part of the query which limit the number of comments
         if (is_numeric($limit) && $limit > 0) {
-            $lim = ' limit ' . $limit;
+            $lim = ' limit '.$limit;
         } else {
             $lim = '';
         }
 
         // Query
-        return $this->LoadAll('select * from ' . $this->config['table_prefix'] . 'pages where comment_on != "" ' . "and latest = 'Y' " . 'order by time desc ' . $lim);
+        return $this->LoadAll('select * from '.$this->config['table_prefix'].'pages where comment_on != "" '."and latest = 'Y' ".'order by time desc '.$lim);
     }
 
     public function LoadRecentlyCommented($limit = 50)
@@ -933,15 +955,15 @@ class Wiki
         // all comment pages sorted by their first revision's (!) time. ugh!
 
         // load ids of the first revisions of latest comments. err, huh?
-        if ($ids = $this->LoadAll('select min(id) as id from ' . $this->config['table_prefix'] . 'pages where comment_on != "" group by tag order by id desc')) {
+        if ($ids = $this->LoadAll('select min(id) as id from '.$this->config['table_prefix'].'pages where comment_on != "" group by tag order by id desc')) {
             // load complete comments
             $num = 0;
             $comments = [];
             foreach ($ids as $id) {
-                $comment = $this->LoadSingle('select * from ' . $this->config['table_prefix'] . "pages where id = '" . $id['id'] . "' limit 1");
+                $comment = $this->LoadSingle('select * from '.$this->config['table_prefix']."pages where id = '".$id['id']."' limit 1");
                 if (!isset($comments[$comment['comment_on']]) && $num < $limit) {
                     $comments[$comment['comment_on']] = $comment;
-                    $num++;
+                    ++$num;
                 }
             }
 
@@ -969,7 +991,7 @@ class Wiki
             return false;
         }
 
-        return $user['show_comments'] == 'Y';
+        return 'Y' == $user['show_comments'];
     }
 
     // ACCESS CONTROL
@@ -1005,6 +1027,7 @@ class Wiki
             return $this->_groupsCache[$group];
         }
         $groupController = $this->services->get(GroupController::class);
+
         try {
             return $this->_groupsCache[$group] = implode("\n", $groupController->getMembers($group));
         } catch (GroupNameDoesNotExistException $th) {
@@ -1033,6 +1056,7 @@ class Wiki
         $acl = str_replace(["\r\n", "\r"], "\n", $acl);
         $members = explode("\n", $acl);
         $members = array_map('trim', $members);
+
         try {
             if ($groupController->groupExists($gname)) {
                 $groupController->update($gname, $members);
@@ -1072,7 +1096,7 @@ class Wiki
     {
         static $cache = [];
 
-        if ($user === null) {
+        if (null === $user) {
             $user = $this->getUserName();
         }
         if (!array_key_exists($user, $cache)) {
@@ -1094,7 +1118,7 @@ class Wiki
     {
         $module = strtolower($module);
         $moduleType = strtolower($moduleType);
-        $moduleKey = $moduleType . '_' . $module;
+        $moduleKey = $moduleType.'_'.$module;
         if (array_key_exists($moduleKey, $this->_actionsAclsCache)) {
             return $this->_actionsAclsCache[$moduleKey];
         }
@@ -1120,7 +1144,7 @@ class Wiki
     {
         $module = strtolower($module);
         $module_type = strtolower($module_type);
-        $moduleKey = $module_type . '_' . $module;
+        $moduleKey = $module_type.'_'.$module;
 
         // Check if value has changed
         $old = $this->GetModuleACL($module, $module_type);
@@ -1175,7 +1199,7 @@ class Wiki
     public function CheckModuleACL($module, $module_type, $user = null)
     {
         $acl = $this->GetModuleACL($module, $module_type);
-        if ($acl === null) {
+        if (null === $acl) {
             return true; // undefined ACL means everybody has access
         }
 
@@ -1201,7 +1225,7 @@ class Wiki
         $this->ReadInterWikiConfig();
 
         // do our stuff!
-        if ($tag == '') {
+        if ('' == $tag) {
             $tag = $this->tag;
         }
 
@@ -1219,7 +1243,7 @@ class Wiki
         if (in_array($tag, ['api', 'doc'])) {
             $this->RunSpecialPages();
         } else {
-            $this->SetPage($this->LoadPage($tag, isset($_REQUEST['time']) ? $_REQUEST['time'] : ''));
+            $this->SetPage($this->LoadPage($tag, $_REQUEST['time'] ?? ''));
             $this->LogReferrer();
 
             try {
@@ -1230,6 +1254,7 @@ class Wiki
                     if (!empty($_SESSION['redirects'])) {
                         unset($_SESSION['redirects']);
                     }
+
                     // do nothing except and script with message
                     exit($th->getMessage());
                 }
@@ -1240,100 +1265,6 @@ class Wiki
                 unset($_SESSION['redirects']);
             }
         }
-    }
-
-    // Find and run controller action based on route declaration, instead of using page Tag
-    private function RunSpecialPages()
-    {
-        // We must manually parse the body data for the PUT or PATCH methods
-        // See https://www.php.net/manual/fr/features.file-upload.put-method.php
-        // TODO properly use the Symfony HttpFoundation component to avoid this
-        if ($_SERVER['REQUEST_METHOD'] == 'POST' || $_SERVER['REQUEST_METHOD'] == 'PUT' || $_SERVER['REQUEST_METHOD'] == 'PATCH') {
-            if (empty($_POST)) {
-                $_POST = json_decode(file_get_contents('php://input'), true) ?? [];
-            }
-        }
-        $context = new RequestContext();
-        $context->fromRequest($this->request);
-
-        // Use query string as the path (part before '&')
-        $extract = explode('&', $context->getQueryString());
-        $path = $extract[0];
-        if (strpos($path, '=') !== false) {
-            if (!empty($this->method)) {
-                if ($this->method === 'show' && $path === 'wiki=api') {
-                    $path = 'api';
-                } else {
-                    $path = $this->tag . '/' . $this->method;
-                    $newQuerystring = implode('&', $extract);
-                }
-            } else {
-                $response = new Response(_t('ROUTE_BAD_CONFIGURED'), Response::HTTP_BAD_REQUEST);
-                $response->send();
-                $this->exit();
-            }
-        } elseif (count($extract) > 1) {
-            array_shift($extract);
-            $newQuerystring = implode('&', $extract);
-        }
-        $context->setPathInfo('/' . $_GET['wiki']);
-        $context->setQueryString($newQuerystring ?? $_GET['wiki']);
-
-        $matcher = new UrlMatcher($this->routes, $context);
-
-        $controllerResolver = new YesWikiControllerResolver($this);
-        $argumentResolver = new ArgumentResolver();
-        // start buffer to prevent bad formatting response
-        ob_start();
-        try {
-            // TODO put this elsewhere ?
-            $attributes = $matcher->match($context->getPathInfo());
-            if ($this->services->get(ApiService::class)->isAuthorized($attributes, $this->routes)) {
-                $this->request->attributes->add($attributes);
-
-                $controller = $controllerResolver->getController($this->request);
-                $arguments = $argumentResolver->getArguments($this->request, $controller);
-
-                $response = call_user_func_array($controller, $arguments);
-            } else {
-                $response = new Response('Not enough access rights', Response::HTTP_UNAUTHORIZED);
-            }
-        } catch (ResourceNotFoundException $exception) {
-            $response = new Response('', Response::HTTP_NOT_FOUND);
-        } catch (HttpException $exception) {
-            $response = new Response($exception->getMessage(), $exception->getStatusCode(), $exception->getHeaders());
-        } catch (MethodNotAllowedException $exception) {
-            $response = new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
-        } catch (\Throwable $th) {
-            if (isset($response) && $response instanceof JsonResponse) {
-                $previousContent = json_decode($response->getContent(), true);
-                $newContent = ['exceptionMessage' => $th->__toString()] + $previousContent;
-                $response->setData($newContent);
-                $response->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);
-            } else {
-                $response = new ApiResponse(['exceptionMessage' => $th->__toString()], Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
-        }
-        $rawOutput = ob_get_contents();
-        ob_end_clean();
-        if (!empty($rawOutput)) {
-            if ($response instanceof JsonResponse) {
-                $previousContent = json_decode($response->getContent(), true);
-                $newContent = is_array($previousContent)
-                    ? ['rawOutput' => $rawOutput] + $previousContent
-                    : (
-                        is_string($previousContent)
-                        ? $previousContent . $rawOutput
-                        : $rawOutput
-                    );
-                $response->setData($newContent);
-            } else {
-                $previousContent = $response->getContent();
-                $newContent = $previousContent . $rawOutput;
-                $response->setContent($newContent);
-            }
-        }
-        $response->send();
     }
 
     /**
@@ -1350,7 +1281,7 @@ class Wiki
             $length = 30;
         }
 
-        for ($i = 0; $i < $length; $i++) {
+        for ($i = 0; $i < $length; ++$i) {
             $randompassword .= substr($charset, random_int(0, $maxIndex), 1);
         }
 
@@ -1359,6 +1290,8 @@ class Wiki
 
     /**
      * @deprecated Use AssetsManager service instead
+     *
+     * @param mixed $style
      */
     public function AddCSS($style)
     {
@@ -1367,6 +1300,11 @@ class Wiki
 
     /**
      * @deprecated Use AssetsManager service instead
+     *
+     * @param mixed $file
+     * @param mixed $conditionstart
+     * @param mixed $conditionend
+     * @param mixed $attrs
      */
     public function AddCSSFile($file, $conditionstart = '', $conditionend = '', $attrs = '')
     {
@@ -1375,6 +1313,11 @@ class Wiki
 
     /**
      * @deprecated Use AssetsManager service instead
+     *
+     * @param mixed $file
+     * @param mixed $conditionstart
+     * @param mixed $conditionend
+     * @param mixed $attrs
      */
     public function LinkCSSFile($file, $conditionstart = '', $conditionend = '', $attrs = '')
     {
@@ -1383,6 +1326,9 @@ class Wiki
 
     /**
      * @deprecated Use AssetsManager service instead
+     *
+     * @param mixed $script
+     * @param mixed $module
      */
     public function AddJavascript($script, $module = false)
     {
@@ -1391,6 +1337,10 @@ class Wiki
 
     /**
      * @deprecated Use AssetsManager service instead
+     *
+     * @param mixed $file
+     * @param mixed $first
+     * @param mixed $module
      */
     public function AddJavascriptFile($file, $first = false, $module = false)
     {
@@ -1403,10 +1353,10 @@ class Wiki
         $size = preg_replace('/[^0-9\.]/', '', $size); // Remove the non-numeric characters from the size.
         if ($unit) {
             // Find the position of the unit in the ordered string which is the power of magnitude to multiply a kilobyte by.
-            return intval(round((int)$size * pow(1024, stripos('bkmgtpezy', $unit[0]))));
-        } else {
-            return intval(round((int)$size));
+            return intval(round((int) $size * pow(1024, stripos('bkmgtpezy', $unit[0]))));
         }
+
+        return intval(round((int) $size));
     }
 
     // Returns a file size limit in bytes based on the PHP upload_max_filesize,
@@ -1421,160 +1371,6 @@ class Wiki
 
         // return the min size limit, excluding 0 values that mean no limit
         return min(array_filter([$conf_max_file_size, $post_max_size, $upload_max]) ?? DEFAULT_MAX_UPLOAD_SIZE);
-    }
-
-    /**
-     * Load extensions from a directory.
-     *
-     * @return void
-     */
-    private function loadExtensionsFromDir($pPluginsRoot)
-    {
-        include_once 'includes/YesWikiPlugins.php';
-        $objPlugins = new Plugins($pPluginsRoot);
-        $objPlugins->getPlugins(true);
-        $vExtensions = $objPlugins->getPluginsList();
-
-        foreach ($vExtensions as $pluginName => $pluginInfo) {
-            $vExtensions[$pluginName] = $pPluginsRoot . $pluginName . '/';
-        }
-
-        $this->extensions = array_merge($this->extensions, $vExtensions);
-    }
-
-    /**
-     * Load extensions.
-     *
-     * @return void
-     */
-    private function loadExtensions() // make it private since once services are compiled, they cannot be modified - @YvesGufflet : contact@yvesgufflet.fr
-    {
-        $this->loadExtensionsFromDir('tools/');
-        $this->loadExtensionsFromDir('custom/tools/');
-        // TODO refactor as custom and actionsbuilder are not extensions
-        $this->extensions['custom'] = 'custom/'; // Will load custom/actions, custom/handlers etc...
-        $this->extensions['actionsbuilder'] = 'docs/actions/'; // Will load langs inside docs/actions/lang
-
-        $this->loadServices();
-        $this->compileServices();
-        $this->loadLanguages();
-        $this->loadTemplates();
-    }
-
-    /**
-     * Load extensions's services.
-     *
-     * @return void
-     */
-    private function loadServices()
-    {
-        // This is necessary for retrocompatibility reasons, as these variables are used by the extensions
-        // TODO refactor all extensions to use the correct variable name
-        // TODO remove this when the retrocompatibility is no longer necessary
-        $wiki = $this;
-        $page = $this->tag;
-        $wakkaConfig = &$this->config;
-
-        // Load all services
-        foreach ($this->extensions as $k => $pluginBase) {
-            $loader = new YamlFileLoader($this->services, new FileLocator($pluginBase));
-
-            // Load the initialization file (constants and includes)
-            if (file_exists($pluginBase . 'wiki.php')) {
-                include $pluginBase . 'wiki.php';
-            }
-
-            if (file_exists($pluginBase . 'vendor/autoload.php')) {
-                include $pluginBase . 'vendor/autoload.php';
-            }
-
-            // TODO load the user-defined configs after this loop
-            if (file_exists($pluginBase . 'config.yaml')) {
-                $loader->load('config.yaml');
-            }
-
-            // api functions
-            if (file_exists($pluginBase . 'libs/' . $k . '.api.php')) {
-                include $pluginBase . 'libs/' . $k . '.api.php';
-            }
-        }
-
-        // merge the config between the wakka.config.php and the config.yaml of each tool
-        // the priority is given for the wakka.config.php settings for scalar values and indexed arrays
-        // but it's different for associative arrays, the result array is the merge between the array of the two settings
-        $config = array_replace_recursive($this->services->getParameterBag()->all(), $this->config);
-        $this->replaceRecursivelyIndexedArrays($config, $this->config);
-        // set all wakka configs as container's parameters
-        foreach ($config as $key => $value) {
-            $this->services->setParameter($key, $value);
-        }
-    }
-
-    /**
-     * Compile services.
-     *
-     * @return void
-     */
-    private function compileServices()
-    {
-        // Now we have loaded all the services, compile them
-        // See https://symfony.com/doc/current/components/dependency_injection/compilation.html
-        $this->services->compile();
-
-        // set to wakka config the same parameters than the merged service's parameter bag
-        // need to be executed after $this->services->compile() because the %paramName% are resolved there
-        $this->config = $this->services->getParameterBag()->all();
-        $this->dblink = $this->services->get(DbService::class)->getLink();
-    }
-
-    /**
-     * Load languages.
-     *
-     * @return void
-     */
-    private function loadLanguages()
-    {
-        // This must be done after service initialization, as it uses services
-        loadpreferredI18n($this, $this->tag);
-
-        // translations
-        foreach ($this->extensions as $k => $pluginBase) {
-            // language files : first default language, then preferred language
-            if (file_exists($pluginBase . 'lang/' . $k . '_fr.inc.php')) {
-                $returnedArray = include $pluginBase . 'lang/' . $k . '_fr.inc.php';
-                load_translations($returnedArray);
-            }
-            if (file_exists($pluginBase . 'lang/' . $k . 'js_fr.inc.php')) {
-                $returnedArray = include $pluginBase . 'lang/' . $k . 'js_fr.inc.php';
-                load_translations($returnedArray, true);
-            }
-            if ($GLOBALS['prefered_language'] != 'fr' && file_exists($pluginBase . 'lang/' . $k . '_' . $GLOBALS['prefered_language'] . '.inc.php')) {
-                $returnedArray = include $pluginBase . 'lang/' . $k . '_' . $GLOBALS['prefered_language'] . '.inc.php';
-                load_translations($returnedArray);
-            }
-            if ($GLOBALS['prefered_language'] != 'fr' && file_exists($pluginBase . 'lang/' . $k . 'js_' . $GLOBALS['prefered_language'] . '.inc.php')) {
-                $returnedArray = include $pluginBase . 'lang/' . $k . 'js_' . $GLOBALS['prefered_language'] . '.inc.php';
-                load_translations($returnedArray, true);
-            }
-        }
-    }
-
-    /**
-     * Load templates.
-     *
-     * @return void
-     */
-    private function loadTemplates()
-    {
-        $metadata = $this->services->get(PageManager::class)->getMetadata($this->tag);
-
-        if (isset($metadata['lang'])) {
-            $this->config['lang'] = $metadata['lang'];
-        } elseif (!isset($this->config['lang'])) {
-            $this->config['lang'] = 'fr';
-        }
-
-        $this->services->get(ThemeManager::class)->loadTemplates($metadata);
     }
 
     /**
@@ -1615,22 +1411,25 @@ class Wiki
 
     /**
      * Shortcut to be used in the old plain PHP Actions and Handlers (instead of using SquelettePhp class).
+     *
+     * @param mixed $templatePath
+     * @param mixed $data
      */
     public function render($templatePath, $data)
     {
         try {
             return $this->services->get(TemplateEngine::class)->render($templatePath, $data);
         } catch (\Exception $e) {
-            return '<div class="alert alert-danger">Error rendering ' . $templatePath . ': ' . $e->getMessage() . '</div>' . "\n";
+            return '<div class="alert alert-danger">Error rendering '.$templatePath.': '.$e->getMessage().'</div>'."\n";
         }
     }
 
-    /*
-     * RETRO-COMPATIBILITY
-     */
+    // RETRO-COMPATIBILITY
 
     /**
      * @deprecated Use DbService::query instead
+     *
+     * @param mixed $query
      */
     public function Query($query)
     {
@@ -1639,6 +1438,8 @@ class Wiki
 
     /**
      * @deprecated Use DbService::loadSingle instead
+     *
+     * @param mixed $query
      */
     public function LoadSingle($query)
     {
@@ -1647,6 +1448,8 @@ class Wiki
 
     /**
      * @deprecated Use DbService::loadAll instead
+     *
+     * @param mixed $query
      */
     public function LoadAll($query)
     {
@@ -1655,6 +1458,10 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getOne instead
+     *
+     * @param mixed $tag
+     * @param mixed $time
+     * @param mixed $cache
      */
     public function LoadPage($tag, $time = '', $cache = 1)
     {
@@ -1663,6 +1470,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getCached instead
+     *
+     * @param mixed $tag
      */
     public function GetCachedPage($tag)
     {
@@ -1671,6 +1480,9 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::cache instead
+     *
+     * @param mixed      $page
+     * @param null|mixed $pageTag
      */
     public function CachePage($page, $pageTag = null)
     {
@@ -1679,6 +1491,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getById instead
+     *
+     * @param mixed $id
      */
     public function LoadPageById($id)
     {
@@ -1687,6 +1501,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getLinkingTo instead
+     *
+     * @param mixed $tag
      */
     public function LoadPagesLinkingTo($tag)
     {
@@ -1695,6 +1511,9 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getRecentlyChanged instead
+     *
+     * @param mixed $limit
+     * @param mixed $minDate
      */
     public function LoadRecentlyChanged($limit = 50, $minDate = '')
     {
@@ -1711,6 +1530,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getCreateTime instead
+     *
+     * @param mixed $pageTag
      */
     public function GetPageCreateTime($pageTag)
     {
@@ -1719,6 +1540,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::searchFullText instead
+     *
+     * @param mixed $phrase
      */
     public function FullTextSearch($phrase)
     {
@@ -1743,6 +1566,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::isOrphaned instead
+     *
+     * @param mixed $tag
      */
     public function IsOrphanedPage($tag)
     {
@@ -1751,6 +1576,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::deletedOrphaned instead
+     *
+     * @param mixed $tag
      */
     public function DeleteOrphanedPage($tag)
     {
@@ -1759,6 +1586,11 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::save instead
+     *
+     * @param mixed $tag
+     * @param mixed $body
+     * @param mixed $comment_on
+     * @param mixed $bypass_acls
      */
     public function SavePage($tag, $body, $comment_on = '', $bypass_acls = false)
     {
@@ -1767,6 +1599,9 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getOwner instead
+     *
+     * @param mixed $tag
+     * @param mixed $time
      */
     public function GetPageOwner($tag = '', $time = '')
     {
@@ -1775,6 +1610,9 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::save instead
+     *
+     * @param mixed $tag
+     * @param mixed $user
      */
     public function SetPageOwner($tag, $user)
     {
@@ -1783,6 +1621,8 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::getMetadata instead
+     *
+     * @param mixed $tag
      */
     public function GetMetaDatas($tag)
     {
@@ -1791,6 +1631,9 @@ class Wiki
 
     /**
      * @deprecated Use PageManager::setMetadata instead
+     *
+     * @param mixed $tag
+     * @param mixed $metadata
      */
     public function SaveMetaDatas($tag, $metadata)
     {
@@ -1799,6 +1642,8 @@ class Wiki
 
     /**
      * @deprecated Use TagsManager::deleteAll instead
+     *
+     * @param mixed $page
      */
     public function DeleteAllTags($page)
     {
@@ -1807,6 +1652,9 @@ class Wiki
 
     /**
      * @deprecated Use TagsManager::save instead
+     *
+     * @param mixed $page
+     * @param mixed $liste_tags
      */
     public function SaveTags($page, $liste_tags)
     {
@@ -1815,6 +1663,8 @@ class Wiki
 
     /**
      * @deprecated Use TagsManager::getAll instead
+     *
+     * @param mixed $page
      */
     public function GetAllTags($page = '')
     {
@@ -1823,6 +1673,11 @@ class Wiki
 
     /**
      * @deprecated Use TagsManager::getPagesByTags instead
+     *
+     * @param mixed $tags
+     * @param mixed $type
+     * @param mixed $nb
+     * @param mixed $tri
      */
     public function PageList($tags = '', $type = '', $nb = '', $tri = '')
     {
@@ -1831,6 +1686,11 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::getOne instead
+     *
+     * @param mixed $resource
+     * @param mixed $property
+     * @param mixed $re_prefix
+     * @param mixed $prop_prefix
      */
     public function GetTripleValue($resource, $property, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1839,6 +1699,12 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::getMatching instead
+     *
+     * @param null|mixed $resource
+     * @param null|mixed $property
+     * @param null|mixed $value
+     * @param mixed      $res_op
+     * @param mixed      $prop_op
      */
     public function GetMatchingTriples($resource = null, $property = null, $value = null, $res_op = 'LIKE', $prop_op = '=')
     {
@@ -1847,6 +1713,11 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::getAll instead
+     *
+     * @param mixed $resource
+     * @param mixed $property
+     * @param mixed $re_prefix
+     * @param mixed $prop_prefix
      */
     public function GetAllTriplesValues($resource, $property, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1855,6 +1726,12 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::exist instead
+     *
+     * @param mixed $resource
+     * @param mixed $property
+     * @param mixed $value
+     * @param mixed $re_prefix
+     * @param mixed $prop_prefix
      */
     public function TripleExists($resource, $property, $value, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1863,6 +1740,12 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::create instead
+     *
+     * @param mixed $resource
+     * @param mixed $property
+     * @param mixed $value
+     * @param mixed $re_prefix
+     * @param mixed $prop_prefix
      */
     public function InsertTriple($resource, $property, $value, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1871,6 +1754,13 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::update instead
+     *
+     * @param mixed $resource
+     * @param mixed $property
+     * @param mixed $oldvalue
+     * @param mixed $newvalue
+     * @param mixed $re_prefix
+     * @param mixed $prop_prefix
      */
     public function UpdateTriple($resource, $property, $oldvalue, $newvalue, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1879,6 +1769,12 @@ class Wiki
 
     /**
      * @deprecated Use TripleStore::delete instead
+     *
+     * @param mixed      $resource
+     * @param mixed      $property
+     * @param null|mixed $value
+     * @param mixed      $re_prefix
+     * @param mixed      $prop_prefix
      */
     public function DeleteTriple($resource, $property, $value = null, $re_prefix = THISWIKI_PREFIX, $prop_prefix = WIKINI_VOC_PREFIX)
     {
@@ -1887,6 +1783,9 @@ class Wiki
 
     /**
      * @deprecated Use UserManager::getOneByName instead
+     *
+     * @param mixed $name
+     * @param mixed $password
      */
     public function LoadUser($name, $password = 0)
     {
@@ -1895,6 +1794,9 @@ class Wiki
 
     /**
      * @deprecated Use UserManager::getOneByEmail instead
+     *
+     * @param mixed $mail
+     * @param mixed $password
      */
     public function loadUserByEmail($mail, $password = 0)
     {
@@ -1927,6 +1829,9 @@ class Wiki
 
     /**
      * @deprecated Use AuthController::login instead
+     *
+     * @param mixed $user
+     * @param mixed $remember
      */
     public function SetUser($user, $remember = 0)
     {
@@ -1943,6 +1848,10 @@ class Wiki
 
     /**
      * @deprecated Use AclService::load
+     *
+     * @param mixed $tag
+     * @param mixed $privilege
+     * @param mixed $useDefaults
      */
     public function LoadAcl($tag, $privilege, $useDefaults = true)
     {
@@ -1951,6 +1860,11 @@ class Wiki
 
     /**
      * @deprecated Use AclService::save
+     *
+     * @param mixed $tag
+     * @param mixed $privilege
+     * @param mixed $list
+     * @param mixed $appendAcl
      */
     public function SaveAcl($tag, $privilege, $list, $appendAcl = false)
     {
@@ -1959,6 +1873,9 @@ class Wiki
 
     /**
      * @deprecated Use AclService::delete
+     *
+     * @param mixed $tag
+     * @param mixed $privileges
      */
     public function DeleteAcl($tag, $privileges = ['read', 'write', 'comment'])
     {
@@ -1967,6 +1884,10 @@ class Wiki
 
     /**
      * @deprecated Use AclService::hasAccess
+     *
+     * @param mixed $privilege
+     * @param mixed $tag
+     * @param mixed $user
      */
     public function HasAccess($privilege, $tag = '', $user = '')
     {
@@ -1975,6 +1896,12 @@ class Wiki
 
     /**
      * @deprecated Use AclService::check
+     *
+     * @param mixed      $acl
+     * @param null|mixed $user
+     * @param mixed      $admincheck
+     * @param mixed      $tag
+     * @param mixed      $mode
      */
     public function CheckACL($acl, $user = null, $admincheck = true, $tag = '', $mode = '')
     {
@@ -1999,6 +1926,8 @@ class Wiki
 
     /**
      * @deprecated Use LinkTracker::track
+     *
+     * @param null|mixed $newState
      */
     public function LinkTracking($newState = null)
     {
@@ -2007,6 +1936,8 @@ class Wiki
 
     /**
      * @deprecated Use LinkTracker::add
+     *
+     * @param mixed $tag
      */
     public function TrackLinkTo($tag)
     {
@@ -2038,8 +1969,10 @@ class Wiki
     }
 
     /**
-     * @param string $group
-     *                      The name of a group
+     * @param string     $group
+     *                               The name of a group
+     * @param null|mixed $user
+     * @param mixed      $admincheck
      *
      * @return bool true iff the user is in the given $group
      *
@@ -2074,7 +2007,7 @@ class Wiki
     {
         $authController = $this->services->get(AuthController::class);
 
-        $authController->setPersistentCookie($name, $value, $authController->getExpirationTimeStamp(new DateTime(), $remember == 1));
+        $authController->setPersistentCookie($name, $value, $authController->getExpirationTimeStamp(new DateTime(), 1 == $remember));
         $_COOKIE[$name] = $value;
     }
 
@@ -2090,9 +2023,250 @@ class Wiki
 
     /**
      * @deprecated no replacement
+     *
+     * @param mixed $name
      */
     public function GetCookie($name)
     {
         return $_COOKIE[$name];
+    }
+
+    // Find and run controller action based on route declaration, instead of using page Tag
+    private function RunSpecialPages()
+    {
+        // We must manually parse the body data for the PUT or PATCH methods
+        // See https://www.php.net/manual/fr/features.file-upload.put-method.php
+        // TODO properly use the Symfony HttpFoundation component to avoid this
+        if ('POST' == $_SERVER['REQUEST_METHOD'] || 'PUT' == $_SERVER['REQUEST_METHOD'] || 'PATCH' == $_SERVER['REQUEST_METHOD']) {
+            if (empty($_POST)) {
+                $_POST = json_decode(file_get_contents('php://input'), true) ?? [];
+            }
+        }
+        $context = new RequestContext();
+        $context->fromRequest($this->request);
+
+        // Use query string as the path (part before '&')
+        $extract = explode('&', $context->getQueryString());
+        $path = $extract[0];
+        if (false !== strpos($path, '=')) {
+            if (!empty($this->method)) {
+                if ('show' === $this->method && 'wiki=api' === $path) {
+                    $path = 'api';
+                } else {
+                    $path = $this->tag.'/'.$this->method;
+                    $newQuerystring = implode('&', $extract);
+                }
+            } else {
+                $response = new Response(_t('ROUTE_BAD_CONFIGURED'), Response::HTTP_BAD_REQUEST);
+                $response->send();
+                $this->exit();
+            }
+        } elseif (count($extract) > 1) {
+            array_shift($extract);
+            $newQuerystring = implode('&', $extract);
+        }
+        $context->setPathInfo('/'.$_GET['wiki']);
+        $context->setQueryString($newQuerystring ?? $_GET['wiki']);
+
+        $matcher = new UrlMatcher($this->routes, $context);
+
+        $controllerResolver = new YesWikiControllerResolver($this);
+        $argumentResolver = new ArgumentResolver();
+        // start buffer to prevent bad formatting response
+        ob_start();
+
+        try {
+            // TODO put this elsewhere ?
+            $attributes = $matcher->match($context->getPathInfo());
+            if ($this->services->get(ApiService::class)->isAuthorized($attributes, $this->routes)) {
+                $this->request->attributes->add($attributes);
+
+                $controller = $controllerResolver->getController($this->request);
+                $arguments = $argumentResolver->getArguments($this->request, $controller);
+
+                $response = call_user_func_array($controller, $arguments);
+            } else {
+                $response = new Response('Not enough access rights', Response::HTTP_UNAUTHORIZED);
+            }
+        } catch (ResourceNotFoundException $exception) {
+            $response = new Response('', Response::HTTP_NOT_FOUND);
+        } catch (HttpException $exception) {
+            $response = new Response($exception->getMessage(), $exception->getStatusCode(), $exception->getHeaders());
+        } catch (MethodNotAllowedException $exception) {
+            $response = new Response('', Response::HTTP_METHOD_NOT_ALLOWED);
+        } catch (\Throwable $th) {
+            if (isset($response) && $response instanceof JsonResponse) {
+                $previousContent = json_decode($response->getContent(), true);
+                $newContent = ['exceptionMessage' => $th->__toString()] + $previousContent;
+                $response->setData($newContent);
+                $response->setStatusCode(Response::HTTP_INTERNAL_SERVER_ERROR);
+            } else {
+                $response = new ApiResponse(['exceptionMessage' => $th->__toString()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+        }
+        $rawOutput = ob_get_contents();
+        ob_end_clean();
+        if (!empty($rawOutput)) {
+            if ($response instanceof JsonResponse) {
+                $previousContent = json_decode($response->getContent(), true);
+                $newContent = is_array($previousContent)
+                    ? ['rawOutput' => $rawOutput] + $previousContent
+                    : (
+                        is_string($previousContent)
+                        ? $previousContent.$rawOutput
+                        : $rawOutput
+                    );
+                $response->setData($newContent);
+            } else {
+                $previousContent = $response->getContent();
+                $newContent = $previousContent.$rawOutput;
+                $response->setContent($newContent);
+            }
+        }
+        $response->send();
+    }
+
+    /**
+     * Load extensions from a directory.
+     *
+     * @param mixed $pPluginsRoot
+     */
+    private function loadExtensionsFromDir($pPluginsRoot)
+    {
+        include_once 'includes/YesWikiPlugins.php';
+        $objPlugins = new Plugins($pPluginsRoot);
+        $objPlugins->getPlugins(true);
+        $vExtensions = $objPlugins->getPluginsList();
+
+        foreach ($vExtensions as $pluginName => $pluginInfo) {
+            $vExtensions[$pluginName] = $pPluginsRoot.$pluginName.'/';
+        }
+
+        $this->extensions = array_merge($this->extensions, $vExtensions);
+    }
+
+    /**
+     * Load extensions.
+     */
+    private function loadExtensions() // make it private since once services are compiled, they cannot be modified - @YvesGufflet : contact@yvesgufflet.fr
+    {
+        $this->loadExtensionsFromDir('tools/');
+        $this->loadExtensionsFromDir('custom/tools/');
+        // TODO refactor as custom and actionsbuilder are not extensions
+        $this->extensions['custom'] = 'custom/'; // Will load custom/actions, custom/handlers etc...
+        $this->extensions['actionsbuilder'] = 'docs/actions/'; // Will load langs inside docs/actions/lang
+
+        $this->loadServices();
+        $this->compileServices();
+        $this->loadLanguages();
+        $this->loadTemplates();
+    }
+
+    /**
+     * Load extensions's services.
+     */
+    private function loadServices()
+    {
+        // This is necessary for retrocompatibility reasons, as these variables are used by the extensions
+        // TODO refactor all extensions to use the correct variable name
+        // TODO remove this when the retrocompatibility is no longer necessary
+        $wiki = $this;
+        $page = $this->tag;
+        $wakkaConfig = &$this->config;
+
+        // Load all services
+        foreach ($this->extensions as $k => $pluginBase) {
+            $loader = new YamlFileLoader($this->services, new FileLocator($pluginBase));
+
+            // Load the initialization file (constants and includes)
+            if (file_exists($pluginBase.'wiki.php')) {
+                include $pluginBase.'wiki.php';
+            }
+
+            if (file_exists($pluginBase.'vendor/autoload.php')) {
+                include $pluginBase.'vendor/autoload.php';
+            }
+
+            // TODO load the user-defined configs after this loop
+            if (file_exists($pluginBase.'config.yaml')) {
+                $loader->load('config.yaml');
+            }
+
+            // api functions
+            if (file_exists($pluginBase.'libs/'.$k.'.api.php')) {
+                include $pluginBase.'libs/'.$k.'.api.php';
+            }
+        }
+
+        // merge the config between the wakka.config.php and the config.yaml of each tool
+        // the priority is given for the wakka.config.php settings for scalar values and indexed arrays
+        // but it's different for associative arrays, the result array is the merge between the array of the two settings
+        $config = array_replace_recursive($this->services->getParameterBag()->all(), $this->config);
+        $this->replaceRecursivelyIndexedArrays($config, $this->config);
+        // set all wakka configs as container's parameters
+        foreach ($config as $key => $value) {
+            $this->services->setParameter($key, $value);
+        }
+    }
+
+    /**
+     * Compile services.
+     */
+    private function compileServices()
+    {
+        // Now we have loaded all the services, compile them
+        // See https://symfony.com/doc/current/components/dependency_injection/compilation.html
+        $this->services->compile();
+
+        // set to wakka config the same parameters than the merged service's parameter bag
+        // need to be executed after $this->services->compile() because the %paramName% are resolved there
+        $this->config = $this->services->getParameterBag()->all();
+        $this->dblink = $this->services->get(DbService::class)->getLink();
+    }
+
+    /**
+     * Load languages.
+     */
+    private function loadLanguages()
+    {
+        // This must be done after service initialization, as it uses services
+        loadpreferredI18n($this, $this->tag);
+
+        // translations
+        foreach ($this->extensions as $k => $pluginBase) {
+            // language files : first default language, then preferred language
+            if (file_exists($pluginBase.'lang/'.$k.'_fr.inc.php')) {
+                $returnedArray = include $pluginBase.'lang/'.$k.'_fr.inc.php';
+                load_translations($returnedArray);
+            }
+            if (file_exists($pluginBase.'lang/'.$k.'js_fr.inc.php')) {
+                $returnedArray = include $pluginBase.'lang/'.$k.'js_fr.inc.php';
+                load_translations($returnedArray, true);
+            }
+            if ('fr' != $GLOBALS['prefered_language'] && file_exists($pluginBase.'lang/'.$k.'_'.$GLOBALS['prefered_language'].'.inc.php')) {
+                $returnedArray = include $pluginBase.'lang/'.$k.'_'.$GLOBALS['prefered_language'].'.inc.php';
+                load_translations($returnedArray);
+            }
+            if ('fr' != $GLOBALS['prefered_language'] && file_exists($pluginBase.'lang/'.$k.'js_'.$GLOBALS['prefered_language'].'.inc.php')) {
+                $returnedArray = include $pluginBase.'lang/'.$k.'js_'.$GLOBALS['prefered_language'].'.inc.php';
+                load_translations($returnedArray, true);
+            }
+        }
+    }
+
+    /**
+     * Load templates.
+     */
+    private function loadTemplates()
+    {
+        $metadata = $this->services->get(PageManager::class)->getMetadata($this->tag);
+
+        if (isset($metadata['lang'])) {
+            $this->config['lang'] = $metadata['lang'];
+        } elseif (!isset($this->config['lang'])) {
+            $this->config['lang'] = 'fr';
+        }
+
+        $this->services->get(ThemeManager::class)->loadTemplates($metadata);
     }
 }

@@ -11,7 +11,7 @@ class AutoUpdateService
 {
     public const DEFAULT_REPO = 'https://repository.yeswiki.net/';
     public const DEFAULT_VERS = 'Cercopitheque'; // Pour gérer les vielles version de YesWiki
-    public $repository = null;
+    public $repository;
 
     private $wiki;
 
@@ -32,37 +32,6 @@ class AutoUpdateService
         return $this->repository->load();
     }
 
-    private function repositoryAddress($requestedVersion = '')
-    {
-        $repositoryAddress = $this::DEFAULT_REPO;
-
-        if (isset($this->wiki->config['yeswiki_repository'])) {
-            $repositoryAddress = $this->wiki->config['yeswiki_repository'];
-        }
-
-        if (substr($repositoryAddress, -1, 1) !== '/') {
-            $repositoryAddress .= '/';
-        }
-
-        if ($requestedVersion != '') {
-            $repositoryAddress .= strtolower($requestedVersion);
-        } else {
-            $repositoryAddress .= $this->getYesWikiVersion();
-        }
-
-        return $repositoryAddress;
-    }
-
-    private function getYesWikiVersion()
-    {
-        $version = $this::DEFAULT_VERS;
-        if (isset($this->wiki->config['yeswiki_version'])) {
-            $version = $this->wiki->config['yeswiki_version'];
-        }
-
-        return strtolower($version);
-    }
-
     public function delete($packageName)
     {
         $messages = new Messages();
@@ -70,8 +39,8 @@ class AutoUpdateService
 
         $vDeleteStatus = $package->deletePackage();
 
-        if ($vDeleteStatus !== true) {
-            $messages[] = ['text' => (_t('AU_DELETE') . ' - ' . _t('AU_ERROR') . '\n' . _t('AU_UNABLE_TO_REMOVE_FILES') . implode('\n', $vDeleteStatus)), 'status' => _t('AU_ERROR')];
+        if (true !== $vDeleteStatus) {
+            $messages[] = ['text' => (_t('AU_DELETE').' - '._t('AU_ERROR').'\n'._t('AU_UNABLE_TO_REMOVE_FILES').implode('\n', $vDeleteStatus)), 'status' => _t('AU_ERROR')];
 
             return $messages;
         }
@@ -121,7 +90,7 @@ class AutoUpdateService
             $vMaxLength = 100;
             $vFilesList = implode(', ', $vNotGoods);
 
-            $messages[] = ['text' => (_t('AU_ACL') . '\n' . _t('AU_NOT_WRITABLE_FILES') . substr($vFilesList, 0, 100) . (strlen($vFilesList) > $vMaxLength ? '...' : '')), 'status' => _t('AU_ERROR')];
+            $messages[] = ['text' => (_t('AU_ACL').'\n'._t('AU_NOT_WRITABLE_FILES').substr($vFilesList, 0, 100).(strlen($vFilesList) > $vMaxLength ? '...' : '')), 'status' => _t('AU_ERROR')];
 
             $package->cleanTempFiles();
 
@@ -132,16 +101,16 @@ class AutoUpdateService
         // Mise à jour du paquet
         if (!$package->upgrade()) {
             $messages->add(
-                _t('AU_UPDATE_PACKAGE') . $packageName,
+                _t('AU_UPDATE_PACKAGE').$packageName,
                 'AU_ERROR'
             );
             $package->cleanTempFiles();
 
             return $messages;
         }
-        $messages->add(_t('AU_UPDATE_PACKAGE') . $packageName, 'AU_OK');
+        $messages->add(_t('AU_UPDATE_PACKAGE').$packageName, 'AU_OK');
 
-        if (get_class($package) === PackageCollection::CORE_CLASS) {
+        if (PackageCollection::CORE_CLASS === get_class($package)) {
             if (!$package->upgradeDefaultTheme()) {
                 $messages->add('AU_UPDATE_THEME', 'AU_ERROR');
                 $package->cleanTempFiles();
@@ -172,5 +141,36 @@ class AutoUpdateService
         $package->cleanTempFiles();
 
         return $messages;
+    }
+
+    private function repositoryAddress($requestedVersion = '')
+    {
+        $repositoryAddress = $this::DEFAULT_REPO;
+
+        if (isset($this->wiki->config['yeswiki_repository'])) {
+            $repositoryAddress = $this->wiki->config['yeswiki_repository'];
+        }
+
+        if ('/' !== substr($repositoryAddress, -1, 1)) {
+            $repositoryAddress .= '/';
+        }
+
+        if ('' != $requestedVersion) {
+            $repositoryAddress .= strtolower($requestedVersion);
+        } else {
+            $repositoryAddress .= $this->getYesWikiVersion();
+        }
+
+        return $repositoryAddress;
+    }
+
+    private function getYesWikiVersion()
+    {
+        $version = $this::DEFAULT_VERS;
+        if (isset($this->wiki->config['yeswiki_version'])) {
+            $version = $this->wiki->config['yeswiki_version'];
+        }
+
+        return strtolower($version);
     }
 }

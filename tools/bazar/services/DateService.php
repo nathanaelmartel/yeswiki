@@ -2,12 +2,8 @@
 
 namespace YesWiki\Bazar\Service;
 
-use DateInterval;
-use DateTimeImmutable;
-use DateTimeInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Throwable;
 use YesWiki\Core\Entity\Event;
 use YesWiki\Core\Service\DateService as CoreDateService;
 use YesWiki\Core\Service\PageManager;
@@ -27,15 +23,6 @@ class DateService implements EventSubscriberInterface
     protected $params;
     protected $triggerError;
 
-    public static function getSubscribedEvents()
-    {
-        return [
-            'entry.created' => 'followEntryChange',
-            'entry.updated' => 'followEntryChange',
-            'entry.deleted' => 'followEntryDeletion',
-        ];
-    }
-
     public function __construct(
         Wiki $wiki,
         CoreDateService $coreDateService,
@@ -54,9 +41,18 @@ class DateService implements EventSubscriberInterface
 
         $vDebugEnabled = $this->params->get('debug') ?? '';
         $vDebugEnabled = trim($vDebugEnabled);
-        $vDebugEnabled = $vDebugEnabled !== '' && $vDebugEnabled !== 'false' && $vDebugEnabled !== '0';
+        $vDebugEnabled = '' !== $vDebugEnabled && 'false' !== $vDebugEnabled && '0' !== $vDebugEnabled;
 
         $this->triggerError = $vDebugEnabled;
+    }
+
+    public static function getSubscribedEvents()
+    {
+        return [
+            'entry.created' => 'followEntryChange',
+            'entry.updated' => 'followEntryChange',
+            'entry.deleted' => 'followEntryDeletion',
+        ];
     }
 
     /**
@@ -92,6 +88,23 @@ class DateService implements EventSubscriberInterface
     }
 
     /**
+     * check if associated form is restricted for only one entry by user.
+     */
+    public function canRegisterMultipleEntries(?array $entry): bool
+    {
+        // default true
+        $canRegisterMultipleEntries = true;
+        if (!empty($entry['id_typeannonce']) && is_scalar($entry['id_typeannonce'])) {
+            $form = $this->formManager->getOne(strval($entry['id_typeannonce']));
+            if (!empty($form['bn_only_one_entry'])) {
+                $canRegisterMultipleEntries = ('Y' !== $form['bn_only_one_entry']);
+            }
+        }
+
+        return $canRegisterMultipleEntries;
+    }
+
+    /**
      * @return array $entry
      */
     protected function getEntry(Event $event): array
@@ -117,12 +130,13 @@ class DateService implements EventSubscriberInterface
         if (empty($extract)) {
             return;
         }
+
         try {
-            list(
+            [
                 'data' => $data,
                 'currentStartDate' => $currentStartDate,
                 'currentEndDate' => $currentEndDate
-            ) = $extract;
+            ] = $extract;
             $step = intval($data['step']);
             $nbmax = intval($data['nbmax']);
             // if no limit date then choose default maximum repetition (to prevent DDoS)
@@ -139,7 +153,7 @@ class DateService implements EventSubscriberInterface
             if (empty($selectedMonth)) {
                 $selectedMonth = intval($newStartDate->format('n'));
             }
-            for ($i = 1; $i <= $nbmax; $i++) {
+            for ($i = 1; $i <= $nbmax; ++$i) {
                 $calculateNewStartDate = $this->calculateNextDate(
                     $newStartDate,
                     $selectedMonth,
@@ -147,10 +161,10 @@ class DateService implements EventSubscriberInterface
                     $step,
                     $data
                 );
-                if (!empty($calculateNewStartDate) && $calculateNewStartDate->diff(new DateTimeImmutable('1970-01-01'))->invert === 1) {
+                if (!empty($calculateNewStartDate) && 1 === $calculateNewStartDate->diff(new \DateTimeImmutable('1970-01-01'))->invert) {
                     $delta = $newStartDate->diff($calculateNewStartDate);
-                    if ($delta->invert === 1) {
-                        throw new Exception('Error : calculated delta is negative for ' . "newStartDate:{$newStartDate->format('c')} and " . "calculateNewStartDate:{$calculateNewStartDate->format('c')}");
+                    if (1 === $delta->invert) {
+                        throw new Exception('Error : calculated delta is negative for '."newStartDate:{$newStartDate->format('c')} and calculateNewStartDate:{$calculateNewStartDate->format('c')}");
                     }
                     $newStartDate = $calculateNewStartDate;
                     $newEndDate = $newEndDate->add($delta);
@@ -160,27 +174,25 @@ class DateService implements EventSubscriberInterface
                     }
                 }
             }
-        } catch (Throwable $th) {
-            $this->triggerNoticeErrorIfPossible($this->wiki->dumpThrowable ($th));
+        } catch (\Throwable $th) {
+            $this->triggerNoticeErrorIfPossible($this->wiki->dumpThrowable($th));
         }
     }
 
     /**
      * create new entry if limit not reached.
-     *
-     * @param bool $limitDateIsReached
      */
     protected function createEntryIfPossible(
         array $data,
-        DateTimeInterface $newStartDate,
-        DateTimeInterface $newEndDate,
+        \DateTimeInterface $newStartDate,
+        \DateTimeInterface $newEndDate,
         array $entry
     ): bool {
         if (
             !empty($data['limitdate'])
             && (
-                ($data['limitdate'])->diff($newEndDate)->invert == 0
-                || ($data['limitdate'])->diff($newStartDate)->invert == 0
+                0 == $data['limitdate']->diff($newEndDate)->invert
+                || 0 == $data['limitdate']->diff($newStartDate)->invert
             )
         ) {
             return true;
@@ -190,7 +202,7 @@ class DateService implements EventSubscriberInterface
             || !in_array($newStartDate->format('Y-m-d'), $data['except'])
         ) {
             $newEntry = $entry;
-            $newEntry['id_fiche'] = $entry['id_fiche'] . $newStartDate->format('Ymd');
+            $newEntry['id_fiche'] = $entry['id_fiche'].$newStartDate->format('Ymd');
             if (!empty($this->pageManager->getOne($newEntry['id_fiche']))) {
                 $newName = genere_nom_wiki($newEntry['id_fiche']);
                 if (empty($newName)) {
@@ -229,15 +241,15 @@ class DateService implements EventSubscriberInterface
     /**
      * get calculateNewStartDate.
      *
-     * @return DateTimeInterface $calculateNewStartDate
+     * @return \DateTimeInterface $calculateNewStartDate
      */
     protected function calculateNextDate(
-        DateTimeInterface $newStartDate,
+        \DateTimeInterface $newStartDate,
         int $selectedMonth,
         array $days,
         int $step,
         array $data
-    ): DateTimeInterface {
+    ): \DateTimeInterface {
         switch ($data['repetition']) {
             case 'y':
                 $currentStartYear = intval($newStartDate->format('Y'));
@@ -253,7 +265,9 @@ class DateService implements EventSubscriberInterface
                         $year = $year + $stepInternal;
                     }
                 );
+
                 break;
+
             case 'm':
                 $currentStartYear = intval($newStartDate->format('Y'));
                 $currentStartMonth = intval($newStartDate->format('n'));
@@ -267,14 +281,16 @@ class DateService implements EventSubscriberInterface
                     $nextStartMonth,
                     [$this, 'calculateNextMonth']
                 );
+
                 break;
+
             case 'w':
                 $currentStartYear = intval($newStartDate->format('o')); // ISO 8601 year
                 $currentStartWeek = intval($newStartDate->format('W')); // ISO 8601 week
                 $currentStartDay = intval($newStartDate->format('N'));
                 if (!in_array($currentStartDay, $days) || $currentStartDay === max($days)) {
                     $nextWantedDay = min($days);
-                    $tmpDate = $newStartDate->add(new DateInterval('P' . strval(7 * $step) . 'D'));
+                    $tmpDate = $newStartDate->add(new \DateInterval('P'.strval(7 * $step).'D'));
                     $currentStartYear = intval($tmpDate->format('o')); // ISO 8601 year
                     $nextStartWeek = intval($tmpDate->format('W')); // ISO 8601 week
                 } else {
@@ -289,10 +305,13 @@ class DateService implements EventSubscriberInterface
                     );
                 }
                 $calculateNewStartDate = $newStartDate->setISODate($currentStartYear, $nextStartWeek, $nextWantedDay);
+
                 break;
+
             case 'd':
             default:
-                $calculateNewStartDate = $newStartDate->add(new DateInterval("P{$step}D"));
+                $calculateNewStartDate = $newStartDate->add(new \DateInterval("P{$step}D"));
+
                 break;
         }
 
@@ -309,15 +328,15 @@ class DateService implements EventSubscriberInterface
     }
 
     protected function findNextStartDate(
-        DateTimeImmutable $newStartDate,
+        \DateTimeImmutable $newStartDate,
         array $data,
         array $days,
         int $currentStartYear,
         int $nextStartMonth,
         $callback
-    ): DateTimeImmutable {
+    ): \DateTimeImmutable {
         $calculateNewStartDate = $newStartDate;
-        if ($data['whenInMonth'] === 'nthOfMonth') {
+        if ('nthOfMonth' === $data['whenInMonth']) {
             $nth = intval($data['nth']);
             $limit = 60;
             while ($limit > 0 && $nth > $this->getNbDaysInMonth($currentStartYear, $nextStartMonth)) {
@@ -337,7 +356,7 @@ class DateService implements EventSubscriberInterface
             $nbDaysInMonth = $this->getNbDaysInMonth($currentStartYear, $nextStartMonth);
             $day = min($days);
             $counter = 0;
-            for ($j = 1; $j < $nbDaysInMonth; $j++) {
+            for ($j = 1; $j < $nbDaysInMonth; ++$j) {
                 if ($counter < $wantedPosition) {
                     $testedDate = $newStartDate->setDate($currentStartYear, $nextStartMonth, $j);
                     if (intval($testedDate->format('N')) === $day) {
@@ -354,7 +373,7 @@ class DateService implements EventSubscriberInterface
     protected function getNbDaysInMonth(int $year, int $month): int
     {
         return intval(
-            (new DateTimeImmutable())->setDate($year, $month, 1)->format('t')
+            (new \DateTimeImmutable())->setDate($year, $month, 1)->format('t')
         );
     }
 
@@ -371,16 +390,17 @@ class DateService implements EventSubscriberInterface
             // this entry is not recurrent : return
             return [];
         }
+
         try {
             $currentStartDate = $this->coreDateService->getDateTimeWithRightTimeZone($entry['bf_date_debut_evenement']);
             $currentEndDate = $this->coreDateService->getDateTimeWithRightTimeZone($entry['bf_date_fin_evenement']);
-        } catch (Throwable $th) {
-            $this->triggerNoticeErrorIfPossible("for '{$entry['id_fiche']}', " . $this->wiki->dumpThrowable ($th));
+        } catch (\Throwable $th) {
+            $this->triggerNoticeErrorIfPossible("for '{$entry['id_fiche']}', ".$this->wiki->dumpThrowable($th));
 
             return [];
         }
         $data = $entry['bf_date_fin_evenement_data'];
-        if (empty($data['isRecurrent']) || $data['isRecurrent'] !== '1') {
+        if (empty($data['isRecurrent']) || '1' !== $data['isRecurrent']) {
             return [];
         }
         // check repetition format
@@ -395,7 +415,7 @@ class DateService implements EventSubscriberInterface
             return [];
         }
         if (!empty($data['whenInMonth'])
-            && $data['whenInMonth'] === 'nthOfMonth'
+            && 'nthOfMonth' === $data['whenInMonth']
             && (
                 empty($data['nth'])
                 || !is_scalar($data['nth'])
@@ -425,7 +445,7 @@ class DateService implements EventSubscriberInterface
 
                 return [];
             }
-            $dateTimeObj = new DateTimeImmutable($data['limitdate']);
+            $dateTimeObj = new \DateTimeImmutable($data['limitdate']);
             if (!$dateTimeObj) {
                 $this->triggerCheckDataErrorIfPossible($entry, 'limitdate');
 
@@ -443,7 +463,7 @@ class DateService implements EventSubscriberInterface
             $data['except'] = array_map(
                 function ($value) {
                     return is_string($value)
-                        ? new DateTimeImmutable($value)
+                        ? new \DateTimeImmutable($value)
                         : null;
                 },
                 $data['except']
@@ -471,7 +491,7 @@ class DateService implements EventSubscriberInterface
     protected function triggerCheckDataErrorIfPossible(array $entry, string $paramName)
     {
         if ($this->triggerError && !empty($entry) && !empty($paramName)) {
-            $this->triggerNoticeErrorIfPossible("::checkData for {$entry['id_fiche']}, '\$data['$paramName']' is not correct !");
+            $this->triggerNoticeErrorIfPossible("::checkData for {$entry['id_fiche']}, '\$data['{$paramName}']' is not correct !");
         }
     }
 
@@ -481,7 +501,7 @@ class DateService implements EventSubscriberInterface
     protected function triggerNoticeErrorIfPossible(string $message)
     {
         if (!empty($message) && $this->triggerError) {
-            trigger_error(self::PREFIX_ERROR . $message);
+            trigger_error(self::PREFIX_ERROR.$message);
         }
     }
 
@@ -548,7 +568,7 @@ class DateService implements EventSubscriberInterface
                 [
                     'formsIds' => [$formId],
                     'queries' => [
-                        'bf_date_fin_evenement_data' => ".*$entryId.*",
+                        'bf_date_fin_evenement_data' => ".*{$entryId}.*",
                     ],
                 ],
                 false, // filter on read Acl
@@ -559,34 +579,17 @@ class DateService implements EventSubscriberInterface
                     $entriesToDelete,
                     function ($entryToFilter) use ($entryId) {
                         return !empty($entryToFilter['bf_date_fin_evenement_data'])
-                            && $entryToFilter['bf_date_fin_evenement_data'] === "{\"recurrentParentId\":\"$entryId\"}";
+                            && $entryToFilter['bf_date_fin_evenement_data'] === "{\"recurrentParentId\":\"{$entryId}\"}";
                     }
                 );
                 foreach ($entriesToDelete as $entryToDelete) {
                     try {
                         $this->entryManager->delete($entryToDelete['id_fiche'], true); // $forceEvenIfNotOwner = true
-                    } catch (Throwable $th) {
+                    } catch (\Throwable $th) {
                         // do nothing
                     }
                 }
             }
         }
-    }
-
-    /**
-     * check if associated form is restricted for only one entry by user.
-     */
-    public function canRegisterMultipleEntries(?array $entry): bool
-    {
-        // default true
-        $canRegisterMultipleEntries = true;
-        if (!empty($entry['id_typeannonce']) && is_scalar($entry['id_typeannonce'])) {
-            $form = $this->formManager->getOne(strval($entry['id_typeannonce']));
-            if (!empty($form['bn_only_one_entry'])) {
-                $canRegisterMultipleEntries = ($form['bn_only_one_entry'] !== 'Y');
-            }
-        }
-
-        return $canRegisterMultipleEntries;
     }
 }

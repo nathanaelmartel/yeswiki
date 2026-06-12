@@ -10,8 +10,8 @@ class PackageTool extends PackageExt
     {
         return
             dirname(dirname(dirname(__DIR__)))
-            . $this::TOOL_PATH
-            . $this->name
-            . '/';
+            .$this::TOOL_PATH
+            .$this->name
+            .'/';
     }
 }

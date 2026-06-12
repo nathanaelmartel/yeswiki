@@ -22,7 +22,7 @@ class __WidgetHandler extends YesWikiHandler
 
         ob_start();
         echo '<div class="page">';
-        echo '<h1>' . _t('BAZ_WIDGET_HANDLER_TITLE') . '</h1>' . "\n";
+        echo '<h1>'._t('BAZ_WIDGET_HANDLER_TITLE').'</h1>'."\n";
 
         $id = $query->get('id');
         $q = $query->get('q');
@@ -51,7 +51,7 @@ class __WidgetHandler extends YesWikiHandler
             'height' => $this->params->get('baz_map_height'),
         ];
 
-        $urlParams = 'id=' . urlencode(strip_tags($id)) . ($query->has('query') ? '&query=' . urlencode(strip_tags($query->get('query'))) : '') . (!empty($q) ? '&q=' . urlencode($q) : '');
+        $urlParams = 'id='.urlencode(strip_tags($id)).($query->has('query') ? '&query='.urlencode(strip_tags($query->get('query'))) : '').(!empty($q) ? '&q='.urlencode($q) : '');
 
         echo $this->render('@bazar/widget.tpl.html', [
             'facettes' => $facettes,
@@ -64,7 +64,7 @@ class __WidgetHandler extends YesWikiHandler
         echo '</div>';
         $output = ob_get_contents();
         ob_end_clean();
-        echo $this->wiki->Header() . $output . $this->wiki->Footer();
+        echo $this->wiki->Header().$output.$this->wiki->Footer();
         $this->wiki->exit();
     }
 }

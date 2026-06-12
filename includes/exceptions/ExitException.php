@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class ExitException extends \Exception
-{
-}
+class ExitException extends \Exception {}

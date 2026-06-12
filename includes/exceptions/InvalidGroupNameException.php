@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class InvalidGroupNameException extends \Exception
-{
-}
+class InvalidGroupNameException extends \Exception {}

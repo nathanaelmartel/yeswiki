@@ -22,11 +22,6 @@ class ExternalCheckboxListField extends CheckboxListField
         parent::__construct($values, $services);
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         return null;
@@ -46,5 +41,10 @@ class ExternalCheckboxListField extends CheckboxListField
     {
         $this->options = null;
         $this->getOptions();
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
     }
 }

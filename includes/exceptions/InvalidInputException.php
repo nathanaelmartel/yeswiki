@@ -2,6 +2,4 @@
 
 namespace YesWiki\Core\Exception;
 
-class InvalidInputException extends \Exception
-{
-}
+class InvalidInputException extends \Exception {}

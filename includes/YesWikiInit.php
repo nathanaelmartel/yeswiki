@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Yeswiki initialization class file.
  */
@@ -25,7 +26,7 @@ class AnnotatedRouteControllerLoader extends AnnotationClassLoader
 {
     protected function configureRoute(Route $route, \ReflectionClass $class, \ReflectionMethod $method, $annot)
     {
-        $route->setDefault('_controller', $class->getName() . '::' . $method->getName());
+        $route->setDefault('_controller', $class->getName().'::'.$method->getName());
     }
 }
 
@@ -43,8 +44,6 @@ class Init
      * Create a new Init instance.
      *
      * @param array $config initial config array (empty by default)
-     *
-     * @return void
      */
     public function __construct($config = [])
     {
@@ -54,17 +53,16 @@ class Init
         $this->config = $this->getConfig($config);
         $this->setIframeHeaders();
 
-        /* @todo : compare versions, start installer for update if necessary */
+        // @todo : compare versions, start installer for update if necessary
         if (!file_exists($this->configFile)) {
             $this->doInstall();
-            exit();
+
+            exit;
         }
     }
 
     /**
      * Guess the page and the handler called by current url.
-     *
-     * @return void
      */
     public function getRoute()
     {
@@ -80,7 +78,7 @@ class Init
         $args = explode('/', rawurldecode($uri[0]));
         if (!empty($args[0]) or !empty($_REQUEST['wiki'])) {
             // if old school wiki url
-            if ($args[0] == 'index.php' or $args[0] == 'wakka.php' or !empty($_REQUEST['wiki'])) {
+            if ('index.php' == $args[0] or 'wakka.php' == $args[0] or !empty($_REQUEST['wiki'])) {
                 // remove leading slash
                 $wiki = empty($_REQUEST['wiki']) ? '' : preg_replace('/^\//', '', urldecode($_REQUEST['wiki']));
             } else {
@@ -94,10 +92,10 @@ class Init
                 $this->page = 'api';
                 array_shift($args); // remove api from the args
                 $this->method = rtrim(implode('/', $args), '=');
-            } elseif (preg_match('`^' . WN_TAG_HANDLER_CAPTURE . '$`u', $wiki, $matches)) {
+            } elseif (preg_match('`^'.WN_TAG_HANDLER_CAPTURE.'$`u', $wiki, $matches)) {
                 // split into page/method, checking wiki name & method name (XSS proof)
-                list(, $this->page, $this->method) = $matches;
-            } elseif (preg_match('`^' . WN_PAGE_TAG . '$`u', $wiki)) {
+                [, $this->page, $this->method] = $matches;
+            } elseif (preg_match('`^'.WN_PAGE_TAG.'$`u', $wiki)) {
                 // WikiPageName without method
                 $this->page = $wiki;
                 if (isset($args[1]) and !empty($args[1])) {
@@ -109,7 +107,8 @@ class Init
             } else {
                 // invalid WikiPageName
                 echo '<p>', _t('INCORRECT_PAGENAME'), '</p>';
-                exit();
+
+                exit;
             }
 
             // TODO refactor this
@@ -117,7 +116,7 @@ class Init
                 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? null;
                 // We must manually parse the body data for the PUT or PATCH methods
                 // See https://www.php.net/manual/fr/features.file-upload.put-method.php
-                if (empty($_POST) && ($requestMethod == 'POST' || $requestMethod == 'PUT' || $requestMethod == 'PATCH')) {
+                if (empty($_POST) && ('POST' == $requestMethod || 'PUT' == $requestMethod || 'PATCH' == $requestMethod)) {
                     $_POST = json_decode(file_get_contents('php://input'), true) ?? [];
                 }
 
@@ -131,58 +130,22 @@ class Init
                 switch ($requestMethod) {
                     case 'DELETE':
                         $this->method = 'api_delete';
+
                         break;
+
                     case 'PATCH':
                         $this->method = 'api_patch';
+
                         break;
+
                     case 'PUT':
                         $this->method = 'api_put';
+
                         break;
                 }
             }
-            $_GET['wiki'] = $this->page . ($this->method ? '/' . $this->method : '');
+            $_GET['wiki'] = $this->page.($this->method ? '/'.$this->method : '');
         }
-    }
-
-    /**
-     * set headers for iframes.
-     */
-    private function setIframeHeaders()
-    {
-        // set header for Content-Security-Policy
-        $allowedMethods = $this->config['allowed_methods_in_iframe'] ?? 'all';
-
-        if ($this->page === 'doc' || $allowedMethods === 'all' || (
-            is_array($allowedMethods) && in_array($this->method, $allowedMethods, true)
-        )) {
-            // allow local ('self') and everyone (*)
-            header("Content-Security-Policy: frame-ancestors 'self' *;");
-        } else {
-            // for old browsers
-            header('X-frame-Options: deny');
-            // disallow (CSP takes advantage on x-frame-options)
-            header("Content-Security-Policy: frame-ancestors 'none';");
-        }
-    }
-
-    /**
-     * Utility function to merge the multidimentionnal config array the right way.
-     *
-     * @return array merged array
-     */
-    protected function array_merge_recursive_distinct(array &$array1, array &$array2)
-    {
-        $merged = $array1;
-
-        foreach ($array2 as $key => &$value) {
-            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
-                $merged[$key] = $this->array_merge_recursive_distinct($merged[$key], $value);
-            } else {
-                $merged[$key] = $value;
-            }
-        }
-
-        return $merged;
     }
 
     /**
@@ -269,7 +232,7 @@ class Init
 
             // is authentification given?
             if (isset($_SERVER['PHP_AUTH_USER'])) {
-                if (!(($_SERVER['PHP_AUTH_USER'] == 'admin') && ($_SERVER['PHP_AUTH_PW'] == $lockpw))) {
+                if (!(('admin' == $_SERVER['PHP_AUTH_USER']) && ($_SERVER['PHP_AUTH_PW'] == $lockpw))) {
                     $ask = 1;
                 }
             } else {
@@ -277,15 +240,16 @@ class Init
             }
 
             if ($ask) {
-                header('WWW-Authenticate: Basic realm="' . $wakkaConfig['wakka_name'] . ' Install/Upgrade Interface"');
+                header('WWW-Authenticate: Basic realm="'.$wakkaConfig['wakka_name'].' Install/Upgrade Interface"');
                 header('HTTP/1.0 401 Unauthorized');
                 echo _t('SITE_BEING_UPDATED');
-                exit();
+
+                exit;
             }
         }
 
         // Display all errors if in debug mode
-        if (strtolower($wakkaConfig['debug']) == 'yes') {
+        if ('yes' == strtolower($wakkaConfig['debug'])) {
             ini_set('display_errors', 1);
             error_reporting(E_ALL);
         }
@@ -310,6 +274,8 @@ class Init
     /**
      * Initialize YesWiki core services
      * Extensions services will be loaded in the YesWiki::loadExtensions method.
+     *
+     * @param mixed $wiki
      */
     public function initCoreServices($wiki)
     {
@@ -343,7 +309,7 @@ class Init
         $routes = new RouteCollection();
 
         $loader = new AnnotationDirectoryLoader(
-            new FileLocator(__DIR__ . '/../'),
+            new FileLocator(__DIR__.'/../'),
             new AnnotatedRouteControllerLoader(
                 new AnnotationReader()
             )
@@ -352,7 +318,7 @@ class Init
         $routes->addCollection($loader->load('includes/controllers'));
 
         foreach ($wiki->extensions as $extensionKey => $extensionPath) {
-            $controllersDir = \getcwd() . '/' . $extensionPath . 'controllers';
+            $controllersDir = \getcwd().'/'.$extensionPath.'controllers';
             if (is_dir($controllersDir)) {
                 $routes->addCollection($loader->load($controllersDir));
             }
@@ -384,13 +350,13 @@ class Init
         }
 
         // ajoute un '/' terminal sauf si on est a la racine web et si nécessaire
-        if (substr($CookiePath, -1) !== '/') {
+        if ('/' !== substr($CookiePath, -1)) {
             $CookiePath .= '/';
         }
 
         $sessionName = 'YesWiki-main';
-        if ($CookiePath !== '/') {
-            $sessionName = 'YesWiki-' . str_replace('/', '-', substr($CookiePath, 1, -1));
+        if ('/' !== $CookiePath) {
+            $sessionName = 'YesWiki-'.str_replace('/', '-', substr($CookiePath, 1, -1));
         }
 
         // test if session exists, because the wiki object is instanciated for every plugin
@@ -412,8 +378,6 @@ class Init
 
     /**
      * Start the install process.
-     *
-     * @return void
      */
     public function doInstall()
     {
@@ -425,13 +389,57 @@ class Init
         loadpreferredI18n('');
         $wakkaConfig = $this->config;
         $wakkaConfigLocation = $this->configFile;
+
         include_once 'setup/install.helpers.php';
+
         include_once 'setup/header.php';
-        if (file_exists('setup/' . $installAction . '.php')) {
-            include_once 'setup/' . $installAction . '.php';
+        if (file_exists('setup/'.$installAction.'.php')) {
+            include_once 'setup/'.$installAction.'.php';
         } else {
             echo '<em>', _t('INVALID_ACTION'), '</em>';
         }
+
         include_once 'setup/footer.php';
+    }
+
+    /**
+     * Utility function to merge the multidimentionnal config array the right way.
+     *
+     * @return array merged array
+     */
+    protected function array_merge_recursive_distinct(array &$array1, array &$array2)
+    {
+        $merged = $array1;
+
+        foreach ($array2 as $key => &$value) {
+            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
+                $merged[$key] = $this->array_merge_recursive_distinct($merged[$key], $value);
+            } else {
+                $merged[$key] = $value;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
+     * set headers for iframes.
+     */
+    private function setIframeHeaders()
+    {
+        // set header for Content-Security-Policy
+        $allowedMethods = $this->config['allowed_methods_in_iframe'] ?? 'all';
+
+        if ('doc' === $this->page || 'all' === $allowedMethods || (
+            is_array($allowedMethods) && in_array($this->method, $allowedMethods, true)
+        )) {
+            // allow local ('self') and everyone (*)
+            header("Content-Security-Policy: frame-ancestors 'self' *;");
+        } else {
+            // for old browsers
+            header('X-frame-Options: deny');
+            // disallow (CSP takes advantage on x-frame-options)
+            header("Content-Security-Policy: frame-ancestors 'none';");
+        }
     }
 }

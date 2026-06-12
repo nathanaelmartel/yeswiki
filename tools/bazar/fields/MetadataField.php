@@ -10,17 +10,16 @@ use YesWiki\Core\Service\PageManager;
  */
 class MetadataField extends BazarField
 {
-    protected $theme;
-    protected $template;
-    protected $style;
-    protected $bgImage;
-    protected $favorite_preset;
-
     protected const FIELD_THEME = 1;
     protected const FIELD_TEMPLATE = 2;
     protected const FIELD_STYLE = 3;
     protected const FIELD_BG_IMAGE = 4;
     protected const FIELD_CSS_PRESET = 5;
+    protected $theme;
+    protected $template;
+    protected $style;
+    protected $bgImage;
+    protected $favorite_preset;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -39,11 +38,6 @@ class MetadataField extends BazarField
         $this->default = null;
     }
 
-    protected function renderInput($entry)
-    {
-        return '';
-    }
-
     public function formatValuesBeforeSave($entry)
     {
         $this->getService(PageManager::class)->setMetadata($entry['id_fiche'], [
@@ -58,11 +52,6 @@ class MetadataField extends BazarField
         ));
 
         return [];
-    }
-
-    protected function renderStatic($entry)
-    {
-        return '';
     }
 
     public function getTheme()
@@ -102,5 +91,15 @@ class MetadataField extends BazarField
             'bgImage' => $this->getBgImage(),
             'favorite_preset' => $this->getFavoritePreset(),
         ];
+    }
+
+    protected function renderInput($entry)
+    {
+        return '';
+    }
+
+    protected function renderStatic($entry)
+    {
+        return '';
     }
 }

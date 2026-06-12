@@ -11,7 +11,7 @@ class Repository extends PackageCollection
 
     public function __construct($address)
     {
-        $this->address = $address . '/';
+        $this->address = $address.'/';
         $this->fileHandler = new Files();
     }
 
@@ -19,10 +19,10 @@ class Repository extends PackageCollection
     {
         $this->list = [];
 
-        if (filter_var($this->address, FILTER_VALIDATE_URL) === false) {
+        if (false === filter_var($this->address, FILTER_VALIDATE_URL)) {
             return false;
         }
-        $repoInfosFile = $this->address . $this::INDEX_FILENAME;
+        $repoInfosFile = $this->address.$this::INDEX_FILENAME;
         $file = $this->fileHandler->download($repoInfosFile);
         $data = json_decode(file_get_contents($file), true);
         // release tmp file

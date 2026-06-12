@@ -22,27 +22,27 @@ class CheckSQLTablesThenFixThem extends YesWikiMigration
         try {
             $data = $this->getColumnInfo($tableName, $columnName);
         } catch (Exception $ex) {
-            if ($ex->getCode() != 1) {
+            if (1 != $ex->getCode()) {
                 throw $ex;
             }
             $data = [];
         }
-        if (empty($data['Extra']) || (is_string($data['Extra']) && strstr($data['Extra'], 'auto_increment') === false)) {
+        if (empty($data['Extra']) || (is_string($data['Extra']) && false === strstr($data['Extra'], 'auto_increment'))) {
             if (empty($data)) {
                 $dataIndex = $this->getColumnInfo($tableName, 'index');
                 if (
                     !empty(array_filter($dataIndex, function ($keyData) {
-                        return !empty($keyData['Key_name']) && $keyData['Key_name'] == 'PRIMARY';
+                        return !empty($keyData['Key_name']) && 'PRIMARY' == $keyData['Key_name'];
                     }))
                 ) {
                     $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} DROP PRIMARY KEY;");
                 }
-                $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} ADD COLUMN `$columnName` $SQL_columnDef FIRST, ADD PRIMARY KEY(`$columnName`);");
+                $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} ADD COLUMN `{$columnName}` {$SQL_columnDef} FIRST, ADD PRIMARY KEY(`{$columnName}`);");
             }
-            $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} MODIFY COLUMN `$columnName` $SQL_columnDef;");
+            $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} MODIFY COLUMN `{$columnName}` {$SQL_columnDef};");
             $data = $this->getColumnInfo($tableName, $columnName);
-            if (empty($data['Extra']) || (is_string($data['Extra']) && strstr($data['Extra'], 'auto_increment') === false)) {
-                throw new Exception("tables `$tableName`, column `$columnName` not updated !", 1);
+            if (empty($data['Extra']) || (is_string($data['Extra']) && false === strstr($data['Extra'], 'auto_increment'))) {
+                throw new Exception("tables `{$tableName}`, column `{$columnName}` not updated !", 1);
             }
         }
     }
@@ -50,7 +50,7 @@ class CheckSQLTablesThenFixThem extends YesWikiMigration
     private function checkThenUpdateColumnPrimary(string $tableName, string $columnName, array $newKeys)
     {
         $data = $this->getColumnInfo($tableName, $columnName);
-        if (empty($data['Key']) || $data['Key'] !== 'PRI') {
+        if (empty($data['Key']) || 'PRI' !== $data['Key']) {
             $newKeysFormatted = implode(
                 ',',
                 array_map(
@@ -64,31 +64,31 @@ class CheckSQLTablesThenFixThem extends YesWikiMigration
                 $data = $this->getColumnInfo($tableName, 'index');
                 if (
                     !empty(array_filter($data, function ($keyData) {
-                        return !empty($keyData['Key_name']) && $keyData['Key_name'] == 'PRIMARY';
+                        return !empty($keyData['Key_name']) && 'PRIMARY' == $keyData['Key_name'];
                     }))
                 ) {
                     $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} DROP PRIMARY KEY;");
                 }
-                $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} ADD PRIMARY KEY($newKeysFormatted);");
+                $this->dbService->query("ALTER TABLE {$this->dbService->prefixTable($tableName)} ADD PRIMARY KEY({$newKeysFormatted});");
             }
             $data = $this->getColumnInfo($tableName, $columnName);
-            if (empty($data['Key']) || $data['Key'] !== 'PRI') {
-                throw new Exception("tables `$tableName`, column `$columnName` key not updated !", 1);
+            if (empty($data['Key']) || 'PRI' !== $data['Key']) {
+                throw new Exception("tables `{$tableName}`, column `{$columnName}` key not updated !", 1);
             }
         }
     }
 
     private function getColumnInfo(string $tableName, string $columnName): array
     {
-        if ($columnName == 'index') {
+        if ('index' == $columnName) {
             $result = $this->dbService->query("SHOW INDEX FROM {$this->dbService->prefixTable($tableName)};");
-            if (@mysqli_num_rows($result) === 0) {
+            if (0 === @mysqli_num_rows($result)) {
                 return [];
             }
         } else {
-            $result = $this->dbService->query("SHOW COLUMNS FROM {$this->dbService->prefixTable($tableName)} LIKE '$columnName';");
-            if (@mysqli_num_rows($result) === 0) {
-                throw new Exception("tables `$tableName` not verified because error while getting `$columnName` column !", 1);
+            $result = $this->dbService->query("SHOW COLUMNS FROM {$this->dbService->prefixTable($tableName)} LIKE '{$columnName}';");
+            if (0 === @mysqli_num_rows($result)) {
+                throw new Exception("tables `{$tableName}` not verified because error while getting `{$columnName}` column !", 1);
             }
         }
         $data = mysqli_fetch_assoc($result);

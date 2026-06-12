@@ -17,10 +17,11 @@ class RecentChangesRssAction extends YesWikiAction
 
     public function run()
     {
-        if ($this->wiki->GetMethod() != 'xml') {
-            return _t('TO_OBTAIN_RSS_FEED_TO_GO_THIS_ADDRESS') . ' : ' .
-                $this->wiki->Link($this->wiki->getPageTag(), 'xml', null, $this->wiki->Href('xml'));
+        if ('xml' != $this->wiki->GetMethod()) {
+            return _t('TO_OBTAIN_RSS_FEED_TO_GO_THIS_ADDRESS').' : '
+                .$this->wiki->Link($this->wiki->getPageTag(), 'xml', null, $this->wiki->Href('xml'));
         }
+
         require_once 'tools/rss/libs/rssdiff.function.php';
         $max = 50;
         if ($user = $this->wiki->GetUser()) {
@@ -68,7 +69,7 @@ class RecentChangesRssAction extends YesWikiAction
             YW_CHARSET
         );
         $items = [];
-        for ($i = 0; $i < sizeof($pages); $i++) {
+        for ($i = 0; $i < sizeof($pages); ++$i) {
             $page = $pages[$i];
             $readAcl = $aclService->hasAccess('read', $page['tag']);
             $firstpage = $page;
@@ -80,7 +81,7 @@ class RecentChangesRssAction extends YesWikiAction
                 and ($page['user'] == $break_on_user)
                 and ($i < sizeof($pages))
             ) {
-                $i++;
+                ++$i;
                 $lastpage = $page;
                 if ($i < sizeof($pages)) {
                     $page = $pages[$i];
@@ -90,7 +91,7 @@ class RecentChangesRssAction extends YesWikiAction
             if ($i < sizeof($pages)) {
                 $page = $firstpage;
                 $tag = htmlspecialchars($page['tag'], ENT_COMPAT, YW_CHARSET);
-                $tag = $readAcl ? $tag : substr($tag, 0, 3) . '___';
+                $tag = $readAcl ? $tag : substr($tag, 0, 3).'___';
                 $user = htmlspecialchars($page['user'], ENT_COMPAT, YW_CHARSET);
                 $formatedDate = gmdate('D, d M Y H:i:s \G\M\T', strtotime($page['time']));
                 $rawTime = htmlspecialchars(
@@ -100,9 +101,9 @@ class RecentChangesRssAction extends YesWikiAction
                 );
                 $itemurl = $this->wiki->href(false, $tag, ['time' => $rawTime] + $langParam);
                 $description = htmlspecialchars(
-                    _t('RSS_CHANGE_OF') . ' ' . ($readAcl ? $this->wiki->ComposeLinkToPage($page['tag']) : $tag)
-                    . ($readAcl ? ' (' . $this->wiki->ComposeLinkToPage($page['tag'], 'revisions', _t('RSS_HISTORY')) . ')' : '')
-                    . ' --- ' . _t('BY') . " $user" . ($readAcl ? rssdiff($page['tag'], $firstpage['id'], $lastpage['id']) : '<br><div><i>' . _t('RSS_HIDDEN_CONTENT') . '</i></div>')
+                    _t('RSS_CHANGE_OF').' '.($readAcl ? $this->wiki->ComposeLinkToPage($page['tag']) : $tag)
+                    .($readAcl ? ' ('.$this->wiki->ComposeLinkToPage($page['tag'], 'revisions', _t('RSS_HISTORY')).')' : '')
+                    .' --- '._t('BY')." {$user}".($readAcl ? rssdiff($page['tag'], $firstpage['id'], $lastpage['id']) : '<br><div><i>'._t('RSS_HIDDEN_CONTENT').'</i></div>')
                 );
                 $items[] = compact(['tag', 'user', 'formatedDate', 'description', 'itemurl']);
             }

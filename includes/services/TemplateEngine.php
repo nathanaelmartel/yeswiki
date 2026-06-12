@@ -4,6 +4,12 @@ namespace YesWiki\Core\Service;
 
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Security\Csrf\CsrfTokenManager;
+use Twig\Environment;
+use Twig\Extension\SandboxExtension;
+use Twig\Loader\ArrayLoader;
+use Twig\Loader\FilesystemLoader;
+use Twig\Sandbox\SecurityPolicy;
+use Twig\TwigFunction;
 use YesWiki\Bazar\Service\FormManager;
 use YesWiki\Bazar\Service\ListManager;
 use YesWiki\Core\Exception\TemplateNotFound;
@@ -29,7 +35,7 @@ class TemplateEngine
         $this->csrfTokenManager = $csrfTokenManager;
         // Default path (main namespace) is the root of the project. There are no templates
         // there, but it's needed to call relative path like render('tools/bazar/templates/...')
-        $this->twigLoader = new \Twig\Loader\FilesystemLoader('./');
+        $this->twigLoader = new FilesystemLoader('./');
 
         // Custom Extension, so we can create action and handlers inside custom folder
         if (file_exists('custom/templates/')) {
@@ -38,35 +44,35 @@ class TemplateEngine
         // Extensions templates paths (added by priority order)
         foreach ($this->wiki->extensions as $extensionName => $pluginInfo) {
             // Ability to override an extension template from the custom folder
-            $paths = ["custom/templates/$extensionName/"];
+            $paths = ["custom/templates/{$extensionName}/"];
             // Ability to override an extension template from the legacy directories, should not be used anymore for new templates.
-            $paths[] = "custom/themes/tools/$extensionName/templates/";
+            $paths[] = "custom/themes/tools/{$extensionName}/templates/";
 
-            $paths[] = 'custom/templates/' . $extensionName . '/templates/';
+            $paths[] = 'custom/templates/'.$extensionName.'/templates/';
 
-            $paths[] = "custom/tools/$extensionName/templates";
+            $paths[] = "custom/tools/{$extensionName}/templates";
 
-            $paths[] = 'templates/' . $extensionName . '/templates/';
-            $paths[] = 'templates/' . $extensionName . '/';
+            $paths[] = 'templates/'.$extensionName.'/templates/';
+            $paths[] = 'templates/'.$extensionName.'/';
 
-            $paths[] = 'themes/tools/' . $extensionName . '/templates/';
-            $paths[] = 'themes/tools/' . $extensionName . '/';
+            $paths[] = 'themes/tools/'.$extensionName.'/templates/';
+            $paths[] = 'themes/tools/'.$extensionName.'/';
 
             $vFavoriteTheme = $config->get('favorite_theme');
 
-            $paths[] = "themes/{$vFavoriteTheme}/tools/" . $extensionName . '/templates/';
-            $paths[] = "themes/{$vFavoriteTheme}/tools/" . $extensionName . '/';
+            $paths[] = "themes/{$vFavoriteTheme}/tools/".$extensionName.'/templates/';
+            $paths[] = "themes/{$vFavoriteTheme}/tools/".$extensionName.'/';
 
             // Ability to override an extension template from another extension
             foreach ($this->wiki->extensions as $otherExtensionName => $pluginInfo) {
-                $paths[] = "custom/tools/$otherExtensionName/templates/$extensionName/";
-                $paths[] = "tools/$otherExtensionName/templates/$extensionName/";
+                $paths[] = "custom/tools/{$otherExtensionName}/templates/{$extensionName}/";
+                $paths[] = "tools/{$otherExtensionName}/templates/{$extensionName}/";
             }
             // Standard path for an extension template
-            $paths[] = "tools/$extensionName/templates/";
+            $paths[] = "tools/{$extensionName}/templates/";
             // Legacy directories, should not be used anymore for new templates. Maybe
             // of them are not used by anybody, but just in case we keep them for backward compatibility
-            $paths[] = "tools/$extensionName/presentation/templates/";
+            $paths[] = "tools/{$extensionName}/presentation/templates/";
 
             foreach ($paths as $path) {
                 if (file_exists($path)) {
@@ -80,7 +86,7 @@ class TemplateEngine
         $corePaths[] = 'custom/templates/core/';
         // Ability to override an extension template from another extensioncore
         foreach ($this->wiki->extensions as $otherExtensionName => $pluginInfo) {
-            $corePaths[] = "tools/$otherExtensionName/templates/core/";
+            $corePaths[] = "tools/{$otherExtensionName}/templates/core/";
         }
         $corePaths[] = 'templates/';
         foreach ($corePaths as $path) {
@@ -90,7 +96,7 @@ class TemplateEngine
         }
 
         // Set up twig
-        $this->twig = new \Twig\Environment($this->twigLoader, [
+        $this->twig = new Environment($this->twigLoader, [
             'cache' => 'cache/templates/',
             'auto_reload' => true,
         ]);
@@ -114,14 +120,14 @@ class TemplateEngine
 
         // Adds Helpers
         $this->addTwigHelper('dump', function ($var) {
-            if (isset($this->wiki->config['debug']) && $this->wiki->config['debug'] == 'yes') {
+            if (isset($this->wiki->config['debug']) && 'yes' == $this->wiki->config['debug']) {
                 return dump($var);
             }
 
             return '';
         });
         $this->addTwigHelper('int', function ($content) {
-            return (int)$content;
+            return (int) $content;
         });
         $this->addTwigHelper('_t', function ($key, $params = []) {
             return html_entity_decode(_t($key, $params));
@@ -133,7 +139,7 @@ class TemplateEngine
 
         $this->addTwigHelper('url', function ($options) {
             $options = array_merge(['tag' => '', 'handler' => '', 'params' => []], $options);
-            if (substr($options['tag'], 0, 4) === 'api/') {
+            if ('api/' === substr($options['tag'], 0, 4)) {
                 $iframe = '';
             } else {
                 $iframe = !empty($options['handler']) ? $options['handler'] : testUrlInIframe();
@@ -153,16 +159,18 @@ class TemplateEngine
         $this->addTwigHelper('csrfToken', function ($tokenId) {
             if (is_string($tokenId)) {
                 return $this->csrfTokenManager->getToken($tokenId)->getValue();
-            } elseif (is_array($tokenId)) {
+            }
+            if (is_array($tokenId)) {
                 if (!isset($tokenId['id'])) {
                     throw new \Exception('When array, `$tokenId` should contain `id` key !');
                 }
-                if (isset($tokenId['refresh']) && $tokenId['refresh'] === true) {
+                if (isset($tokenId['refresh']) && true === $tokenId['refresh']) {
                     return $this->csrfTokenManager->refreshToken($tokenId['id'])->getValue();
                 }
 
                 return $this->csrfTokenManager->getToken($tokenId['id'])->getValue();
             }
+
             throw new \Exception('`$tokenId` should be a string or an array !');
         });
         $this->addTwigHelper('urlImage', function ($options) {
@@ -180,7 +188,7 @@ class TemplateEngine
             if (!class_exists('attach')) {
                 include 'tools/attach/libs/attach.lib.php';
             }
-            $basePath = $this->wiki->getBaseUrl() . '/';
+            $basePath = $this->wiki->getBaseUrl().'/';
             $attach = new \attach($this->wiki);
             $image_dest = $attach->getResizedFilename($options['fileName'], $options['width'], $options['height'], $options['mode']);
             $safeRefresh = !$this->wiki->services->get(SecurityController::class)->isWikiHibernated()
@@ -191,13 +199,13 @@ class TemplateEngine
                 $result = $attach->redimensionner_image($options['fileName'], $image_dest, $options['width'], $options['height'], $options['mode']);
                 if ($result != $image_dest) {
                     // do nothing : error
-                    return $basePath . $options['fileName'];
+                    return $basePath.$options['fileName'];
                 }
 
-                return $basePath . $image_dest;
+                return $basePath.$image_dest;
             }
 
-            return $basePath . $image_dest;
+            return $basePath.$image_dest;
         });
         $this->addTwigHelper('hasAcl', function ($acl, $tag = '', $adminCheck = true) {
             return $this->wiki->services->get(AclService::class)->check($acl, null, $adminCheck, $tag);
@@ -221,14 +229,8 @@ class TemplateEngine
             return $this->wiki->services->get(ListManager::class)->getOne($listId, $parent);
         });
         $this->addTwigHelper('fileUrl', function ($fileName) {
-            return $this->wiki->getBaseUrl() . '/' . BAZ_CHEMIN_UPLOAD . $fileName;
+            return $this->wiki->getBaseUrl().'/'.BAZ_CHEMIN_UPLOAD.$fileName;
         });
-    }
-
-    private function addTwigHelper($name, $callback)
-    {
-        $function = new \Twig\TwigFunction($name, $callback);
-        $this->twig->addFunction($function);
     }
 
     public function addGlobal($name, $options)
@@ -243,7 +245,7 @@ class TemplateEngine
 
     public function renderFromStringNoEscape(string $templateString, array $data = []): string
     {
-        $wrapped = '{% autoescape false %}' . $templateString . '{% endautoescape %}';
+        $wrapped = '{% autoescape false %}'.$templateString.'{% endautoescape %}';
 
         return $this->twig->createTemplate($wrapped)->render($data);
     }
@@ -257,10 +259,10 @@ class TemplateEngine
      */
     public function renderSandboxedFromStringNoEscape(string $templateString, array $data = []): string
     {
-        $loader = new \Twig\Loader\ArrayLoader(['__sem__' => $templateString]);
-        $twig = new \Twig\Environment($loader, ['autoescape' => false]);
+        $loader = new ArrayLoader(['__sem__' => $templateString]);
+        $twig = new Environment($loader, ['autoescape' => false]);
 
-        $policy = new \Twig\Sandbox\SecurityPolicy(
+        $policy = new SecurityPolicy(
             // allowed control-flow tags only
             ['if', 'for', 'set'],
             // safe data-manipulation and formatting filters
@@ -278,12 +280,12 @@ class TemplateEngine
             [],
             ['date', 'fileUrl', 'max', 'min', 'random', 'range']
         );
-        $twig->addExtension(new \Twig\Extension\SandboxExtension($policy, true));
+        $twig->addExtension(new SandboxExtension($policy, true));
 
         $baseUrl = $this->wiki->getBaseUrl();
         $uploadPath = BAZ_CHEMIN_UPLOAD;
-        $twig->addFunction(new \Twig\TwigFunction('fileUrl', function (string $fileName) use ($baseUrl, $uploadPath): string {
-            return $baseUrl . '/' . $uploadPath . $fileName;
+        $twig->addFunction(new TwigFunction('fileUrl', function (string $fileName) use ($baseUrl, $uploadPath): string {
+            return $baseUrl.'/'.$uploadPath.$fileName;
         }));
 
         return $twig->render('__sem__', $data);
@@ -294,7 +296,7 @@ class TemplateEngine
         $result = '<div class="page">';
         $result .= $this->render($templatePath, $data);
         $result .= '</div>';
-        $result = $this->wiki->Header() . $result;
+        $result = $this->wiki->Header().$result;
         $result .= $this->wiki->Footer();
 
         return $result;
@@ -313,7 +315,7 @@ class TemplateEngine
     {
         $method = endsWith($templatePath, '.twig') ? 'renderTwig' : 'renderPhp';
 
-        return $this->$method($templatePath, $data);
+        return $this->{$method}($templatePath, $data);
     }
 
     protected function renderTwig($templatePath, $data = [])
@@ -326,12 +328,15 @@ class TemplateEngine
     }
 
     /**
+     * @param mixed $templatePath
+     * @param mixed $data
+     *
      * @throws TemplateNotFound
      */
     protected function renderPhp($templatePath, $data = [])
     {
         if (!$this->hasTemplate($templatePath)) {
-            throw new TemplateNotFound(_t('TEMPLATE_FILE_NOT_FOUND') . " : $templatePath");
+            throw new TemplateNotFound(_t('TEMPLATE_FILE_NOT_FOUND')." : {$templatePath}");
         }
 
         $realTemplatePath = $this->twigLoader->getSourceContext($templatePath)->getPath();
@@ -342,10 +347,17 @@ class TemplateEngine
         }
 
         ob_start(); // buffer
+
         include $realTemplatePath;
         $content = ob_get_contents(); // get buffer's content
         ob_end_clean(); // destroy buffer
 
         return $content;
+    }
+
+    private function addTwigHelper($name, $callback)
+    {
+        $function = new TwigFunction($name, $callback);
+        $this->twig->addFunction($function);
     }
 }

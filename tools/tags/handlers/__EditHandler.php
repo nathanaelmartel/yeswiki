@@ -22,9 +22,9 @@ class __EditHandler extends YesWikiHandler
             // save new tag if authorized
             $post = $this->getRequest()->request;
             if (
-                $post->get('submit') == SecurityController::EDIT_PAGE_SUBMIT_VALUE
+                SecurityController::EDIT_PAGE_SUBMIT_VALUE == $post->get('submit')
                 && $post->has('pagetags')
-                && $post->get('antispam') == 1
+                && 1 == $post->get('antispam')
             ) {
                 $tagsManager->save($this->wiki->GetPageTag(), stripslashes($post->get('pagetags')));
             }
@@ -47,9 +47,9 @@ class __EditHandler extends YesWikiHandler
                 // not possible to use ->render because output is entrirely defined by edit.php
                 $formattedTags = json_encode($tags);
                 $this->wiki->AddJavascript(<<<JS
-                    var existingTags = $formattedTags
-                    
-                JS);
+                        var existingTags = {$formattedTags}
+                        
+                    JS);
                 $this->wiki->AddJavascriptFile('tools/tags/libs/vendor/bootstrap-tagsinput.min.js');
                 $this->wiki->AddJavascriptFile('tools/tags/javascripts/edit-tags.js');
             }

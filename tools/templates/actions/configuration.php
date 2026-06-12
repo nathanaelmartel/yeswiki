@@ -23,16 +23,22 @@ if (!empty($param)) {
         case 'default_language':
         case 'charset':
             echo htmlentities($this->config[$param], ENT_QUOTES, YW_CHARSET);
+
             break;
+
         case 'lang':
             echo $GLOBALS['prefered_language'];
+
             break;
+
         case 'theme_path':
             $theme = $themeManager->getFavoriteTheme();
-            echo ((is_dir('custom/themes/' . $theme))) ?
-                "custom/themes/$theme/" :
-                "themes/$theme/";
+            echo (is_dir('custom/themes/'.$theme))
+                ? "custom/themes/{$theme}/"
+                : "themes/{$theme}/";
+
             break;
+
         default:
             break;
     }

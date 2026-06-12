@@ -6,9 +6,9 @@ function getConfigValue($key, $default = false, $cfg = '')
 {
     if (isset($cfg[$key]) and !empty($cfg[$key])) {
         return $cfg[$key];
-    } else {
-        return $default;
     }
+
+    return $default;
 }
 
 function sanitizeFilename($string = '')
@@ -17,6 +17,7 @@ function sanitizeFilename($string = '')
     $dangerous_characters = [' ', '"', "'", '&', '/', '\\', '?', '#', '(', ')', '+'];
     // every forbidden character is replace by an underscore
     $string = str_replace($dangerous_characters, '-', removeAccents($string));
+
     // Only allow one dash separator at a time (and make string lowercase)
     return mb_strtolower(preg_replace('/--+/u', '-', $string), YW_CHARSET);
 }
@@ -36,7 +37,7 @@ function redimensionner_image($image_src, $image_dest, $largeur, $hauteur, $meth
         if (!$wiki->services->get(SecurityController::class)->isWikiHibernated()
             && file_exists($image_dest)
             && isset($_GET['refresh'])
-            && $_GET['refresh'] == 1
+            && 1 == $_GET['refresh']
             && $wiki->UserIsAdmin()) {
             unlink($image_dest);
         }
@@ -48,9 +49,9 @@ function redimensionner_image($image_src, $image_dest, $largeur, $hauteur, $meth
             }
 
             return $image_dest;
-        } else {
-            return $image_dest;
         }
+
+        return $image_dest;
     }
 }
 
@@ -67,7 +68,8 @@ function copyUrlToLocalFile($url, $localPath)
 {
     if (file_exists($localPath)) {
         return true;
-    } elseif ($ch = curl_init($url)) { // teste l'existance du fichier a distance
+    }
+    if ($ch = curl_init($url)) { // teste l'existance du fichier a distance
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $imgcontent = curl_exec($ch);
@@ -82,17 +84,16 @@ function copyUrlToLocalFile($url, $localPath)
             echo $error;
 
             return false;
-        } else {
-            return true;
         }
-    } else {
-        echo _t('BAZ_IMAGE_FILE_NOT_FOUND') . ' : ' . $url;
 
-        return false;
+        return true;
     }
+    echo _t('BAZ_IMAGE_FILE_NOT_FOUND').' : '.$url;
+
+    return false;
 }
 
-/* ~~~~~~~~~~~~ DEPRECATED ~~~~~~~~~~~~~~ */
+// ~~~~~~~~~~~~ DEPRECATED ~~~~~~~~~~~~~~
 
 /** afficher_image() - genere une image en cache (gestion taille et vignettes) et l'affiche comme il faut.
  *
@@ -104,8 +105,16 @@ function copyUrlToLocalFile($url, $localPath)
  * @param    int        hauteur en pixel de la vignette
  * @param    int        largeur en pixel de l'image redimensionnee
  * @param    int        hauteur en pixel de l'image redimensionnee
- *
- * @return void
+ * @param mixed $champ
+ * @param mixed $nom_image
+ * @param mixed $label
+ * @param mixed $class
+ * @param mixed $largeur_vignette
+ * @param mixed $hauteur_vignette
+ * @param mixed $largeur_image
+ * @param mixed $hauteur_image
+ * @param mixed $method
+ * @param mixed $show_vignette
  *
  * @deprecated use $wiki->render('@attach/display-image.twig') instead
  */
@@ -125,16 +134,16 @@ function afficher_image(
     $destimg = sanitizeFilename($nom_image);
     $wiki = $GLOBALS['wiki'];
     $authorizedExts = $wiki->config['authorized-extensions'];
-    $url_base = $wiki->GetBaseUrl() . '/';
+    $url_base = $wiki->GetBaseUrl().'/';
     // If we have a full URL, remove the base URL first
-    $nom_image = str_replace($url_base . BAZ_CHEMIN_UPLOAD, '', $nom_image);
+    $nom_image = str_replace($url_base.BAZ_CHEMIN_UPLOAD, '', $nom_image);
     $ext = pathinfo($nom_image)['extension'];
 
     if (!class_exists('attach')) {
         include 'tools/attach/libs/attach.lib.php';
     }
     $attach = new attach($wiki);
-    $imagePath = $attach->GetUploadPath() . '/' . $nom_image;
+    $imagePath = $attach->GetUploadPath().'/'.$nom_image;
     $attach->file = $imagePath;
 
     if (file_exists($imagePath)

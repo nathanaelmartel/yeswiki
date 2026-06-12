@@ -1,6 +1,6 @@
 <?php
 
-if (isset($_POST['action']) && $_POST['action'] == 'addcomment') {
+if (isset($_POST['action']) && 'addcomment' == $_POST['action']) {
     if ($this->config['use_hashcash']) {
         require_once 'tools/security/secret/wp-hashcash.lib';
         if (!isset($_POST['hashcash_value']) || ($_POST['hashcash_value'] != hashcash_field_value())) {
@@ -18,7 +18,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'addcomment') {
 
         if (!array_key_exists($nospam['nospam1'], $_POST)) {
             $this->exit('NoSpam : Commentaire refusé');
-        } elseif ($_POST[$nospam['nospam1']] != '') {
+        } elseif ('' != $_POST[$nospam['nospam1']]) {
             $this->exit('NoSpam : Commentaire refusé');
         } elseif (!array_key_exists($nospam['nospam2'], $_POST)) {
             $this->exit('NoSpam : Commentaire refusé');
@@ -26,7 +26,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'addcomment') {
             $this->exit('NoSpam : Commentaire refusé');
         } elseif (!array_key_exists('nxts', $_POST) || !array_key_exists('nxts_signed', $_POST)) {
             $this->exit('NoSpam : Commentaire refusé');
-        } elseif (sha1($_POST['nxts'] . $nospam['salt']) != $_POST['nxts_signed']) {
+        } elseif (sha1($_POST['nxts'].$nospam['salt']) != $_POST['nxts_signed']) {
             $this->exit('NoSpam : Commentaire refusé');
         } elseif (time() < $_POST['nxts'] + 15) {
             $this->exit('NoSpam : trop rapide');

@@ -26,9 +26,9 @@ return [
     'AU_NO_DESCRIPTION' => 'Description non disponible.',
     'AU_DOCUMENTATION_LINK' => 'documentation',
     'AU_YESWIKI_DORYPHORE_POSTINSTALL' => 'Welcome on Doryphore',
-    'AU_PHP_TOO_LOW_ERROR' => "Vous ne pouvez pas %{textAction} car votre version PHP n'est pas supérieure à %{NEEDEDPHPVERSION}.\n" .
-        "Vous avez la version %{CURRENTPHPVERSION}.\n" .
-        '%{hint}',
+    'AU_PHP_TOO_LOW_ERROR' => "Vous ne pouvez pas %{textAction} car votre version PHP n'est pas supérieure à %{NEEDEDPHPVERSION}.\n"
+        ."Vous avez la version %{CURRENTPHPVERSION}.\n"
+        .'%{hint}',
     'AU_PHP_TOO_LOW_HINT' => 'Veuillez mettre à jour PHP sur votre serveur avant de %{textAction} !',
     'AU_PHP_TOO_LOW_VERSION_UPDATE' => 'changer de version YesWiki',
     'AU_PHP_TOO_LOW_UPDATE' => 'mettre à jour YesWiki',

@@ -2,13 +2,11 @@
 
 namespace YesWiki\Core\Commands;
 
-use Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Throwable;
 use YesWiki\Core\Service\ConsoleService;
 use YesWiki\Wiki;
 
@@ -35,8 +33,8 @@ class DbCommand extends Command
 
             // the full command description shown when running the command with
             // the "--help" option
-            ->setHelp("Manage database of the YesWiki.\n" .
-                "To test use '--test'\n")
+            ->setHelp("Manage database of the YesWiki.\n"
+                ."To test use '--test'\n")
 
             ->addOption('test', 't', InputOption::VALUE_NONE, 'Test the connection to mysqldump (return OK/NOK)')
             ->addOption('filepath', 'f', InputOption::VALUE_REQUIRED, '.sql file path where export db')
@@ -48,7 +46,7 @@ class DbCommand extends Command
         $isTest = $input->getOption('test');
         $filepath = $input->getOption('filepath');
 
-        if (!$isTest && (empty($filepath) || substr($filepath, -4) != '.sql')) {
+        if (!$isTest && (empty($filepath) || '.sql' != substr($filepath, -4))) {
             $output->writeln("Invalid options : option '--filepath' is required and should end by '.sql' if not testing.");
 
             return Command::INVALID;
@@ -62,6 +60,35 @@ class DbCommand extends Command
     }
 
     /**
+     * assert param is a not empty string.
+     *
+     * @param mixed $param
+     *
+     * @throws \Exception
+     */
+    protected function assertParamIsNotEmptyString(string $name, $param)
+    {
+        if (empty($param)) {
+            throw new \Exception("'{$name}' should not be empty in 'wakka.config.php'");
+        }
+        $this->assertParamIsString($name, $param);
+    }
+
+    /**
+     * assert param is a string.
+     *
+     * @param mixed $param
+     *
+     * @throws \Exception
+     */
+    protected function assertParamIsString(string $name, $param)
+    {
+        if (!is_string($param)) {
+            throw new \Exception("'{$name}' should be a string in 'wakka.config.php'");
+        }
+    }
+
+    /**
      * get params to connect to dB.
      *
      * @return array [
@@ -72,19 +99,19 @@ class DbCommand extends Command
      *               'password' => string
      *               ]
      *
-     * @throws Exception
+     * @throws \Exception
      */
     private function getDbParams(): array
     {
         $hostname = $this->params->get('mysql_host');
         $this->assertParamIsNotEmptyString('mysql_host', $hostname);
-        if (strpos($hostname, ':') !== false) {
-            list($hostname, $port) = explode(':', $hostname);
+        if (false !== strpos($hostname, ':')) {
+            [$hostname, $port] = explode(':', $hostname);
         }
         if (!empty($port) && strval(intval($port)) == strval($port)) {
-            $hostArg = ["--host=$hostname", "--port=$port"];
+            $hostArg = ["--host={$hostname}", "--port={$port}"];
         } else {
-            $hostArg = ["--host=$hostname"];
+            $hostArg = ["--host={$hostname}"];
         }
 
         $databasename = $this->params->get('mysql_database');
@@ -107,22 +134,23 @@ class DbCommand extends Command
      *
      * @return int Command:code
      *
-     * @throws Exception
-     * @throws Throwable
+     * @throws \Exception
+     * @throws \Throwable
      */
     private function export(OutputInterface $output, string $filepath): int
     {
-        $realFilePath = realpath(dirname($filepath)) . DIRECTORY_SEPARATOR . basename($filepath);
+        $realFilePath = realpath(dirname($filepath)).DIRECTORY_SEPARATOR.basename($filepath);
         extract($this->getDbParams());
+
         try {
             $results = $this->consoleService->findAndStartExecutableSync(
                 'mysqldump',
                 array_merge(
                     $hostArg,
                     [
-                        "--user=$username",
-                        "--password=$password",
-                        "--result-file=$realFilePath",
+                        "--user={$username}",
+                        "--password={$password}",
+                        "--result-file={$realFilePath}",
                         $databasename, // databasename
                         "{$tablePrefix}users", // tables
                         "{$tablePrefix}pages", // tables
@@ -138,17 +166,19 @@ class DbCommand extends Command
                 120 // timeoutInSec (2 minutes)
             );
             $err = $this->getErr($results);
+
             try {
                 $fileContent = file_get_contents($realFilePath);
-            } catch (Throwable $th) {
+            } catch (\Throwable $th) {
                 $fileContent = '';
             }
             if (!empty($fileContent)) {
                 return Command::SUCCESS;
-            } elseif (!empty($err)) {
+            }
+            if (!empty($err)) {
                 $output->writeln($err);
             }
-        } catch (Throwable $ex) {
+        } catch (\Throwable $ex) {
             $output->writeln("System error when testing mysqldump : {$ex->getMessage()}");
         }
 
@@ -160,11 +190,12 @@ class DbCommand extends Command
      *
      * @return int Command:code
      *
-     * @throws Throwable
+     * @throws \Throwable
      */
     private function test(OutputInterface $output): int
     {
         extract($this->getDbParams());
+
         try {
             $results = $this->consoleService->findAndStartExecutableSync(
                 'mysqldump',
@@ -176,7 +207,7 @@ class DbCommand extends Command
                 10 // timeoutInSec
             );
             $outputResult = $this->getOutput($results);
-            if (preg_match("/^mysqldump(?:\.exe)?\s*Ver\s*\d+\.?\d*.*/i", $outputResult)) {
+            if (preg_match('/^mysqldump(?:\\.exe)?\\s*Ver\\s*\\d+\\.?\\d*.*/i', $outputResult)) {
                 // test connecting to database
 
                 $results = $this->consoleService->findAndStartExecutableSync(
@@ -184,8 +215,8 @@ class DbCommand extends Command
                     array_merge(
                         $hostArg,
                         [
-                            "--user=$username",
-                            "--password=$password",
+                            "--user={$username}",
+                            "--password={$password}",
                             '-t', // no table info
                             '-d', // no table data
                             $databasename, // databasename
@@ -197,14 +228,14 @@ class DbCommand extends Command
                 );
                 $outputResult = $this->getOutput($results);
                 if (empty($outputResult)) {
-                    throw new Exception('output should not be empty during test to connect to database via mysql');
+                    throw new \Exception('output should not be empty during test to connect to database via mysql');
                 }
                 $output->writeln('OK');
 
                 return Command::SUCCESS;
             }
-        } catch (Throwable $ex) {
-            $output->writeln("System error when testing mysqldump : " . $this->wiki->dumpThrowable ($ex));
+        } catch (\Throwable $ex) {
+            $output->writeln('System error when testing mysqldump : '.$this->wiki->dumpThrowable($ex));
         }
         $output->writeln('NOK');
 
@@ -213,9 +244,7 @@ class DbCommand extends Command
 
     private function getOutput($results): string
     {
-        $outputResult = (!empty($results) && is_array($results)) ? ($results[array_key_first($results)]['stdout'] ?? '') : '';
-
-        return $outputResult;
+        return (!empty($results) && is_array($results)) ? ($results[array_key_first($results)]['stdout'] ?? '') : '';
     }
 
     private function getErr($results): string
@@ -225,35 +254,6 @@ class DbCommand extends Command
 
     private function getExtaDirs(): array
     {
-        return '\\' === DIRECTORY_SEPARATOR ? ['c:\\xampp\\mysql\\bin\\'] : ['/usr/bin/', '/usr/local/bin/'];
-    }
-
-    /**
-     * assert param is a not empty string.
-     *
-     * @param mixed $param
-     *
-     * @throws Exception
-     */
-    protected function assertParamIsNotEmptyString(string $name, $param)
-    {
-        if (empty($param)) {
-            throw new Exception("'$name' should not be empty in 'wakka.config.php'");
-        }
-        $this->assertParamIsString($name, $param);
-    }
-
-    /**
-     * assert param is a string.
-     *
-     * @param mixed $param
-     *
-     * @throws Exception
-     */
-    protected function assertParamIsString(string $name, $param)
-    {
-        if (!is_string($param)) {
-            throw new Exception("'$name' should be a string in 'wakka.config.php'");
-        }
+        return '\\' === DIRECTORY_SEPARATOR ? ['c:\xampp\mysql\bin\\'] : ['/usr/bin/', '/usr/local/bin/'];
     }
 }

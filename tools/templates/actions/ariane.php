@@ -16,7 +16,7 @@
 */
 
 if ($max = $this->GetParameter('nb')) {
-    $max = (int)$max;
+    $max = (int) $max;
 } else {
     $max = 4;
 }
@@ -27,15 +27,15 @@ $crumbs = [];
 
 $wikireq = $_REQUEST['wiki'];
 // remove leading slash
-$wikireq = preg_replace("/^\//", '', $wikireq);
+$wikireq = preg_replace('/^\\//', '', $wikireq);
 // split into page/method, checking wiki name & method name (XSS proof)
 if (preg_match(
-    '`^' . '(' . '[A-Za-z0-9]+' . ')/(' . '[A-Za-z0-9_-]' . '*)' . '$`',
+    '`^([A-Za-z0-9]+)/([A-Za-z0-9_-]*)$`',
     $wikireq,
     $matches
 )) {
-    list($PageTag, $method) = $matches;
-} elseif (preg_match('`^' . '[A-Za-z0-9]+' . '$`', $wikireq)) {
+    [$PageTag, $method] = $matches;
+} elseif (preg_match('`^[A-Za-z0-9]+$`', $wikireq)) {
     $PageTag = $wikireq;
 }
 
@@ -74,7 +74,7 @@ if (count($crumbs) > 2) {
         $temp = array_unique($temp);
         $target = $target + $temp;
         $temp = '';
-        $count++;
+        ++$count;
     }
     $crumbs = $target;
 } else {
@@ -87,19 +87,19 @@ $_SESSION['breadcrumbs'] = $crumbs;
 // Create the trail by walking through the array of page names.
 
 $page_trail = "<ol class=\"breadcrumb\">\n"
-    . '<li><a href="'
-    . $this->href('', $this->config['root_page'])
-    . '"><span class="fa fa-home"></span></a></li>'
-    . "\n";
+    .'<li><a href="'
+    .$this->href('', $this->config['root_page'])
+    .'"><span class="fa fa-home"></span></a></li>'
+    ."\n";
 
 foreach ($crumbs as $this_crumb) {
     if ($this->GetPageTag() == $this_crumb) {
-        $page_trail .= '<li class="active">' . $this_crumb . '</li>' . "\n";
+        $page_trail .= '<li class="active">'.$this_crumb.'</li>'."\n";
     } else {
         $page_trail .= '<li><a href="'
-            . $this->href('', $this_crumb)
-            . '">' . $this_crumb
-            . "</a></li>\n";
+            .$this->href('', $this_crumb)
+            .'">'.$this_crumb
+            ."</a></li>\n";
     }
 }
 $page_trail .= "</ol>\n";

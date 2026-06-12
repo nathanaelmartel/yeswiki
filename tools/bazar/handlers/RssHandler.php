@@ -88,7 +88,7 @@ class RssHandler extends YesWikiHandler
             $xml .= "\r\n      ";
             $xml .= XML_Util::createTag('language', null, 'fr-FR');
             $xml .= "\r\n      ";
-            $xml .= XML_Util::createTag('copyright', null, 'Copyright (c) ' . date('Y') . ' ' . htmlentities(removeAccents($this->wiki->config['BAZ_RSS_NOMSITE'])));
+            $xml .= XML_Util::createTag('copyright', null, 'Copyright (c) '.date('Y').' '.htmlentities(removeAccents($this->wiki->config['BAZ_RSS_NOMSITE'])));
             $xml .= "\r\n      ";
             $xml .= XML_Util::createTag('docs', null, 'http://www.stervinou.com/projets/rss/');
             $xml .= "\r\n      ";
@@ -114,20 +114,20 @@ class RssHandler extends YesWikiHandler
                     $xml .= "\r\n        ";
                     $xml .= XML_Util::createTag('title', null, str_replace('&', '&amp;', $this->sanitize($vRSSEntry['bf_titre'])));
                     $xml .= "\r\n        ";
-                    $xml .= XML_Util::createTag('link', null, '<![CDATA[' . $vRSSEntry['url'] . ']]>');
+                    $xml .= XML_Util::createTag('link', null, '<![CDATA['.$vRSSEntry['url'].']]>');
                     $xml .= "\r\n        ";
-                    $xml .= XML_Util::createTag('guid', null, '<![CDATA[' . $vRSSEntry['url'] . ']]>');
+                    $xml .= XML_Util::createTag('guid', null, '<![CDATA['.$vRSSEntry['url'].']]>');
                     $xml .= "\r\n        ";
                     $xml .= XML_Util::createTag('dc:creator', null, $vRSSEntry['owner']);
                     $xml .= "\r\n      ";
                     $xml .= XML_Util::createTag(
                         'description',
                         null,
-                        '<![CDATA[' . preg_replace(
+                        '<![CDATA['.preg_replace(
                             '/data-id=".*"/Ui',
                             '',
                             $this->sanitize($this->updateRelativeLinks($this->getService(EntryController::class)->view($vRSSEntry), $this->wiki->href('', $vRSSEntry['id_fiche'])))
-                        ) . ']]>'
+                        ).']]>'
                     );
                     $xml .= "\r\n        ";
                     $xml .= XML_Util::createTag('pubDate', null, date('r', strtotime($vRSSEntry['date_creation_fiche'])));
@@ -135,15 +135,15 @@ class RssHandler extends YesWikiHandler
                     $xml .= XML_Util::createEndElement('item');
                 }
             } else {
-                //pas d'annonces
+                // pas d'annonces
                 $xml .= "\r\n      ";
                 $xml .= XML_Util::createStartElement('item');
                 $xml .= "\r\n          ";
                 $xml .= XML_Util::createTag('title', null, $this->sanitize(_t('BAZ_PAS_DE_FICHES')));
                 $xml .= "\r\n          ";
-                $xml .= XML_Util::createTag('link', null, '<![CDATA[' . $this->wiki->config['base_url'] . $this->wiki->config['root_page'] . ']]>');
+                $xml .= XML_Util::createTag('link', null, '<![CDATA['.$this->wiki->config['base_url'].$this->wiki->config['root_page'].']]>');
                 $xml .= "\r\n          ";
-                $xml .= XML_Util::createTag('guid', null, '<![CDATA[' . $this->wiki->config['base_url'] . $this->wiki->config['root_page'] . ']]>');
+                $xml .= XML_Util::createTag('guid', null, '<![CDATA['.$this->wiki->config['base_url'].$this->wiki->config['root_page'].']]>');
                 $xml .= "\r\n          ";
                 $xml .= XML_Util::createTag('description', null, $this->sanitize(_t('BAZ_PAS_DE_FICHES')));
                 $xml .= "\r\n          ";
@@ -160,21 +160,19 @@ class RssHandler extends YesWikiHandler
 
             return str_replace(
                 '</image>',
-                '</image>' . "\n"
-            . '    <atom:link href="' . htmlentities($this->getRequest()->getSchemeAndHttpHost() . $this->getRequest()->getRequestUri())
-            . '" rel="self" type="application/rss+xml" />',
+                '</image>'."\n"
+            .'    <atom:link href="'.htmlentities($this->getRequest()->getSchemeAndHttpHost().$this->getRequest()->getRequestUri())
+            .'" rel="self" type="application/rss+xml" />',
                 $this->sanitize($xml, ENT_QUOTES, 'UTF-8')
             );
         } catch (Exception $e) {
-            return 'Caught exception: ' . $e->getMessage() . "\n";
+            return 'Caught exception: '.$e->getMessage()."\n";
         }
     }
 
     private function sanitize($string)
     {
-        $string = html_entity_decode($string, ENT_QUOTES, 'UTF-8');
-
-        return $string;
+        return html_entity_decode($string, ENT_QUOTES, 'UTF-8');
     }
 
     private function updateRelativeLinks($pBody, $pPageURL)
@@ -186,7 +184,7 @@ class RssHandler extends YesWikiHandler
         if (preg_match_all($pattern, $vBody, $matches)) {
             foreach ($matches[3] as $vKey => $vURL) {
                 $vAbsoluteURL = getAbsoluteURLForLinkInAPage($pPageURL, $vURL);
-                $vBody = str_replace($matches[0][$vKey], $matches[1][$vKey] . $matches[2][$vKey] . $vAbsoluteURL . $matches[2][$vKey] . $matches[5][$vKey], $vBody);
+                $vBody = str_replace($matches[0][$vKey], $matches[1][$vKey].$matches[2][$vKey].$vAbsoluteURL.$matches[2][$vKey].$matches[5][$vKey], $vBody);
             }
         }
 

@@ -25,8 +25,8 @@ class OldField extends BazarField
                 '@templates/alert-message.twig',
                 [
                     'type' => 'danger',
-                    'message' => "Error \$values['functionName'] is not defined while creating " . get_class($this) . ". \n<br>" .
-                        "Do not use 'retrocomp' field in form builder.",
+                    'message' => "Error \$values['functionName'] is not defined while creating ".get_class($this).". \n<br>"
+                        ."Do not use 'retrocomp' field in form builder.",
                 ]
             );
         } elseif (!function_exists($this->functionName)) {
@@ -34,7 +34,7 @@ class OldField extends BazarField
                 '@templates/alert-message.twig',
                 [
                     'type' => 'danger',
-                    'message' => "Error function '" . $this->functionName . "' is not defined while creating " . get_class($this),
+                    'message' => "Error function '".$this->functionName."' is not defined while creating ".get_class($this),
                 ]
             );
         } else {
@@ -47,14 +47,6 @@ class OldField extends BazarField
         $this->type = $this->functionName;
     }
 
-    protected function renderInput($entry)
-    {
-        $funcName = $this->functionName;
-        $templateForm = [];
-
-        return $this->error ?? $funcName($templateForm, $this->template, 'saisie', $entry);
-    }
-
     // Format input values before save
     public function formatValuesBeforeSave($entry)
     {
@@ -65,14 +57,6 @@ class OldField extends BazarField
             : $funcName($templateForm, $this->template, 'requete', $entry);
     }
 
-    protected function renderStatic($entry)
-    {
-        $funcName = $this->functionName;
-        $templateForm = [];
-
-        return $this->error ?? $funcName($templateForm, $this->template, 'html', $entry);
-    }
-
     // change return of this method to keep compatible with php 7.3 (mixed is not managed)
     #[\ReturnTypeWillChange]
     public function jsonSerialize()
@@ -81,5 +65,21 @@ class OldField extends BazarField
             parent::jsonSerialize(),
             ['functionName' => $this->functionName]
         );
+    }
+
+    protected function renderInput($entry)
+    {
+        $funcName = $this->functionName;
+        $templateForm = [];
+
+        return $this->error ?? $funcName($templateForm, $this->template, 'saisie', $entry);
+    }
+
+    protected function renderStatic($entry)
+    {
+        $funcName = $this->functionName;
+        $templateForm = [];
+
+        return $this->error ?? $funcName($templateForm, $this->template, 'html', $entry);
     }
 }

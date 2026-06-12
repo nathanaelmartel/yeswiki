@@ -11,7 +11,7 @@ class CalendrierAction extends YesWikiAction
             $classes = explode(' ', $arg['class']);
             $classes = array_combine($classes, $classes);
         }
-        $minical = (isset($arg['minical']) && $arg['minical'] == 'true') || (isset($classes) && in_array('minical', $classes));
+        $minical = (isset($arg['minical']) && 'true' == $arg['minical']) || (isset($classes) && in_array('minical', $classes));
         if ($minical) {
             $classes['minical'] = 'minical';
         }
@@ -20,8 +20,8 @@ class CalendrierAction extends YesWikiAction
         $template = !empty($arg['template']) ? basename($arg['template']) : 'calendar.tpl.html';
         $dynamic = $this->formatBoolean($arg, false, 'dynamic');
         $templateEngine = $this->getService(TemplateEngine::class);
-        if (($template === 'calendar.tpl.html' && !$templateEngine->hasTemplate("@bazar/{$template}")) ||
-            ($template === 'calendar' && !$templateEngine->hasTemplate("@bazar/{$template}.tpl.html"))) {
+        if (('calendar.tpl.html' === $template && !$templateEngine->hasTemplate("@bazar/{$template}"))
+            || ('calendar' === $template && !$templateEngine->hasTemplate("@bazar/{$template}.tpl.html"))) {
             $template = 'calendar';
             $dynamic = true;
         }
@@ -29,7 +29,7 @@ class CalendrierAction extends YesWikiAction
         return [
             'minical' => $minical ?? null,
             'class' => $class,
-            //template - default value calendar
+            // template - default value calendar
             'template' => $template,
             'dynamic' => $dynamic,
             'pagination' => -1, // disable pagination

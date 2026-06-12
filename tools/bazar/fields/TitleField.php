@@ -14,9 +14,8 @@ use YesWiki\Core\Service\HtmlPurifierService;
  */
 class TitleField extends BazarField
 {
-    protected $titleTemplate;
-
     protected const FIELD_TITLE_TEMPLATE = 1;
+    protected $titleTemplate;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -26,22 +25,15 @@ class TitleField extends BazarField
         $this->titleTemplate = $values[self::FIELD_TITLE_TEMPLATE];
     }
 
-    protected function renderInput($entry)
-    {
-        return $this->render('@bazar/inputs/title.twig', [
-            'titleTemplate' => $this->titleTemplate,
-        ]);
-    }
-
     public function formatValuesBeforeSave($entry)
     {
-        $dirtyHtml = $this->titleTemplate; //$this->getValue($entry);
+        $dirtyHtml = $this->titleTemplate; // $this->getValue($entry);
 
         $value = $this->getService(HtmlPurifierService::class)->cleanHTML($dirtyHtml);
         $formManager = $this->getService(FormManager::class);
 
         // TODO improve import detection
-        if (!isset($GLOBALS['_BAZAR_']['provenance']) || $GLOBALS['_BAZAR_']['provenance'] !== 'import') {
+        if (!isset($GLOBALS['_BAZAR_']['provenance']) || 'import' !== $GLOBALS['_BAZAR_']['provenance']) {
             preg_match_all('#{{(.*)}}#U', $value, $matches);
             $formId = $entry['id_typeannonce'] ?? null;
             foreach ($matches[1] as $fieldName) {
@@ -61,7 +53,7 @@ class TitleField extends BazarField
                         // get value instead of key
                         $replacement = $field->getOptions()[$fieldValue] ?? '';
                     } elseif ($field instanceof ImageField) {
-                        $filenameKey = 'filename-' . $field->getPropertyName();
+                        $filenameKey = 'filename-'.$field->getPropertyName();
                         if (!empty($this->getRequest()->request->get($filenameKey))) {
                             $replacement = sanitizeFilename($this->getRequest()->request->get($filenameKey));
                             if (empty($replacement)) {
@@ -86,17 +78,24 @@ class TitleField extends BazarField
                     } else {
                         $replacement = $fieldValue;
                     }
-                    $value = str_replace('{{' . $fieldName . '}}', $replacement, $value);
+                    $value = str_replace('{{'.$fieldName.'}}', $replacement, $value);
                 } elseif (isset($entry[$fieldName])) {
-                    $value = str_replace('{{' . $fieldName . '}}', $entry[$fieldName], $value);
+                    $value = str_replace('{{'.$fieldName.'}}', $entry[$fieldName], $value);
                 }
             }
         }
 
         // Generate an ID for the entry based on the title
-        $entry['id_fiche'] = (isset($entry['id_fiche']) ? $entry['id_fiche'] : genere_nom_wiki($value));
+        $entry['id_fiche'] = ($entry['id_fiche'] ?? genere_nom_wiki($value));
 
         return [$this->propertyName => $value, 'id_fiche' => $entry['id_fiche']];
+    }
+
+    protected function renderInput($entry)
+    {
+        return $this->render('@bazar/inputs/title.twig', [
+            'titleTemplate' => $this->titleTemplate,
+        ]);
     }
 
     protected function renderStatic($entry)

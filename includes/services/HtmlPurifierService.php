@@ -4,7 +4,6 @@ namespace YesWiki\Core\Service;
 
 use enshrined\svgSanitize\Sanitizer;
 use HTMLPurifier;
-use HTMLPurifier_Config;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use YesWiki\Wiki;
 
@@ -38,9 +37,9 @@ class HtmlPurifierService
             return $dirty_html;
         }
         if (is_null($this->purifier)) {
-            $config = HTMLPurifier_Config::createDefault();
+            $config = \HTMLPurifier_Config::createDefault();
 
-            //add extra attributes for links in new tab
+            // add extra attributes for links in new tab
             $config->set('Attr.AllowedFrameTargets', [
                 '_blank',
                 '_parent',
@@ -50,11 +49,11 @@ class HtmlPurifierService
             // set the cache folder
             // doc : http://htmlpurifier.org/live/configdoc/plain.html#Cache.SerializerPath
             if (!is_dir(self::HTMLPURIFIER_CACHE_FOLDER)) {
-                mkdir(self::HTMLPURIFIER_CACHE_FOLDER, 0777, true);
+                mkdir(self::HTMLPURIFIER_CACHE_FOLDER, 0o777, true);
             }
             $config->set('Cache.SerializerPath', realpath(self::HTMLPURIFIER_CACHE_FOLDER));
 
-            $this->purifier = new HTMLPurifier($config);
+            $this->purifier = new \HTMLPurifier($config);
         }
 
         return $this->purifier->purify($dirty_html);
@@ -88,16 +87,17 @@ class HtmlPurifierService
         if (file_exists($filename)) {
             if (in_array($extension, ['svg', 'html', 'htm'])) {
                 $content = file_get_contents($filename);
-                if ($extension === 'svg') {
+                if ('svg' === $extension) {
                     return file_put_contents($filename, $this->sanitizeSVG($content));
-                } elseif ($extension === 'html' || $extension === 'htm') {
+                }
+                if ('html' === $extension || 'htm' === $extension) {
                     return file_put_contents($filename, $this->cleanHTML($content));
                 }
             } else {
                 return true; // the file type doesn't need to be cleaned
             }
         } else {
-            return false; //TODO : maybe raise an explicit error in case of non-existing file
+            return false; // TODO : maybe raise an explicit error in case of non-existing file
         }
     }
 }

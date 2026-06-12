@@ -9,11 +9,10 @@ use Psr\Container\ContainerInterface;
  */
 class ConditionsCheckingField extends LabelField
 {
-    private $condition;
-    private $options;
-
     protected const FIELD_CONDITION = 1;
     protected const FIELD_OPTIONS = 2;
+    private $condition;
+    private $options;
 
     public function __construct(array $values, ContainerInterface $services)
     {
@@ -22,12 +21,6 @@ class ConditionsCheckingField extends LabelField
         $this->options = !empty($values[self::FIELD_OPTIONS]) && in_array($values[self::FIELD_OPTIONS], ['noclean'], true) ? ['noclean' => true] : ['noclean' => false];
         $this->formText = $this->prepareFormText();
         $this->viewText = '';
-    }
-
-    protected function prepareFormText(): ?string
-    {
-        return $this->render('@bazar/inputs/conditions-checking.twig', [
-        ]);
     }
 
     public function getCondition()
@@ -51,5 +44,11 @@ class ConditionsCheckingField extends LabelField
                 'option' => $this->getOptions(),
             ]
         );
+    }
+
+    protected function prepareFormText(): ?string
+    {
+        return $this->render('@bazar/inputs/conditions-checking.twig', [
+        ]);
     }
 }

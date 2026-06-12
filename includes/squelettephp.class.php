@@ -29,7 +29,7 @@ class SquelettePhp
      */
     public function __construct($templateFile, $templateDir)
     {
-        $this->templatePath = "@$templateDir/$templateFile";
+        $this->templatePath = "@{$templateDir}/{$templateFile}";
     }
 
     /**

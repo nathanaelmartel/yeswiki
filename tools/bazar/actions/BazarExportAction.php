@@ -62,7 +62,7 @@ class BazarExportAction extends YesWikiAction
             $vID = $vTheID['id'];
 
             $vRefresh = $this->arguments['refresh'] ?? $this->getRequest()->query->get('refresh', 'false');
-            $vRefresh = ($vRefresh == 'true' || $vRefresh == '1') ? true : false;
+            $vRefresh = ('true' == $vRefresh || '1' == $vRefresh) ? true : false;
 
             $vSelectedForm = $vForms[$vID];
 
